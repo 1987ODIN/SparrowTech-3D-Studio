@@ -36,6 +36,11 @@ Gera 3 ficheiros 3MF reais (`tests/out/`) e verifica a estrutura esperada pelo l
 * Durante um cálculo «Muito fina» a página continua a desenhar ~55 frames/s.
 * Sem erros na consola.
 
+### Ambientes que bloqueiam Web Workers
+Testado com servidor local e `Content-Security-Policy`:
+* `worker-src data:` (bloqueia `blob:`, como a pré-visualização do Claude): a app usa um Worker `data:` — OK.
+* `worker-src 'none'`: modo compatível (cálculo na página, «Muito fina» só na exportação) — modelo, malhas fechadas e exportação 3MF OK, sem erros.
+
 ## Ainda por verificar manualmente
 * Abrir `tests/out/*.3mf` ou um 3MF exportado pela app no **Bambu Studio** e no **Creality Print** e confirmar: 1 objeto, 3–4 partes, filamentos 1/2/3, posição no tabuleiro.
 * Imprimir uma peça de teste (relevo + contorno) e comparar com o `Parametric_Model_Maker_1.stl`.

@@ -56,7 +56,7 @@ Verso: «À face» embute 0,4 mm, «Relevo» acrescenta letras por baixo (o mode
 
 ## Desempenho
 
-O cálculo corre num **Web Worker** criado a partir do próprio HTML (funciona offline com `file://`). A interface não bloqueia, mesmo em «Muito fina». Durante o arrasto da argola usa-se a qualidade «Normal» e, ao largar, a qualidade escolhida. Exportações usam sempre a qualidade escolhida.
+O cálculo corre num **Web Worker** criado a partir do próprio HTML (funciona offline com `file://`). Se o ambiente proibir Workers `blob:` (ex.: pré-visualização do Claude), tenta um Worker `data:`; se também for proibido, entra em **modo compatível** (cálculo na página, pré-visualização no máximo em «Fina», exportação na qualidade escolhida). A interface não bloqueia, mesmo em «Muito fina». Durante o arrasto da argola usa-se a qualidade «Normal» e, ao largar, a qualidade escolhida. Exportações usam sempre a qualidade escolhida.
 
 Tempos medidos em Node (máquina de testes), qualidade fina: 0,1–1 s por modelo; nomes longos em «Muito fina»: 2–4 s (100 mil triângulos).
 
