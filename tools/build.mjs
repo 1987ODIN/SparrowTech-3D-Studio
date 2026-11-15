@@ -5,8 +5,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const read = p => fs.readFileSync(path.join(ROOT, p), 'utf8');
-export const FONT_FILES = { 'Lobster': 'Lobster.otf', 'Lobster Two': 'LobsterTwo.otf', 'Pacifico': 'Pacifico-Regular.ttf', 'Courgette': 'Courgette-Regular.ttf', 'Kaushan Script': 'KaushanScript-Regular.ttf', 'Great Vibes': 'GreatVibes-Regular.ttf' };
-const fonts = Object.fromEntries(Object.entries(FONT_FILES).map(([n, f]) => [n, fs.readFileSync(path.join(ROOT, 'fonts', f)).toString('base64')]));
+// Catálogo gerado por tools/prepare_fonts.py (ordem = ordem da galeria e da roda do rato).
+const catalog = JSON.parse(read('fonts/catalog.json'));
+const fonts = catalog.map(c => ({ name: c.name, group: c.group, data: fs.readFileSync(path.join(ROOT, 'fonts', c.file)).toString('base64') }));
 // "</script" dentro do código embutido fecharia a tag: protege-se.
 const safe = s => s.replace(/<\/script/gi, '<\\/script');
 const libs = ['vendor/opentype.min.js', 'vendor/clipper.js', 'vendor/earcut.min.js', 'src/geometry.js', 'src/model.js', 'src/threemf.js'].map(f => `/* ---- ${f} ---- */\n` + read(f)).join('\n;\n');

@@ -86,3 +86,11 @@ Pormenores: os botões vêm de `event.buttons` (esquerdo = 1, direito = 2, ambos
 * `vendor/` — opentype.js 1.3.4 (MIT), Clipper 6.4.2 JS (Boost; inclui jsbn, licença BSD), earcut 2.2.4 (ISC).
 * `fonts/` — subconjuntos Latin das fontes (todas SIL OFL 1.1; licenças ao lado).
 * `legacy/sparrowtech_3d_studio_v4.html` — V4 original, para comparação.
+
+## Fontes, troca rápida e imprimibilidade (v5.1)
+
+* **57 fontes** embutidas (subconjunto Latin, sem hinting, só as features que o opentype.js aplica — a pré-visualização da galeria e a geometria usam as mesmas formas), geradas por `tools/prepare_fonts.py` a partir do google/fonts. Três grupos: **Recomendadas para nomes** (manuscritas), **Letra de imprensa** (grossas, «à máquina») e **Finas e elegantes**. Licenças em `fonts/licencas/` (SIL OFL 1.1; Chewy, Rochester, Satisfy, Yellowtail, Luckiest Guy e Special Elite: Apache 2.0).
+* **Trocar de fonte com a roda:** clicar nas letras do modelo ativa o «modo fonte» (moldura amarela no seletor ◀ Fonte ▶); a roda passa a percorrer as fontes em vez de fazer zoom. Esc, clique fora das letras ou clique no nome da fonte saem do modo. A roda sobre o seletor troca sempre. Durante a troca usa-se uma pré-visualização rápida e, 0,65 s depois, a qualidade escolhida.
+* **Espessura das letras** (−0,2 a +0,8 mm, offset arredondado do traço) e **Espaçamento entre letras** (−10 % a +20 % do em). O exemplo `CatarinaTag.3mf`/`Parametric_Model_Maker_1.stl` usa letras engrossadas; nenhuma das ~60 fontes gratuitas testadas coincide exatamente (as mais próximas: Euphoria Script, Leckerli One, Lily Script One, Pacifico).
+* **Bico e camada** (separador Impressão): para o bico escolhido, `printability()` mede a fração do traço mais fina do que o bico (abertura morfológica de raio bico/2) e os espaços mais estreitos do que o bico (fecho), e sugere o que mudar. A galeria mostra ✓/⚠ por fonte para o nome atual (análise no Worker, em rascunho). Mostra ainda quantas camadas tem a altura das letras.
+* **Placa de teste:** marca até 12 fontes com ★ e exporta um 3MF com o mesmo nome em cada fonte (um objeto por fonte, com as partes por filamento) para imprimir e comparar.

@@ -10,9 +10,10 @@ const G = require(path.join(ROOT, 'src/geometry.js'));
 const M = require(path.join(ROOT, 'src/model.js'));
 const opentype = require(path.join(ROOT, 'vendor/opentype.min.js'));
 
-const FONT_FILES = { Pacifico: 'Pacifico-Regular.ttf', Lobster: 'Lobster.otf', 'Lobster Two': 'LobsterTwo.otf', Courgette: 'Courgette-Regular.ttf', 'Kaushan Script': 'KaushanScript-Regular.ttf', 'Great Vibes': 'GreatVibes-Regular.ttf' };
+const CATALOG = JSON.parse(fs.readFileSync(path.join(ROOT, 'fonts/catalog.json'), 'utf8'));
 const fonts = {};
-for (const [k, f] of Object.entries(FONT_FILES)) { const buf = fs.readFileSync(path.join(ROOT, 'fonts', f)); fonts[k] = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)); }
+for (const c of CATALOG) { const buf = fs.readFileSync(path.join(ROOT, 'fonts', c.file)); fonts[c.name] = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength)); }
+const COMBO_FONTS = ['Pacifico', 'Lobster', 'Lobster Two', 'Courgette', 'Kaushan Script', 'Great Vibes'];
 
 const BASE_STATE = { name: 'Filipa', font: 'Lobster', shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: 0.8, border: 3.5, letterHeight: 0.6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5 };
 
@@ -61,7 +62,7 @@ console.log('2) Todas as combinações de acabamento × fontes × formas (qualid
 const FRONT = ['raised', 'flush', 'engraved', 'cutout'], BACK = ['smooth', 'inlay', 'raised', 'engraved', 'through'], SHAPES = ['contour', 'cloud', 'rounded', 'square', 'oval', 'none'];
 let worst = 0, totalBuilds = 0;
 const t0 = Date.now();
-for (const fname of Object.keys(fonts)) {
+for (const fname of COMBO_FONTS) {
   for (const front of FRONT) for (const back of BACK) {
     const shape = SHAPES[(FRONT.indexOf(front) * 5 + BACK.indexOf(back)) % SHAPES.length];
     const S = { ...BASE_STATE, font: fname, front, back, shape, backText: back === 'smooth' ? '' : '912 345 678', outline: (FRONT.indexOf(front) + BACK.indexOf(back)) % 3 !== 2 };
@@ -78,6 +79,27 @@ for (const fname of Object.keys(fonts)) {
   }
 }
 console.log(`   ${totalBuilds} modelos, pior tempo ${worst} ms, total ${Date.now() - t0} ms`);
+
+console.log(`2b) Todas as ${CATALOG.length} fontes do catálogo (relevo + contorno, espessura e espaçamento)`);
+{
+  const t1 = Date.now(); let worstF = 0;
+  for (const c of CATALOG) {
+    for (const extra of [{}, { textWeight: 0.3, letterSpacing: -5 }, { textWeight: -0.1, letterSpacing: 12, back: 'inlay', backText: 'Ana' }]) {
+      const s0 = Date.now(); const model = M.build({ ...BASE_STATE, name: 'Constança', ...extra }, { front: fonts[c.name] }, 'fine'); worstF = Math.max(worstF, Date.now() - s0);
+      for (const p of model.parts) checkMesh(p.mesh, `${c.name}/${JSON.stringify(extra)}/${p.id}`);
+    }
+  }
+  console.log(`   ${CATALOG.length * 3} modelos, pior ${worstF} ms, total ${Date.now() - t1} ms`);
+  // espaçamento muda mesmo a largura; espessura muda a área
+  const w = sp => M.build({ ...BASE_STATE, letterSpacing: sp }, { front: fonts.Pacifico }, 'draft').regions.textBounds.width;
+  check(w(15) > w(0) + 5 && w(-8) < w(0) - 3, 'espaçamento entre letras não altera a largura');
+  const a = wt => Math.abs(G.regionArea(M.build({ ...BASE_STATE, textWeight: wt }, { front: fonts.Pacifico }, 'draft').regions.text));
+  check(a(0.4) > a(0) * 1.1, 'espessura das letras não engrossa o traço');
+  // imprimibilidade: fonte fina com bico 0,8 deve avisar; Pacifico com 0,4 não
+  check(M.scanFont({ ...BASE_STATE, nozzle: 0.8 }, fonts['Great Vibes']).status !== 'ok', 'Great Vibes com bico 0,8 devia ter aviso');
+  check(M.scanFont({ ...BASE_STATE, nozzle: 0.4 }, fonts.Pacifico).status === 'ok', 'Pacifico com bico 0,4 devia estar OK');
+  check(M.scanFont({ ...BASE_STATE, nozzle: 0.6, letterSpacing: -10, textWeight: 0.6 }, fonts.Pacifico).gap > M.scanFont({ ...BASE_STATE, nozzle: 0.6 }, fonts.Pacifico).gap, 'letras apertadas deviam aumentar os espaços estreitos');
+}
 
 console.log('3) Partes sem sobreposição (volume da união = soma das partes)');
 for (const front of FRONT) for (const back of ['smooth', 'inlay', 'raised', 'through']) {

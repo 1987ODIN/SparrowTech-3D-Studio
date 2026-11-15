@@ -44,48 +44,52 @@
    * Devolve [[caminho, texto]] para o ZIP, mais o mapa de filamentos.
    */
   function build(parts, placements, meta) {
-    parts = parts.filter(p => p.mesh && p.mesh.indices && p.mesh.indices.length);
-    if (!parts.length) throw new Error('Sem malhas para exportar.');
-    const { map, colors } = extruderMap(parts);
+    return buildObjects([{ name: meta.name, parts, placements }], meta);
+  }
+  /**
+   * Vários objetos (ex.: placa de teste de fontes): cada um com as suas partes e instâncias.
+   * objects: [{name, parts:[{id,label,color,mesh}], placements:[{x,y}]}]
+   */
+  function buildObjects(objects, meta) {
+    objects = objects.map(o => Object.assign({}, o, { parts: o.parts.filter(p => p.mesh && p.mesh.indices && p.mesh.indices.length) })).filter(o => o.parts.length && o.placements.length);
+    if (!objects.length) throw new Error('Sem malhas para exportar.');
+    const { map, colors } = extruderMap([].concat(...objects.map(o => o.parts)));
     const date = meta.date || new Date().toISOString().slice(0, 10);
     const half = (meta.plateSize || 256) / 2;
-    const objectId = parts.length + 1;
-    const name = meta.name || 'SparrowTech';
-
-    // 3D/Objects/object_1.model: uma malha por parte
-    const sub = [`<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" ${NS}>`,
-      '<metadata name="BambuStudio:3mfVersion">1</metadata><resources>'];
-    parts.forEach((p, i) => sub.push(`<object id="${i + 1}" p:UUID="${hex8(i + 1)}-81cb-4c03-9d28-80fed5dfa1dc" type="model">${meshXML(p.mesh)}</object>`));
+    const title = meta.name || 'SparrowTech';
+    let nextSub = 1; const totalSub = objects.reduce((s, o) => s + o.parts.length, 0);
+    const sub = [`<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" ${NS}>`, '<metadata name="BambuStudio:3mfVersion">1</metadata><resources>'];
+    const resources = [], items = [], cfg = ['<?xml version="1.0" encoding="UTF-8"?>\n<config>'], plate = [];
+    let itemN = 0, identify = 100;
+    objects.forEach((o, oi) => {
+      const objectId = totalSub + 1 + oi, comps = [];
+      cfg.push(`  <object id="${objectId}">`, `    <metadata key="name" value="${esc(o.name || title)}"/>`, `    <metadata key="extruder" value="${map[o.parts[0].id]}"/>`);
+      for (const p of o.parts) {
+        const id = nextSub++;
+        sub.push(`<object id="${id}" p:UUID="${hex8(id)}-81cb-4c03-9d28-80fed5dfa1dc" type="model">${meshXML(p.mesh)}</object>`);
+        comps.push(`<component p:path="/3D/Objects/object_1.model" objectid="${id}" p:UUID="${hex8(id << 16)}-b206-40ff-9872-83e8017abed1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`);
+        cfg.push(`    <part id="${id}" subtype="normal_part">`, `      <metadata key="name" value="${esc(p.label)}"/>`, '      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>',
+          `      <metadata key="extruder" value="${map[p.id]}"/>`, `      <mesh_stat face_count="${p.mesh.indices.length / 3}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>`, '    </part>');
+      }
+      cfg.push('  </object>');
+      resources.push(`<object id="${objectId}" p:UUID="${hex8(objectId)}-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>${comps.join('')}</components></object>`);
+      o.placements.forEach((pos, i) => {
+        items.push(`<item objectid="${objectId}" p:UUID="${hex8(++itemN + 1)}-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 ${num(pos.x + half)} ${num(pos.y + half)} 0" printable="1"/>`);
+        plate.push('    <model_instance>', `      <metadata key="object_id" value="${objectId}"/>`, `      <metadata key="instance_id" value="${i}"/>`, `      <metadata key="identify_id" value="${identify++}"/>`, '    </model_instance>');
+      });
+    });
     sub.push('</resources><build/></model>');
-
-    // 3D/3dmodel.model: objeto montado com um componente por parte, e uma instância por cópia
-    const comps = parts.map((p, i) => `<component p:path="/3D/Objects/object_1.model" objectid="${i + 1}" p:UUID="${hex8((i + 1) << 16)}-b206-40ff-9872-83e8017abed1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`).join('');
-    const items = placements.map((pos, i) => `<item objectid="${objectId}" p:UUID="${hex8(i + 2)}-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 ${num(pos.x + half)} ${num(pos.y + half)} 0" printable="1"/>`).join('');
+    const allParts = [].concat(...objects.map(o => o.parts));
     const main = `<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" ${NS}>` +
       '<metadata name="Application">BambuStudio-02.00.00.00</metadata>' +
       '<metadata name="BambuStudio:3mfVersion">1</metadata>' +
-      `<metadata name="Title">${esc(name)}</metadata>` +
+      `<metadata name="Title">${esc(title)}</metadata>` +
       '<metadata name="Designer">SparrowTech 3D Studio v5</metadata>' +
-      `<metadata name="Description">${esc((meta.printerName || '') + ' · ' + placements.length + ' cópia(s) · filamentos: ' + parts.map(p => p.label + '=' + map[p.id]).join(', '))}</metadata>` +
+      `<metadata name="Description">${esc((meta.printerName || '') + ' · ' + itemN + ' peça(s) · filamentos: ' + [...new Set(allParts.map(p => p.label.replace(/ \(#.*/, '') + '=' + map[p.id]))].join(', '))}</metadata>` +
       `<metadata name="CreationDate">${date}</metadata><metadata name="ModificationDate">${date}</metadata>` +
-      `<resources><object id="${objectId}" p:UUID="${hex8(objectId)}-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>${comps}</components></object></resources>` +
-      `<build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">${items}</build></model>`;
-
-    // Metadata/model_settings.config: nome e filamento de cada parte
-    const cfg = ['<?xml version="1.0" encoding="UTF-8"?>\n<config>', `  <object id="${objectId}">`,
-      `    <metadata key="name" value="${esc(name)}"/>`, `    <metadata key="extruder" value="${map[parts[0].id]}"/>`];
-    parts.forEach((p, i) => {
-      cfg.push(`    <part id="${i + 1}" subtype="normal_part">`,
-        `      <metadata key="name" value="${esc(p.label)}"/>`,
-        '      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>',
-        `      <metadata key="extruder" value="${map[p.id]}"/>`,
-        `      <mesh_stat face_count="${p.mesh.indices.length / 3}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>`,
-        '    </part>');
-    });
-    cfg.push('  </object>', '  <plate>', '    <metadata key="plater_id" value="1"/>', '    <metadata key="plater_name" value=""/>', '    <metadata key="locked" value="false"/>');
-    placements.forEach((_, i) => cfg.push('    <model_instance>', `      <metadata key="object_id" value="${objectId}"/>`, `      <metadata key="instance_id" value="${i}"/>`, `      <metadata key="identify_id" value="${100 + i}"/>`, '    </model_instance>'));
-    cfg.push('  </plate>', '  <assemble>', '  </assemble>', '</config>');
-
+      `<resources>${resources.join('')}</resources>` +
+      `<build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">${items.join('')}</build></model>`;
+    cfg.push('  <plate>', '    <metadata key="plater_id" value="1"/>', '    <metadata key="plater_name" value=""/>', '    <metadata key="locked" value="false"/>', ...plate, '  </plate>', '  <assemble>', '  </assemble>', '</config>');
     const types = '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="gcode" ContentType="text/x.gcode"/></Types>';
     const rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>';
     const modelRels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/Objects/object_1.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>';
@@ -127,5 +131,5 @@
     return outBuf;
   }
 
-  return { build, zip, extruderMap, meshXML };
+  return { build, buildObjects, zip, extruderMap, meshXML };
 });

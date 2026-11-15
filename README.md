@@ -15,6 +15,7 @@ Descarrega [`dist/sparrowtech_3d_studio_v5.html`](dist/sparrowtech_3d_studio_v5.
 | Roda | zoom no cursor |
 | Ctrl + arrastar (separador Impressão) | mover a peça no tabuleiro |
 | Clique | editar letras / base / argola |
+| **Clique nas letras + roda** | trocar de fonte (Esc para voltar ao zoom) |
 
 ![V4 vs V5 de perto](docs/img/v4_vs_v5_zoom.png)
 

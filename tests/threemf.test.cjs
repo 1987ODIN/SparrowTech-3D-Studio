@@ -10,7 +10,7 @@ const path = require('path'), fs = require('fs'), zlib = require('zlib');
 const ROOT = path.join(__dirname, '..');
 const G = require(path.join(ROOT, 'src/geometry.js')), M = require(path.join(ROOT, 'src/model.js')), T = require(path.join(ROOT, 'src/threemf.js'));
 const opentype = require(path.join(ROOT, 'vendor/opentype.min.js'));
-const buf = fs.readFileSync(path.join(ROOT, 'fonts/Lobster.otf'));
+const buf = fs.readFileSync(path.join(ROOT, 'fonts/Lobster.ttf'));
 const font = opentype.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength));
 const OUT = path.join(__dirname, 'out'); fs.mkdirSync(OUT, { recursive: true });
 
@@ -79,6 +79,28 @@ const attrs = s => Object.fromEntries([...s.matchAll(/([\w:]+)="([^"]*)"/g)].map
       const st2 = G.meshStats({ positions: Float32Array.from(V.flat()), indices: Uint32Array.from(I.flat()) });
       check(st2.watertight && st2.degenerate === 0 && st2.volume > 0, `${label}: objeto ${o.a.id} não estanque após exportação ${JSON.stringify(st2)}`);
     }
+  }
+  // Placa de teste: vários objetos (um por fonte), cada um com partes e filamentos
+  {
+    const objs = [['Pacifico.ttf', -60], ['Lobster.ttf', 0], ['Damion.ttf', 60]].map(([file, x]) => {
+      const b = fs.readFileSync(path.join(ROOT, 'fonts', file)), f = opentype.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength));
+      const m = M.build({ ...S, back: 'smooth' }, { front: f }, 'normal');
+      return { name: 'Filipa — ' + file, parts: m.parts, placements: [{ x, y: 0 }] };
+    });
+    const res = T.buildObjects(objs, { name: 'Teste', plateSize: 256, date: '2026-11-15' });
+    const bytes = await T.zip(res.entries); fs.writeFileSync(path.join(OUT, 'SparrowTech_placa_teste.3mf'), bytes);
+    const f = unzip(bytes), main = f['3D/3dmodel.model'], cfg = f['Metadata/model_settings.config'];
+    const objsMain = [...main.matchAll(/<object id="(\d+)"[^>]*><components>([\s\S]*?)<\/components>/g)];
+    check(objsMain.length === 3, `placa de teste: ${objsMain.length} objetos ≠ 3`);
+    const subIds = [...f['3D/Objects/object_1.model'].matchAll(/<object id="(\d+)"/g)].map(m => m[1]);
+    check(new Set(subIds).size === subIds.length, 'placa de teste: ids de sub-objetos repetidos');
+    for (const [, id, body] of objsMain) {
+      check(new RegExp(`<object id="${id}">`).test(cfg), `placa de teste: objeto ${id} sem config`);
+      for (const m of body.matchAll(/objectid="(\d+)"/g)) check(new RegExp(`<part id="${m[1]}" subtype="normal_part">`).test(cfg), `placa de teste: parte ${m[1]} sem config`);
+    }
+    check((main.match(/<item /g) || []).length === 3 && (cfg.match(/<model_instance>/g) || []).length === 3, 'placa de teste: instâncias');
+    check(/key="extruder" value="3"/.test(cfg), 'placa de teste: filamentos por parte');
+    console.log(`• placa_teste: ${(bytes.length / 1024).toFixed(0)} KB, 3 objetos`);
   }
   console.log(`\n${checks - fails}/${checks} verificações 3MF OK${fails ? ` — ${fails} FALHAS` : ''}`);
   process.exit(fails ? 1 : 0);

@@ -34,11 +34,42 @@
     return shape;
   }
 
+  /**
+   * Imprimibilidade das letras para um bico: com raio r = bico/2,
+   *  • traços: «abertura» (erosão r + dilatação r) — o que desaparece é mais fino do que o bico;
+   *  • espaços: «fecho» (dilatação r + erosão r) — o que aparece são aberturas/furos mais estreitos
+   *    do que o bico, que o slicer tende a colar (letras «fechadas»).
+   * Devolve as frações perdidas/ganhas da área das letras e um estado ok/aviso/mau.
+   */
+  function printability(text, nozzle) {
+    if (!text.length) return { stroke: 0, gap: 0, status: 'ok', nozzle };
+    const r = nozzle / 2, a = Math.abs(G.regionArea(text)) || 1, tolP = 0.02;
+    const opened = G.offset(G.offset(text, -r, tolP), r, tolP), closed = G.offset(G.offset(text, r, tolP), -r, tolP);
+    const stroke = Math.max(0, 1 - Math.abs(G.regionArea(opened)) / a), gap = Math.max(0, Math.abs(G.regionArea(closed)) / a - 1);
+    const worst = Math.max(stroke, gap * 1.5);
+    return { stroke, gap, nozzle, status: worst < 0.025 ? 'ok' : worst < 0.08 ? 'aviso' : 'mau' };
+  }
+  // Análise rápida de uma fonte (galeria): mesmo nome/tamanho/espessura, qualidade de rascunho.
+  function scanFont(S, font) {
+    const q = G.QUALITY.draft, em = 27 * S.nameSize / 100, name = (S.name || '').trim() || 'Nome';
+    let text = G.textRegion(font, name, em, q.tol, q.angle, { letterSpacing: (S.letterSpacing || 0) / 100 }).paths;
+    if (Math.abs(S.textWeight || 0) > 1e-3 && text.length) text = G.offset(text, S.textWeight, q.tol, q.angle);
+    const b = G.bounds(text);
+    return Object.assign(printability(text, S.nozzle || 0.4), { width: b ? b.width : 0, height: b ? b.height : 0 });
+  }
+
   function regionsFor(S, fonts, q) {
     const tol = q.tol, ang = q.angle;
     const name = (S.name || '').trim() || 'Nome', em = 27 * S.nameSize / 100;
-    const T0 = G.textRegion(fonts.front, name, em, tol, ang);
-    const text = T0.paths, tb = T0.bounds || { minX: -20, maxX: 20, minY: -8, maxY: 8, width: 40, height: 16 };
+    const spacing = (S.letterSpacing || 0) / 100;
+    const T0 = G.textRegion(fonts.front, name, em, tol, ang, { letterSpacing: spacing });
+    let text = T0.paths;
+    // Espessura: engrossa (ou afina) o traço das letras, como nos geradores de porta-chaves.
+    const weight = S.textWeight || 0;
+    if (Math.abs(weight) > 1e-3 && text.length) text = G.offset(text, weight, tol, ang);
+    text = G.depinch(text);
+    const tb = G.bounds(text) || { minX: -20, maxX: 20, minY: -8, maxY: 8, width: 40, height: 16 };
+    const print = printability(text, S.nozzle || 0.4);
     // Base (sem argola)
     let shape;
     if (S.shape === 'contour') shape = G.offset(text, S.border, tol, ang);
@@ -62,10 +93,11 @@
       base = G.difference(G.union(shape, outer), inner);
       ring = { x: pos.x, y: pos.y };
     }
-    const letters = G.intersection(text, base);
+    base = G.depinch(base);
+    const letters = G.depinch(G.intersection(text, base));
     // Pegada do contorno (letras + contorno) sem recorte: usada como bolsa na base, evita arestas coincidentes.
     let outline = [], outlineFoot = [];
-    if (S.outline) { outlineFoot = G.offset(text, S.outlineWidth, tol, ang); outline = G.intersection(G.difference(outlineFoot, text), base); }
+    if (S.outline) { outlineFoot = G.offset(text, S.outlineWidth, tol, ang); outline = G.depinch(G.intersection(G.difference(outlineFoot, text), base)); }
     // Verso (espelhado em X para ler corretamente depois de virar a peça)
     let back = [];
     if (S.back !== 'smooth' && S.back !== 'through') {
@@ -77,14 +109,16 @@
       const inset = G.offset(base, -0.8, tol, ang), margin = G.offset(base, -0.5, tol, ang);
       let K = [];
       for (let i = 0; i < 14; i++) {
-        K = G.translate(G.mirrorX(G.textRegion(fontFor, backName, backEm, tol, ang).paths), cx, cy);
+        let Kt = G.textRegion(fontFor, backName, backEm, tol, ang, { letterSpacing: spacing }).paths;
+        if (Math.abs(weight) > 1e-3 && Kt.length) Kt = G.offset(Kt, weight * backEm / em, tol, ang);
+        K = G.translate(G.mirrorX(Kt), cx, cy);
         const area = Math.abs(G.regionArea(K)) || 1;
         if (Math.abs(G.regionArea(G.difference(K, inset))) <= area * 0.002) break;
         backEm *= 0.92;
       }
-      back = G.intersection(K, margin);   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
+      back = G.depinch(G.intersection(K, margin));   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
     }
-    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, bounds: G.bounds(base), textBounds: tb };
+    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, bounds: G.bounds(base), textBounds: tb };
   }
 
   function solidsFor(S, R0) {
@@ -162,5 +196,5 @@
     };
   }
 
-  return { build, regionsFor, solidsFor, INLAY_DEPTH, OUTLINE_HEIGHT };
+  return { build, regionsFor, solidsFor, printability, scanFont, INLAY_DEPTH, OUTLINE_HEIGHT };
 });

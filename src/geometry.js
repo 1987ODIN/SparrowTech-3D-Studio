@@ -42,13 +42,42 @@
     }
     return out;
   }
+  // Polígonos que se tocam num único ponto criam arestas não-manifold (4 faces na mesma aresta
+  // vertical). Uma erosão de 0,5 µm (esquinas em bisel) separa-os sem alterar a peça.
+  function depinch(paths) {
+    if (!hasNearVertices(paths, 4)) return paths;
+    const co = new C.ClipperOffset(2, 1); co.AddPaths(paths, C.JoinType.jtMiter, C.EndType.etClosedPolygon);
+    const out = new C.Paths(); co.Execute(out, -6);
+    return union(out);
+  }
+  // Vértices de anéis diferentes (ou do mesmo anel, não consecutivos) a ≤ d unidades: a soldadura
+  // da malha juntá-los-ia e criaria arestas partilhadas por 4 faces.
+  function hasNearVertices(paths, d) {
+    const g = new Map(), W = d * 2;
+    for (let r = 0; r < paths.length; r++) {
+      const p = paths[r], n = p.length;
+      for (let i = 0; i < n; i++) {
+        const q = p[i], cx = Math.floor(q.X / W), cy = Math.floor(q.Y / W);
+        for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+          const cell = g.get((cx + ox) * 1048576 + (cy + oy)); if (!cell) continue;
+          for (const [rr, ii, x, y] of cell) {
+            if (Math.abs(x - q.X) > d || Math.abs(y - q.Y) > d) continue;
+            if (rr !== r) return true;
+            const gap = Math.abs(ii - i); if (gap > 1 && gap < n - 1) return true;
+          }
+        }
+        const k = cx * 1048576 + cy; let a = g.get(k); if (!a) g.set(k, a = []); a.push([r, i, q.X, q.Y]);
+      }
+    }
+    return false;
+  }
+  // Vértice repetido (entre anéis, ou no mesmo anel = anel que se toca a si próprio).
   function hasSharedVertices(paths) {
-    if (paths.length < 2) return false;
-    const seen = new Map();
-    for (let r = 0; r < paths.length; r++) for (const q of paths[r]) {
-      const k = q.X * 16777216 + q.Y, o = seen.get(k);
-      if (o !== undefined && o !== r) return true;
-      seen.set(k, r);
+    const seen = new Set();
+    for (const p of paths) for (const q of p) {
+      const k = q.X * 16777216 + q.Y;
+      if (seen.has(k)) return true;
+      seen.add(k);
     }
     return false;
   }
@@ -93,21 +122,24 @@
     for (const p of paths) if (C.Clipper.PointInPolygon(pt, p) !== 0) inside ^= 1;
     return inside === 1;
   }
-  // Agrupa caminhos em polígonos {outer, holes} através de uma PolyTree.
+  // Agrupa caminhos em polígonos {outer, holes} SEM os recalcular: as tampas usam exatamente os
+  // mesmos vértices das paredes. Exteriores têm área > 0, furos < 0 (saída do Clipper);
+  // cada furo pertence ao menor exterior que o contém.
   function toPolygons(paths) {
-    const c = new C.Clipper(); c.StrictlySimple = true; c.AddPaths(paths, C.PolyType.ptSubject, true);
-    const tree = new C.PolyTree(); c.Execute(C.ClipType.ctUnion, tree, FILL, FILL);
-    const polys = [];
-    const walk = node => {
-      for (const ch of node.Childs()) {
-        if (ch.IsHole()) continue;
-        const holes = ch.Childs().map(h => h.Contour());
-        polys.push({ outer: ch.Contour(), holes });
-        for (const h of ch.Childs()) walk(h);
+    const outers = [], holes = [];
+    for (const p of paths) { if (p.length < 3) continue; const a = C.Clipper.Area(p); (a > 0 ? outers : holes).push({ p, a: Math.abs(a), b: bounds([p]) }); }
+    const polys = outers.map(o => ({ outer: o.p, holes: [], a: o.a, b: o.b }));
+    for (const h of holes) {
+      let best = null;
+      for (const o of polys) {
+        if (o.b.minX > h.b.minX || o.b.maxX < h.b.maxX || o.b.minY > h.b.minY || o.b.maxY < h.b.maxY || o.a < h.a) continue;
+        let inside = 0;
+        for (const q of h.p) { const r = C.Clipper.PointInPolygon(q, o.outer); if (r !== -1) { inside = r; break; } }
+        if (inside === 1 && (!best || o.a < best.a)) best = o;
       }
-    };
-    walk(tree);
-    return polys;
+      if (best) best.holes.push(h.p);
+    }
+    return polys.map(o => ({ outer: o.outer, holes: o.holes }));
   }
   // Fecha furos com área inferior ao limite (mm²).
   function fillSmallHoles(paths, maxArea) {
@@ -163,8 +195,9 @@
    * Texto → região (caminhos inteiros, y para cima, centrada na caixa do texto).
    * font: objeto opentype.js; emMm: tamanho do em em mm; tol: desvio máximo em mm.
    */
-  function textRegion(font, text, emMm, tol, maxAngle) {
-    const path = font.getPath(text, 0, 0, emMm, { kerning: true, features: { liga: true, rlig: true } });
+  function textRegion(font, text, emMm, tol, maxAngle, opts) {
+    const spacing = opts && opts.letterSpacing || 0;   // fração do em (ex.: −0,05 aperta as letras)
+    const path = font.getPath(text, 0, 0, emMm, { kerning: true, letterSpacing: spacing, features: { liga: true, rlig: true } });
     const contours = flattenCommands(path.commands, tol, (px, py) => ({ X: toInt(px), Y: toInt(-py) }), maxAngle);
     let region = finalize(contours, tol);
     const b = bounds(region);
@@ -303,7 +336,13 @@
     }
     let cur = [];
     for (const t of tris) { const a = rep[t[0]], b = rep[t[1]], c = rep[t[2]]; if (a !== b && b !== c && a !== c) cur.push([a, b, c, t[3], t[4], t[5]]); }
+    const zeroArea = t => {
+      const a = t[0], b = t[1], c = t[2];
+      const ux = vx[b] - vx[a], uy = vy[b] - vy[a], uz = levels[vl[b]] - levels[vl[a]], wx = vx[c] - vx[a], wy = vy[c] - vy[a], wz = levels[vl[c]] - levels[vl[a]];
+      return uy * wz - uz * wy === 0 && uz * wx - ux * wz === 0 && ux * wy - uy * wx === 0;
+    };
     for (let iter = 0; iter < 12; iter++) {
+      cur = cur.filter(t => !zeroArea(t));   // degenerados (ex.: depois da soldadura): a divisão de T-junctions repõe a ligação
       const half = new Set();
       for (const t of cur) { half.add(t[0] + '>' + t[1]); half.add(t[1] + '>' + t[2]); half.add(t[2] + '>' + t[0]); }
       const openEdges = [], openVerts = new Set();
@@ -383,7 +422,7 @@
     const zs = new Set();
     for (const s of [...solids, ...pockets]) { zs.add(+s.z0.toFixed(6)); zs.add(+s.z1.toFixed(6)); }
     const levels = [...zs].sort((a, b) => a - b), slabs = [];
-    const cache = new Map();
+    const cache = new Map(); let pinched = false;
     // União de um conjunto de volumes/bolsas, com cache por conjunto de índices.
     const unionOf = (list, idx, tag) => {
       if (!idx.length) return [];
@@ -401,6 +440,9 @@
       const key = add.join(',') + '|' + sub.join(',');
       let region = cache.get('R' + key);
       if (!region) { region = P.length ? difference(U, P) : U; cache.set('R' + key, region); }
+      if (!region.length) continue;
+      const fixed = depinch(region);
+      if (fixed !== region) { region = fixed; pinched = true; }
       if (region.length) slabs.push({ z0, z1, paths: region, key, recipe: { add, sub, U, P } });
     }
     // Tampa entre duas lajes calculada pelas receitas:
@@ -417,7 +459,7 @@
       if (bOnly.length) { let d = unionOf(pockets, bOnly, 'P'); if (ra.P.length) d = difference(d, ra.P); out.push(...intersection(ra.U, d)); }
       return out.length && aOnly.length && bOnly.length ? union(out) : out;
     };
-    let mesh = buildSolid(slabs, Object.assign({}, opts, { capDifference }));
+    let mesh = buildSolid(slabs, pinched ? opts : Object.assign({}, opts, { capDifference }));
     // Plano B: se ainda houver arestas abertas, recalcula as tampas por diferença direta das lajes.
     if (!isClosed(mesh)) {
       const alt = buildSolid(slabs, opts);
@@ -455,5 +497,5 @@
   }
 
   return { SCALE, QUALITY, union, difference, intersection, offset, finalize, mirrorX, translate, scalePaths, contains, toPolygons, fillSmallHoles,
-    regionArea, bounds, flattenCommands, textRegion, circle, ellipse, rect, roundRect, cloud, buildSolid, buildPart, meshStats, isClosed };
+    regionArea, bounds, flattenCommands, textRegion, circle, ellipse, rect, roundRect, cloud, buildSolid, buildPart, meshStats, isClosed, depinch };
 });

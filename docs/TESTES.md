@@ -22,6 +22,12 @@ npm run test:browser   # app no Chrome headless (requer: pip install playwright 
 3. **Partes sem sobreposição**: soma dos volumes das partes = volume da união (16 combinações).
 4. **Nomes longos e acentos**: «Maria João» e «Sebastião» em muito fina (2–3 s, 76–97 mil triângulos), «Constança Margarida» em fina (~3,3 s, 101 mil triângulos), «Ana» em rascunho (<0,1 s).
 
+### v5.1 — catálogo de fontes
+* `geometry.test.cjs`: **3484/3484**. Inclui as 57 fontes × 3 variantes (normal; espessura +0,3 mm e espaçamento −5 %; espessura −0,1 mm, espaçamento +12 % e verso embutido) — todas estanques e sem degenerados; e testes de espaçamento, espessura e imprimibilidade (Great Vibes com bico 0,8 → aviso; Pacifico com 0,4 → OK).
+* Correções encontradas por estes testes: polígonos que se tocam num ponto (separados com erosão de 0,5 µm), triângulos de área nula após soldadura, e tampas agora trianguladas exatamente com os anéis das paredes.
+* `threemf.test.cjs`: **111/111**, incluindo a placa de teste com vários objetos.
+* `browser_check.py`: clicar nas letras + roda troca de fonte sem zoom, Esc sai, roda sobre o seletor, ✓/⚠ na galeria, aviso de bico 0,8 e placa de teste com 3 objetos.
+
 ### `tests/threemf.test.cjs` — 95/95 OK
 Gera 3 ficheiros 3MF reais (`tests/out/`) e verifica a estrutura esperada pelo leitor do Bambu/Orca/Creality ([3MF-CORES.md](3MF-CORES.md)): ficheiros obrigatórios, `Application`, componentes ↔ objetos ↔ `<part>`, filamento por parte (cores iguais partilham filamento), instâncias e posições, e malhas estanques depois de lidas do XML. O ZIP e o XML também foram validados com `zipfile`/`minidom` do Python.
 

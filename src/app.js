@@ -3,8 +3,11 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Lobster', shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: false, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
-const FONTS = ['Lobster', 'Lobster Two', 'Pacifico', 'Courgette', 'Kaushan Script', 'Great Vibes'];
+const S = { name: 'Filipa', font: 'Pacifico', textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: false, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
+const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
+const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
+let fontScan = {};           // nome → resultado de imprimibilidade para o nome atual
 const SHAPES = [['contour', '✦ Segue letras'], ['cloud', '☁ Nuvem'], ['rounded', '▣ Tablet arredondado'], ['square', '▭ Tablet quadrado'], ['oval', '⬭ Oval'], ['none', '✎ Só letras']];
 const FRONT = [['raised', '↑ Relevo'], ['flush', '▰ À face'], ['engraved', '↓ Gravado'], ['cutout', '◯ Vazado']];
 const BACK = [['smooth', '▱ Liso'], ['inlay', '▰ À face'], ['raised', '↑ Relevo'], ['engraved', '↓ Gravado'], ['through', '↕ Passante']];
@@ -27,26 +30,68 @@ function selectTab(tab) {
   else if (S.plateView) { S.plateView = false; requestAnimationFrame(() => { fitCamera(); requestRender() }) }
   S.selected = tab;
   ['letters', 'base', 'ring', 'print'].forEach(t => { $(t + 'Panel').classList.toggle('hidden', t !== tab); $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab) });
-  $('selectionLabel').textContent = { letters: '✎ Selecionado: letras · podes editar o nome', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '▦ Selecionado: tabuleiro de impressão' }[tab];
+  $('selectionLabel').textContent = selectionText(tab);
 }
+function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '▦ Selecionado: tabuleiro de impressão' }[tab] }
 function optionButtons(id, items, current, callback) { const node = $(id); node.textContent = ''; for (const [value, label] of items) { const b = document.createElement('button'); b.textContent = label; b.classList.toggle('on', value === current); b.addEventListener('click', () => { callback(value); updateControls(); scheduleRebuild() }); node.appendChild(b) } }
 function explanation(kind) { let title = '', msg = ''; if (kind === 'raised') { title = 'Relevo'; msg = 'As letras ficam salientes sobre a base. A face com relevo deve ficar virada para cima na impressão.' } if (kind === 'flush') { title = 'Ao nível'; msg = 'As letras ficam encaixadas na superfície da base, sem degrau. Ideal para impressões multicolor.' } if (kind === 'engraved') { title = 'Gravado'; msg = 'As letras são cavadas na base e mostram profundidade real.' } if (kind === 'cutout') { title = 'Vazado'; msg = 'As letras atravessam a base como recortes vazios.' } if (kind === 'smooth') { title = 'Liso'; msg = 'O verso fica totalmente liso, sem letras.' } if (kind === 'inlay') { title = 'Ao nível'; msg = 'O texto do verso é embutido na base.' } if (kind === 'through') { title = 'Passante'; msg = 'As letras atravessam toda a base. Visto por trás, o nome original aparece espelhado, como acontece numa peça real.' } return `<svg viewBox="0 0 96 56" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="24" width="84" height="26" rx="5" fill="#378ff3"/><rect x="28" y="${kind === 'raised' ? 13 : kind === 'cutout' ? 24 : kind === 'engraved' ? 30 : 23}" width="41" height="${kind === 'raised' ? 17 : kind === 'cutout' ? 26 : kind === 'engraved' ? 12 : 20}" rx="4" fill="${kind === 'cutout' ? '#121a28' : '#fff'}" stroke="${kind === 'engraved' ? '#1e507b' : '#e9eef8'}" stroke-width="1"/><text x="48" y="${kind === 'raised' ? 26 : 38}" text-anchor="middle" font-size="12" fill="${kind === 'cutout' ? '#89beff' : '#122438'}">Aa</text></svg><span><b>${title}</b><br>${msg}</span>` }
 function updateControls() {
   document.body.classList.toggle('pro', S.pro); $('modeEasy').classList.toggle('on', !S.pro); $('modePro').classList.toggle('on', S.pro);
   $('inputName').value = S.name; $('backText').value = S.backText;
-  const fonts = $('fontCards'); fonts.textContent = '';
-  for (const font of FONTS) { const b = document.createElement('button'); b.className = 'fontcard' + (font === S.font ? ' on' : ''); const preview = document.createElement('span'); preview.style.fontFamily = `'${font}'`; preview.textContent = S.name || 'Nome'; const small = document.createElement('small'); small.textContent = font; b.append(preview, small); b.onclick = () => { S.font = font; updateControls(); scheduleRebuild(true) }; fonts.appendChild(b) }
+  renderGallery();
   optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) }); optionButtons('printModeButtons', [['layers', 'Por camadas'], ['sequential', 'Um objeto de cada vez']], S.printMode, v => { S.printMode = v; updateModeNotice() });
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('printer').value = S.printer; $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0] + ' · ' + S.plateSize + ' × ' + S.plateSize + ' mm'; updateModeNotice(); drawMiniPlate();
 }
+function renderGallery() {
+  const box = $('fontCards'), keep = box.scrollTop; box.textContent = '';
+  for (const [g, title, sub] of GROUPS) {
+    const names = FONTS.filter(f => FONT_GROUP[f] === g); if (!names.length) continue;
+    const h = document.createElement('div'); h.className = 'fontgroup'; h.innerHTML = `${title} <small>${sub}</small>`; box.appendChild(h);
+    const grid = document.createElement('div'); grid.className = 'fontcards'; box.appendChild(grid);
+    for (const font of names) {
+      const b = document.createElement('button'); b.className = 'fontcard' + (font === S.font ? ' on' : ''); b.dataset.font = font;
+      const preview = document.createElement('span'); preview.style.fontFamily = `'${font}'`; preview.textContent = S.name || 'Nome';
+      const small = document.createElement('small'); small.textContent = font;
+      const star = document.createElement('i'); star.className = 'star' + (S.favorites.includes(font) ? ' on' : ''); star.textContent = S.favorites.includes(font) ? '★' : '☆'; star.title = 'Marcar para a placa de teste';
+      star.onclick = e => { e.stopPropagation(); toggleFavorite(font) };
+      const badge = document.createElement('i'); badge.className = 'badge';
+      b.append(badge, star, preview, small); b.onclick = () => chooseFont(font); grid.appendChild(b);
+    }
+  }
+  box.scrollTop = keep; updateBadges(); updateFontSwitch();
+  $('testPlate').textContent = `⬇ Placa de teste (★ ${S.favorites.length})`;
+}
+function updateBadges() {
+  for (const b of document.querySelectorAll('.fontcard')) {
+    const r = fontScan[b.dataset.font], el = b.querySelector('.badge'); if (!el) continue;
+    el.className = 'badge' + (r ? ' ' + r.status : ''); el.textContent = r ? (r.status === 'ok' ? '✓' : '⚠') : '';
+    el.title = r ? `Bico ${fmt2(S.nozzle)} mm: ${Math.round(r.stroke * 100)}% do traço mais fino que o bico, ${Math.round(r.gap * 100)}% de espaços apertados` : '';
+  }
+}
+function fmt2(n) { return (+n).toFixed(1).replace('.', ',') }
+function toggleFavorite(font) { const i = S.favorites.indexOf(font); if (i >= 0) S.favorites.splice(i, 1); else if (S.favorites.length < 12) S.favorites.push(font); else alert('Máximo de 12 fontes na placa de teste.'); renderGallery(); $('testPlate').textContent = `⬇ Placa de teste (★ ${S.favorites.length})` }
+// Troca de fonte: atualiza só o necessário e calcula primeiro uma pré-visualização rápida.
+let fontSettle = null;
+function chooseFont(font, quick) {
+  S.font = font;
+  for (const b of document.querySelectorAll('.fontcard')) b.classList.toggle('on', b.dataset.font === font);
+  const on = document.querySelector('.fontcard.on'); if (on && quick) on.scrollIntoView({ block: 'nearest' });
+  updateFontSwitch();
+  if (quick) { interactiveBuild = true; scheduleRebuild(false, 40); clearTimeout(fontSettle); fontSettle = setTimeout(() => { interactiveBuild = false; scheduleRebuild(true) }, 650) }
+  else { interactiveBuild = false; scheduleRebuild(true) }
+}
+function stepFont(dir) { const i = FONTS.indexOf(S.font); chooseFont(FONTS[(i + dir + FONTS.length) % FONTS.length], true) }
+function updateFontSwitch() { const n = $('fontName'); if (!n) return; n.textContent = S.font; n.style.fontFamily = `'${S.font}'`; $('fontCount').textContent = `${FONTS.indexOf(S.font) + 1}/${FONTS.length}`; $('fontSwitch').classList.toggle('active', fontMode) }
+let fontMode = false;
+function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
-  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome') } scheduleRebuild() }));
-  [['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild() }));
+  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
+  [['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize') scheduleScan() }));
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild() }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; refreshMeshColors(); requestRender() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
@@ -61,16 +106,25 @@ function bindControls() {
   $('autoArrange').onclick = () => { S.positionX = 0; S.positionY = 0; drawMiniPlate(); requestRender(); selectTab('print') };
   $('export3MF').onclick = () => export3MF(); $('exportSTL').onclick = () => exportMeshes('combined'); $('exportParts').onclick = () => exportMeshes('separate');
   $('importFont').onclick = () => $('fontFile').click();
+  $('nozzle').onchange = () => { S.nozzle = +$('nozzle').value; scheduleRebuild(true); scheduleScan() };
+  $('layer').onchange = () => { S.layer = +$('layer').value; if (model) updatePrintCheck() };
+  $('testPlate').onclick = () => exportTestPlate();
+  $('fontPrev').onclick = () => stepFont(-1); $('fontNext').onclick = () => stepFont(1);
+  $('fontName').onclick = () => setFontMode(!fontMode);
+  let acc = 0;
+  $('fontSwitch').addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); acc += e.deltaY; if (Math.abs(acc) >= 40) { stepFont(acc > 0 ? 1 : -1); acc = 0 } }, { passive: false });
+  document.addEventListener('keydown', e => { if (!fontMode || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return; if (e.key === 'Escape') setFontMode(false); if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { stepFont(1); e.preventDefault() } if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { stepFont(-1); e.preventDefault() } });
   $('fontFile').onchange = async () => { const f = $('fontFile').files[0]; $('fontFile').value = ''; if (f) await importFont(f) };
   initPlateDrag(); bindViewCube();
 }
-function updateRangeLabels() { $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('outlineControls').classList.toggle('hidden', !S.outline) }
+function updateRangeLabels() { $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('weightVal').textContent = (S.textWeight >= 0 ? '+' : '') + S.textWeight.toFixed(2).replace('.', ',') + ' mm'; $('spacingVal').textContent = (S.letterSpacing > 0 ? '+' : '') + S.letterSpacing + '%'; $('outlineControls').classList.toggle('hidden', !S.outline) }
 function updateModeNotice() { $('printModeNotice').textContent = S.printMode === 'layers' ? 'O slicer imprime cada camada de todos os objetos. Recomendado para letras salientes, multicolor e peças próximas.' : 'Modo sequencial: o slicer imprime um objeto completo antes do próximo. A distância segura depende do volume da cabeça e do pórtico da impressora. O editor NÃO valida colisões com a cabeça nem o pórtico: confirma no slicer e ativa lá a impressão por objeto.' }
 
 // ---------------------------------------------------------------- fontes
 function b64ToBuffer(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer }
-async function registerFont(name, buffer) {
+async function registerFont(name, buffer, group) {
   FONT_BYTES[name] = buffer;
+  if (!FONTS.includes(name)) FONTS.push(name); FONT_GROUP[name] = group || 'importadas';
   try { const face = new FontFace(name, buffer.slice(0)); await face.load(); document.fonts.add(face) } catch (e) { console.warn('Pré-visualização da fonte', name, e) }
   await geometryCall({ type: 'font', name, buffer: buffer.slice(0) });
 }
@@ -78,21 +132,24 @@ async function importFont(file) {
   const buffer = await file.arrayBuffer();
   let name = file.name.replace(/\.(ttf|otf|woff)$/i, '').replace(/[^\p{L}\p{N} _-]/gu, ' ').trim() || 'Fonte importada';
   while (FONTS.includes(name)) name += ' ·';
-  try { await registerFont(name, buffer) } catch (e) { alert('Não foi possível ler esta fonte (' + e.message + '). Usa TTF, OTF ou WOFF — WOFF2 não é suportado.'); return }
-  FONTS.push(name); S.font = name; updateControls(); scheduleRebuild(true);
+  try { await geometryCall({ type: 'check', buffer: buffer.slice(0) }); await registerFont(name, buffer, 'importadas') } catch (e) { const i = FONTS.indexOf(name); if (i >= 0) FONTS.splice(i, 1); alert('Não foi possível ler esta fonte (' + e.message.split('\n')[0] + '). Usa TTF, OTF ou WOFF — WOFF2 não é suportado.'); return }
+  S.font = name; updateControls(); scheduleRebuild(true); scheduleScan();
   $('qualityNotice').textContent = `Fonte «${name}» importada. Confirma a licença da fonte antes de vender peças.`;
 }
 
 // ---------------------------------------------------------------- motor de geometria (Worker)
 const WORKER_MAIN = `
-const fonts = {};
+const raw = {}, fonts = {};
+const getFont = n => { if (!fonts[n] && raw[n]) fonts[n] = opentype.parse(raw[n]); return fonts[n] || getFont(Object.keys(raw)[0]); };
 self.onmessage = e => {
   const m = e.data;
   if (m.type === 'ping') return;
   try {
-    if (m.type === 'font') { fonts[m.name] = opentype.parse(m.buffer); self.postMessage({ id: m.id, ok: true }); return; }
+    if (m.type === 'font') { raw[m.name] = m.buffer; delete fonts[m.name]; self.postMessage({ id: m.id, ok: true }); return; }
+    if (m.type === 'check') { opentype.parse(m.buffer); self.postMessage({ id: m.id, ok: true }); return; }
+    if (m.type === 'scan') { const out = {}; for (const n of m.names) { try { out[n] = SparrowModel.scanFont(m.S, getFont(n)); } catch (err) { } } self.postMessage({ id: m.id, ok: true, result: out }); return; }
     if (m.type === 'build') {
-      const font = fonts[m.S.font] || fonts[Object.keys(fonts)[0]];
+      const font = getFont(m.S.font);
       const res = SparrowModel.build(m.S, { front: font }, m.quality);
       const parts = res.parts.map(p => ({ id: p.id, label: p.label, color: p.color, mesh: p.mesh }));
       const transfer = [];
@@ -101,12 +158,12 @@ self.onmessage = e => {
       if (m.union) { union = res.unionMesh(); transfer.push(union.positions.buffer, union.indices.buffer, union.cornerNormals.buffer); }
       const R = res.regions;
       self.postMessage({ id: m.id, ok: true, result: { parts, union, height: res.height, zShift: res.zShift, timing: res.timing,
-        regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, bounds: R.bounds } } }, transfer);
+        regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } } }, transfer);
     }
   } catch (err) { self.postMessage({ id: m.id, ok: false, error: String(err && err.stack || err) }); }
 };`;
 let worker = null, workerSeq = 0;
-const pending = new Map(), localFonts = {};
+const pending = new Map(), localFonts = {}, localRaw = {};
 // Algumas páginas (ex.: a pré-visualização do Claude, alguns sandboxes) proíbem Workers criados a
 // partir de blob:. Tenta blob:, depois data:, e confirma com um «ping»; se nada funcionar, a geometria
 // corre na própria página (funciona igual, só que a interface pode engasgar em cálculos grandes).
@@ -143,20 +200,31 @@ function geometryCall(msg) {
   // Alternativa síncrona (sem Worker)
   return new Promise((resolve, reject) => setTimeout(() => {
     try {
-      if (msg.type === 'font') { localFonts[msg.name] = opentype.parse(msg.buffer); resolve(); return }
-      const res = SparrowModel.build(msg.S, { front: localFonts[msg.S.font] || localFonts[Object.keys(localFonts)[0]] }, msg.quality), R = res.regions;
-      resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, bounds: R.bounds } });
+      if (msg.type === 'font') { localRaw[msg.name] = msg.buffer; resolve(); return }
+      if (msg.type === 'check') { opentype.parse(msg.buffer); resolve(); return }
+      const getF = n => { if (!localFonts[n] && localRaw[n]) localFonts[n] = opentype.parse(localRaw[n]); return localFonts[n] || getF(Object.keys(localRaw)[0]) };
+      if (msg.type === 'scan') { const out = {}; for (const n of msg.names) out[n] = SparrowModel.scanFont(msg.S, getF(n)); resolve(out); return }
+      const res = SparrowModel.build(msg.S, { front: getF(msg.S.font) }, msg.quality), R = res.regions;
+      resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } });
     } catch (e) { reject(e) }
   }, 0));
 }
 function geometryState() {
-  const k = ['name', 'font', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'fillHoles', 'holeArea'];
+  const k = ['name', 'font', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'fillHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = S[key]; return o;
 }
 
 // ---------------------------------------------------------------- reconstrução
 let building = false, buildAgain = false, interactiveBuild = false;
-function scheduleRebuild(now = false) { if (rebuildTimeout) clearTimeout(rebuildTimeout); rebuildTimeout = setTimeout(rebuildModel, now ? 0 : worker ? 120 : 350) }
+function scheduleRebuild(now = false, delay) { if (rebuildTimeout) clearTimeout(rebuildTimeout); rebuildTimeout = setTimeout(rebuildModel, now ? 0 : delay != null ? delay : worker ? 120 : 350) }
+// Análise de imprimibilidade de todas as fontes para o nome atual (marcas ✓/⚠ na galeria).
+let scanTimer = null, scanSeq = 0;
+function scheduleScan() { clearTimeout(scanTimer); scanTimer = setTimeout(runScan, worker ? 700 : 2500) }
+async function runScan() {
+  if (building) { scheduleScan(); return }
+  const seq = ++scanSeq;
+  try { const r = await geometryCall({ type: 'scan', S: geometryState(), names: FONTS.slice() }); if (seq === scanSeq) { fontScan = r; updateBadges() } } catch (e) { console.warn('Análise de fontes', e) }
+}
 async function rebuildModel() {
   if (building) { buildAgain = true; return }
   building = true; buildAgain = false;
@@ -187,9 +255,30 @@ function applyModel(r, quality) {
   if (Math.abs(S.positionX) + b.width / 2 > S.plateSize / 2 || Math.abs(S.positionY) + b.height / 2 > S.plateSize / 2) msg = '⚠ A peça está parcialmente fora dos limites do tabuleiro.';
   $('qualityNotice').textContent = msg; $('qualityNotice').classList.toggle('warn', msg.startsWith('⚠'));
   $('overlayStatus').textContent = msg.startsWith('⚠') ? msg : `Modelo 3D · ${fmt(S.bodyThickness)} mm de base`;
+  updatePrintCheck();
   clampToPlate(); drawMiniPlate();
   if (autoFitAfterRebuild) { fitCamera(); autoFitAfterRebuild = false }
   requestRender();
+}
+// Mensagem de imprimibilidade: bico, camadas e sugestões concretas.
+function updatePrintCheck() {
+  const p = model && model.regions.print; if (!p) return;
+  const n = fmt2(S.nozzle), layers = S.letterHeight / S.layer, exact = Math.abs(layers - Math.round(layers)) < 1e-6;
+  let html, cls = p.status;
+  if (p.status === 'ok') html = `✓ <b>Bico ${n} mm</b>: traços e espaços das letras imprimíveis.`;
+  else {
+    const parts = [];
+    if (p.stroke > 0.02) parts.push(`${Math.round(p.stroke * 100)}% do traço é mais fino que o bico (as letras podem falhar ou partir)`);
+    if (p.gap > 0.015) parts.push(`há espaços mais estreitos que o bico (as letras podem ficar «fechadas»/coladas)`);
+    const tips = [];
+    if (p.stroke > 0.02) tips.push('aumenta a «Espessura das letras»', 'aumenta o tamanho do nome', 'usa um bico mais fino');
+    if (p.gap > 0.015) tips.push('aumenta o «Espaçamento entre letras»', 'diminui a espessura', 'usa um bico mais fino');
+    tips.push('ou escolhe uma fonte com ✓ na galeria');
+    html = `⚠ <b>Bico ${n} mm</b>: ${parts.join('; ')}. Sugestão: ${[...new Set(tips)].join(', ')}.`;
+  }
+  html += `<br>Altura das letras ${fmt(S.letterHeight)} mm = ${exact ? Math.round(layers) : layers.toFixed(1).replace('.', ',')} camada(s) de ${String(S.layer).replace('.', ',')} mm${exact ? '' : ' ⚠ não é múltiplo da camada: o slicer arredonda'}. Contorno ${fmt(S.outlineWidth)} mm${S.outline && S.outlineWidth < S.nozzle * 1.1 ? ' ⚠ mais estreito que o bico' : ''}.`;
+  if (FONT_GROUP[S.font] === 'fina') html += '<br>Fonte fina: imprime melhor com letra grande, bico 0,2–0,4 e espessura +0,2 mm ou mais.';
+  for (const id of ['printCheck', 'printCheck2']) { const el = $(id); el.className = 'printcheck ' + cls; el.innerHTML = html }
 }
 function partColor(id) { return { base: S.baseColor, letters: S.letterColor, outline: S.outlineColor, back: S.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
@@ -340,14 +429,16 @@ function bindViewerEvents() {
   });
   const endDrag = () => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
-    if (!d.moved && !d.chord && d.clicked) selectTab(d.clicked);
+    if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
     if (d.kind === 'ring' && d.moved) { interactiveBuild = false; scheduleRebuild(true) }
   };
   canvas.addEventListener('pointerup', e => { if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag() });
   canvas.addEventListener('pointercancel', endDrag);
   canvas.addEventListener('lostpointercapture', () => { if (dragAction) endDrag() });
+  let wheelAcc = 0;
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
+    if (fontMode) { wheelAcc += e.deltaY; if (Math.abs(wheelAcc) >= 40) { stepFont(wheelAcc > 0 ? 1 : -1); wheelAcc = 0 } return }
     const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left - r.width / 2, my = e.clientY - r.top - r.height / 2;
     const k = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
     const before = camera.scale, after = Math.min(80, Math.max(.3, before * Math.exp(-e.deltaY * k * .0012)));
@@ -469,14 +560,42 @@ async function export3MF() {
   });
 }
 
+// Placa de teste: o mesmo nome em várias fontes (★), lado a lado, para imprimir e comparar.
+async function exportTestPlate() {
+  const list = S.favorites.length ? S.favorites.slice() : [S.font];
+  if (!S.favorites.length && !confirm('Ainda não marcaste fontes com ★. Exportar só a fonte atual?')) return;
+  await withBusy($('testPlate'), '⏳ A gerar…', async () => {
+    const built = [];
+    for (const font of list) {
+      const st = geometryState(); st.font = font; st.ringManual = false;
+      const r = await geometryCall({ type: 'build', S: st, quality: S.quality });
+      built.push({ font, r });
+    }
+    // Arruma em linhas dentro do tabuleiro (6 mm entre peças, 5 mm de margem).
+    const gap = 6, inner = S.plateSize - 2 * PLATE_MARGIN, placed = []; let x = -inner / 2, y = inner / 2, rowH = 0, skipped = [];
+    for (const { font, r } of built) {
+      const b = r.regions.bounds; if (!b) continue;
+      if (x + b.width > inner / 2) { x = -inner / 2; y -= rowH + gap; rowH = 0 }
+      if (b.width > inner || y - b.height < -inner / 2) { skipped.push(font); continue }
+      placed.push({ font, r, pos: { x: x - b.minX, y: y - b.maxY } }); x += b.width + gap; rowH = Math.max(rowH, b.height);
+    }
+    const objects = placed.map(({ font, r, pos }) => ({ name: `${S.name || 'Nome'} — ${font}`, placements: [pos], parts: r.parts.map(p => ({ id: p.id, label: `${partLabel(p)} (${partColor(p.id).toUpperCase()})`, color: partColor(p.id), mesh: p.mesh })) }));
+    const res = Sparrow3MF.buildObjects(objects, { name: `Teste de fontes — ${S.name}`, printerName: PRINTERS[S.printer][0], plateSize: S.plateSize });
+    download(await Sparrow3MF.zip(res.entries), `SparrowTech_teste_fontes_${safeName(S.name)}.3mf`, 'model/3mf');
+    $('qualityNotice').textContent = `Placa de teste: ${placed.length} fonte(s) (${placed.map(p => p.font).join(', ')}).` + (skipped.length ? ` Não couberam: ${skipped.join(', ')}.` : '') + ` Bico ${fmt2(S.nozzle)} mm, camada ${String(S.layer).replace('.', ',')} mm.`;
+  });
+}
+function partLabel(p) { return { base: 'Base e argola', letters: 'Letras da frente', outline: 'Contorno', back: 'Letras do verso' }[p.id] || p.label }
+
 // ---------------------------------------------------------------- arranque
 async function boot() {
   bindControls(); updateControls();
   try { init3D() } catch (e) { console.error(e); $('qualityNotice').textContent = 'Erro WebGL: ' + e.message }
   await startWorker();
-  const data = window.SPARROW_FONTS || {};
-  await Promise.all(Object.keys(data).map(name => registerFont(name, b64ToBuffer(data[name]))));
-  updateControls();
+  const data = window.SPARROW_FONTS || [];
+  await Promise.all(data.map(f => registerFont(f.name, b64ToBuffer(f.data), f.group)));
+  FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
+  updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
 }
 boot();
