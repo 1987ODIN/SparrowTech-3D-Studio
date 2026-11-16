@@ -40,7 +40,7 @@
   /**
    * parts: [{id, label, color, mesh:{positions, indices, triangleCount}}]
    * placements: [{x, y}] em mm, relativos ao centro do tabuleiro (uma entrada por cópia)
-   * meta: {name, printerName, plateSize, date}
+   * meta: {name, printerName, plateW, plateH, date}
    * Devolve [[caminho, texto]] para o ZIP, mais o mapa de filamentos.
    */
   function build(parts, placements, meta) {
@@ -55,7 +55,7 @@
     if (!objects.length) throw new Error('Sem malhas para exportar.');
     const { map, colors } = extruderMap([].concat(...objects.map(o => o.parts)));
     const date = meta.date || new Date().toISOString().slice(0, 10);
-    const half = (meta.plateSize || 256) / 2;
+    const halfW = (meta.plateW || meta.plateSize || 256) / 2, halfH = (meta.plateH || meta.plateSize || 256) / 2;
     const title = meta.name || 'SparrowTech';
     let nextSub = 1; const totalSub = objects.reduce((s, o) => s + o.parts.length, 0);
     const sub = [`<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" ${NS}>`, '<metadata name="BambuStudio:3mfVersion">1</metadata><resources>'];
@@ -64,6 +64,8 @@
     objects.forEach((o, oi) => {
       const objectId = totalSub + 1 + oi, comps = [];
       cfg.push(`  <object id="${objectId}">`, `    <metadata key="name" value="${esc(o.name || title)}"/>`, `    <metadata key="extruder" value="${map[o.parts[0].id]}"/>`);
+      // Altura de camada como definição DO OBJETO (o Bambu Studio aplica-a ao abrir; o bico é da impressora e não vai no ficheiro).
+      if (meta.layerHeight) cfg.push(`    <metadata key="layer_height" value="${num(meta.layerHeight)}"/>`);
       for (const p of o.parts) {
         const id = nextSub++;
         sub.push(`<object id="${id}" p:UUID="${hex8(id)}-81cb-4c03-9d28-80fed5dfa1dc" type="model">${meshXML(p.mesh)}</object>`);
@@ -74,7 +76,7 @@
       cfg.push('  </object>');
       resources.push(`<object id="${objectId}" p:UUID="${hex8(objectId)}-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>${comps.join('')}</components></object>`);
       o.placements.forEach((pos, i) => {
-        items.push(`<item objectid="${objectId}" p:UUID="${hex8(++itemN + 1)}-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 ${num(pos.x + half)} ${num(pos.y + half)} 0" printable="1"/>`);
+        items.push(`<item objectid="${objectId}" p:UUID="${hex8(++itemN + 1)}-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 ${num(pos.x + halfW)} ${num(pos.y + halfH)} 0" printable="1"/>`);
         plate.push('    <model_instance>', `      <metadata key="object_id" value="${objectId}"/>`, `      <metadata key="instance_id" value="${i}"/>`, `      <metadata key="identify_id" value="${identify++}"/>`, '    </model_instance>');
       });
     });
@@ -85,7 +87,7 @@
       '<metadata name="BambuStudio:3mfVersion">1</metadata>' +
       `<metadata name="Title">${esc(title)}</metadata>` +
       '<metadata name="Designer">SparrowTech 3D Studio v5</metadata>' +
-      `<metadata name="Description">${esc((meta.printerName || '') + ' · ' + itemN + ' peça(s) · filamentos: ' + [...new Set(allParts.map(p => p.label.replace(/ \(#.*/, '') + '=' + map[p.id]))].join(', '))}</metadata>` +
+      `<metadata name="Description">${esc((meta.printerName || '') + (meta.nozzle ? ' · bico recomendado ' + meta.nozzle + ' mm' : '') + (meta.layerHeight ? ' · camada ' + meta.layerHeight + ' mm' : '') + ' · ' + itemN + ' peça(s) · filamentos: ' + [...new Set(allParts.map(p => p.label.replace(/ \(#.*/, '') + '=' + map[p.id]))].join(', '))}</metadata>` +
       `<metadata name="CreationDate">${date}</metadata><metadata name="ModificationDate">${date}</metadata>` +
       `<resources>${resources.join('')}</resources>` +
       `<build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">${items.join('')}</build></model>`;

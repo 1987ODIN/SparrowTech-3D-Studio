@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, fileFormat: '3mf', filaments: {}, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .16, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, fileFormat: '3mf', filaments: {}, printer: 'A1', positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -11,12 +11,19 @@ let fontScan = {};           // nome → resultado de imprimibilidade para o nom
 const SHAPES = [['contour', '✦ Segue letras'], ['cloud', '☁ Nuvem'], ['rounded', '▣ Tablet arredondado'], ['square', '▭ Tablet quadrado'], ['oval', '⬭ Oval'], ['none', '✎ Só letras']];
 const FRONT = [['raised', '↑ Relevo'], ['flush', '▰ À face'], ['engraved', '↓ Gravado'], ['cutout', '◯ Vazado']];
 const BACK = [['smooth', '▱ Liso'], ['inlay', '▰ À face'], ['raised', '↑ Relevo'], ['engraved', '↓ Gravado'], ['through', '↕ Passante']];
-const PRINTERS = { A1: ['Bambu Lab A1', 256, 'Bambu Lab', 'Bambu Studio'], A1Mini: ['Bambu Lab A1 Mini', 180, 'Bambu Lab', 'Bambu Studio'], K1C: ['Creality K1C', 220, 'Creality', 'Creality Print'] };
+// Só impressoras Bambu Lab (o ficheiro é para o Bambu Studio). [nome, largura, profundidade do tabuleiro (mm), marca, slicer]
+// Tabuleiros: valores úteis conservadores (nas H2 de bico duplo usa-se a área comum aos dois bicos).
+const PRINTERS = {
+  A1Mini: ['Bambu Lab A1 mini', 180, 180], A1: ['Bambu Lab A1', 256, 256], P1S: ['Bambu Lab P1S', 256, 256], P1P: ['Bambu Lab P1P', 256, 256], P2S: ['Bambu Lab P2S', 256, 256],
+  X1C: ['Bambu Lab X1 Carbon', 256, 256], X1E: ['Bambu Lab X1E', 256, 256], A2L: ['Bambu Lab A2L', 330, 320], H2S: ['Bambu Lab H2S', 340, 320], H2D: ['Bambu Lab H2D', 325, 320], H2C: ['Bambu Lab H2C', 300, 320]
+};
+for (const k in PRINTERS) PRINTERS[k].push('Bambu Lab', 'Bambu Studio');
+const plateW = () => PRINTERS[S.printer][1], plateH = () => PRINTERS[S.printer][2];
 // Filamentos oficiais (src/filaments.js, gerado a partir das listas do Bambu Studio e do Creality Print).
 const FILAMENTS = window.SPARROW_FILAMENTS || {};
 const MAIN_SERIES = { 'Bambu Lab': 'PLA Basic', 'Creality': 'Hyper PLA' };
 const PARTS = [['base', 'Base', 'baseColor'], ['letters', 'Letras', 'letterColor'], ['outline', 'Contorno', 'outlineColor']];
-const brand = () => PRINTERS[S.printer][2];
+const brand = () => PRINTERS[S.printer][3];
 function hexDist(a, b) { const x = rgb(a), y = rgb(b); return (x[0] - y[0]) ** 2 * 0.3 + (x[1] - y[1]) ** 2 * 0.59 + (x[2] - y[2]) ** 2 * 0.11 }
 function nearestFilament(hex, br, series) { const list = (FILAMENTS[br] || {})[series || MAIN_SERIES[br]] || []; let best = null; for (const f of list) if (!best || hexDist(f.hex, hex) < hexDist(best.hex, hex)) best = f; return best && { brand: br, series: series || MAIN_SERIES[br], ...best } }
 function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)[2]; S.filaments[part] = fil; if (fil) S[key] = fil.hex.toLowerCase(); $(key).value = S[key] }
@@ -59,11 +66,11 @@ function renderPicker() {
   box.append(sel, grid, name);
 }
 function updatePrintBar() {
-  const fmtName = { '3mf': '3MF', stl: 'STL', stlparts: 'STLs por cor' }[S.fileFormat], slicer = PRINTERS[S.printer][3];
-  $('quickPrint').textContent = `🖨 Imprimir — descarregar ${fmtName}`;
+  const fmtName = { '3mf': '3MF', stl: 'STL', stlparts: 'STLs por cor' }[S.fileFormat], slicer = PRINTERS[S.printer][4];
+  $('quickPrint').textContent = `🖨 Imprimir — descarregar ${fmtName}`; $('topDownload').textContent = `⬇ ${fmtName}`; $('topDownload').title = `Descarregar ${fmtName} para o ${slicer}`;
   const fil = PARTS.filter(p => p[0] !== 'outline' || S.outline).map(([part, title]) => `${title}: ${filamentLabel(part)}`).join(' · ');
   $('printHint').textContent = S.fileFormat === '3mf'
-    ? `Abre no ${slicer}: base, letras${S.outline ? ' e contorno' : ''} já vêm em partes separadas, cada uma no seu filamento. Carrega lá os filamentos escolhidos acima (nome e código).`
+    ? `Abre no ${slicer}: base, letras${S.outline ? ' e contorno' : ''} já vêm em partes separadas, cada uma no seu filamento, e com camada de ${String(S.layer).replace('.', ',')} mm. No ${slicer} escolhe a impressora com bico ${String(S.nozzle).replace('.', ',')} mm${S.nozzle <= .2 ? ' (premium)' : S.nozzle <= .4 ? ' (normal)' : ''} e carrega os filamentos escolhidos acima.`
     : S.fileFormat === 'stl' ? `STL não guarda cores nem partes: imprime numa cor, ou pinta/atribui as cores no ${slicer}.`
     : `Um STL por cor. No ${slicer}, importa todos juntos e responde «Sim» a «um objeto com várias partes»; depois atribui os filamentos escolhidos acima.`;
 }
@@ -98,8 +105,8 @@ function updateControls() {
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
-  $('machineBadge').textContent = PRINTERS[S.printer][0] + ' · ' + S.plateSize + ' × ' + S.plateSize + ' mm'; updateModeNotice(); drawMiniPlate();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
+  $('machineBadge').textContent = PRINTERS[S.printer][0]; updateModeNotice(); drawMiniPlate();
   $('fileFormat').value = S.fileFormat; renderFilaChips(); renderPicker(); updatePrintBar();
 }
 function renderGallery() {
@@ -128,6 +135,14 @@ function updateBadges() {
     el.title = r ? `Bico ${fmt2(S.nozzle)} mm: ${Math.round(r.stroke * 100)}% do traço mais fino que o bico, ${Math.round(r.gap * 100)}% de espaços apertados` : '';
   }
 }
+// Camadas válidas para cada bico (limites dos perfis Bambu); a 1.ª marcada é a recomendada.
+const LAYERS = { 0.2: [[.06], [.08, 1], [.1], [.12]], 0.4: [[.08], [.12], [.16, 1], [.2], [.24]], 0.6: [[.18], [.24, 1], [.3]], 0.8: [[.24], [.32, 1], [.4]] };
+function fillLayers() {
+  const sel = $('layer'), list = LAYERS[S.nozzle] || LAYERS[0.4]; sel.textContent = '';
+  if (!list.some(l => Math.abs(l[0] - S.layer) < 1e-9)) S.layer = (list.find(l => l[1]) || list[0])[0];
+  for (const [v, rec] of list) { const o = document.createElement('option'); o.value = String(v); o.textContent = v.toFixed(2).replace('.', ',') + ' mm' + (rec ? ' (recomendada)' : ''); sel.appendChild(o) }
+  sel.value = String(S.layer);
+}
 function fmt2(n) { return (+n).toFixed(1).replace('.', ',') }
 function toggleFavorite(font) { const i = S.favorites.indexOf(font); if (i >= 0) S.favorites.splice(i, 1); else if (S.favorites.length < 12) S.favorites.push(font); else alert('Máximo de 12 fontes na placa de teste.'); renderGallery(); $('testPlate').textContent = `⬇ Placa de teste (★ ${S.favorites.length})` }
 // Troca de fonte: atualiza só o necessário e calcula primeiro uma pré-visualização rápida.
@@ -152,19 +167,20 @@ function bindControls() {
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundTop', 'roundTop']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
+  $('topDownload').onclick = () => $('quickPrint').click();
   $('quickPrint').onclick = () => S.fileFormat === '3mf' ? export3MF() : exportMeshes(S.fileFormat === 'stl' ? 'combined' : 'separate');
   $('fileFormat').onchange = () => { S.fileFormat = $('fileFormat').value; updatePrintBar() };
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { S.plateView = false; fitCamera(); requestRender() }; $('btnPlate').onclick = () => { S.plateView = true; fitCamera(); requestRender() };
   $('autoRing').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
-  $('printer').onchange = () => { S.printer = $('printer').value; S.plateSize = PRINTERS[S.printer][1]; matchFilamentsToBrand(); refreshMeshColors(); pickerPart = null; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
+  $('printer').onchange = () => { S.printer = $('printer').value; matchFilamentsToBrand(); refreshMeshColors(); pickerPart = null; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
   $('quality').onchange = () => { S.quality = $('quality').value; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge(); scheduleRebuild(true) };
   $('copyCount').oninput = () => { S.copies = +$('copyCount').value; drawMiniPlate(); if (S.plateView) fitCamera(); requestRender() };
   $('autoArrange').onclick = () => { S.positionX = 0; S.positionY = 0; drawMiniPlate(); requestRender(); selectTab('print') };
   $('export3MF').onclick = () => export3MF(); $('exportSTL').onclick = () => exportMeshes('combined'); $('exportParts').onclick = () => exportMeshes('separate');
   $('importFont').onclick = () => $('fontFile').click();
-  $('nozzle').onchange = () => { S.nozzle = +$('nozzle').value; scheduleRebuild(true); scheduleScan() };
+  $('nozzle').onchange = () => { S.nozzle = +$('nozzle').value; S.layer = (LAYERS[S.nozzle].find(l => l[1]) || LAYERS[S.nozzle][0])[0]; fillLayers(); scheduleRebuild(true); scheduleScan(); updatePrintBar() };
   $('layer').onchange = () => { S.layer = +$('layer').value; if (model) updatePrintCheck() };
   $('testPlate').onclick = () => exportTestPlate();
   $('fontPrev').onclick = () => stepFont(-1); $('fontNext').onclick = () => stepFont(1);
@@ -205,6 +221,7 @@ self.onmessage = e => {
   try {
     if (m.type === 'font') { raw[m.name] = m.buffer; delete fonts[m.name]; self.postMessage({ id: m.id, ok: true }); return; }
     if (m.type === 'check') { opentype.parse(m.buffer); self.postMessage({ id: m.id, ok: true }); return; }
+    if (m.type === 'minScale') { self.postMessage({ id: m.id, ok: true, result: SparrowModel.minScaleFor(m.S, getFont(m.S.font)) }); return; }
     if (m.type === 'scan') { const out = {}; for (const n of m.names) { try { out[n] = SparrowModel.scanFont(m.S, getFont(n)); } catch (err) { } } self.postMessage({ id: m.id, ok: true, result: out }); return; }
     if (m.type === 'build') {
       const font = getFont(m.S.font);
@@ -261,6 +278,7 @@ function geometryCall(msg) {
       if (msg.type === 'font') { localRaw[msg.name] = msg.buffer; resolve(); return }
       if (msg.type === 'check') { opentype.parse(msg.buffer); resolve(); return }
       const getF = n => { if (!localFonts[n] && localRaw[n]) localFonts[n] = opentype.parse(localRaw[n]); return localFonts[n] || getF(Object.keys(localRaw)[0]) };
+      if (msg.type === 'minScale') { resolve(SparrowModel.minScaleFor(msg.S, getF(msg.S.font))); return }
       if (msg.type === 'scan') { const out = {}; for (const n of msg.names) out[n] = SparrowModel.scanFont(msg.S, getF(n)); resolve(out); return }
       const res = SparrowModel.build(msg.S, { front: getF(msg.S.font) }, msg.quality), R = res.regions;
       resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } });
@@ -313,7 +331,7 @@ function applyModel(r, quality) {
   if (ri && ri.status === 'solta') msg = '⚠ A argola está solta da peça! Arrasta a bola para cima da base ou carrega em «◎ Reposicionar automaticamente».';
   else if (ri && ri.status === 'fraca') msg = `⚠ Argola frágil: só ${Math.round(ri.frac * 100)}% da bola está em cima da peça — vai partir com o peso das chaves. Arrasta-a mais para dentro (≥ 30%) ou usa «◎ Reposicionar».`;
   else if (ri && ri.holeCuts) msg = '⚠ O furo da argola corta letras. Arrasta a argola para outra zona.';
-  if (Math.abs(S.positionX) + b.width / 2 > S.plateSize / 2 || Math.abs(S.positionY) + b.height / 2 > S.plateSize / 2) msg = '⚠ A peça está parcialmente fora dos limites do tabuleiro.';
+  if (S.copies === 1 && (Math.abs(S.positionX) + b.width / 2 > plateW() / 2 || Math.abs(S.positionY) + b.height / 2 > plateH() / 2)) msg = '⚠ A peça está parcialmente fora dos limites do tabuleiro.';
   $('qualityNotice').textContent = msg; $('qualityNotice').classList.toggle('warn', msg.startsWith('⚠'));
   $('overlayStatus').textContent = msg.startsWith('⚠') ? msg : `Modelo 3D · ${fmt(S.bodyThickness)} mm de base`;
   updatePrintCheck(); updateRingCheck();
@@ -339,7 +357,12 @@ function updatePrintCheck() {
   }
   html += `<br>Altura das letras ${fmt(S.letterHeight)} mm = ${exact ? Math.round(layers) : layers.toFixed(1).replace('.', ',')} camada(s) de ${String(S.layer).replace('.', ',')} mm${exact ? '' : ' ⚠ não é múltiplo da camada: o slicer arredonda'}. Contorno ${fmt(S.outlineWidth)} mm${S.outline && S.outlineWidth < S.nozzle * 1.1 ? ' ⚠ mais estreito que o bico' : ''}.`;
   if (FONT_GROUP[S.font] === 'fina') html += '<br>Fonte fina: imprime melhor com letra grande, bico 0,2–0,4 e espessura +0,2 mm ou mais.';
-  for (const id of ['printCheck', 'printCheck2']) { const el = $(id); el.className = 'printcheck ' + cls + (id === 'printCheck' && cls === 'ok' ? ' hidden' : ''); el.innerHTML = html }
+  const layerTip = { 0.2: '0,06–0,12 mm', 0.4: '0,12–0,20 mm', 0.6: '0,20–0,30 mm', 0.8: '0,28–0,40 mm' }[S.nozzle];
+  if (S.nozzle <= 0.2) html += `<br>💎 <b>Premium</b> (bico 0,2): letras mais perfeitas; camada recomendada ${layerTip}. Demora mais a imprimir.`;
+  else if (S.nozzle <= 0.4) html += `<br>Normal (bico 0,4), camada ${layerTip}. Para letras ainda mais perfeitas, usa bico 0,2 (premium).`;
+  else { html += `<br>⚠ <b>Bico ${n} mm não é recomendado para letras</b>: o traço fica grosso e as letras fecham. Usa 0,4 (normal) ou 0,2 (premium). <span id="minScaleTip">A calcular o tamanho mínimo para este bico…</span>`; cls = 'aviso' }
+  for (const id of ['printCheck', 'printCheck2']) { const el = $(id); el.className = 'printcheck ' + cls + (id === 'printCheck' && cls === 'ok' ? ' hidden' : ''); el.innerHTML = html.replace('id="minScaleTip"', `class="minScaleTip"`) }
+  if (p.status !== 'ok' || S.nozzle > 0.4) suggestMinScale();
 }
 function updateRingCheck() {
   const el = $('ringCheck'), ri = model && model.regions.ring;
@@ -365,6 +388,20 @@ function updateRingTag() {
   tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
 }
 setInterval(() => { if (!ringDragged && Date.now() > ringTagUntil) updateRingTag() }, 1000);
+// Calcula (no Worker) o tamanho mínimo do nome para o bico escolhido e oferece «Aumentar para X %».
+let minScaleSeq = 0;
+async function suggestMinScale() {
+  const seq = ++minScaleSeq, st = geometryState(); st.nameSize = S.nameSize;
+  let pct = null; try { pct = await geometryCall({ type: 'minScale', S: st }) } catch (e) { return }
+  if (seq !== minScaleSeq) return;
+  const w = model && model.regions.bounds ? model.regions.bounds.width : 0;
+  for (const el of document.querySelectorAll('.minScaleTip')) {
+    if (pct == null) { el.textContent = 'Mesmo a 400 % não fica bom com este bico: troca de bico ou de fonte.'; continue }
+    if (pct <= S.nameSize) { el.textContent = 'Com este tamanho já imprime, mas o detalhe fica pior do que com 0,4.'; continue }
+    el.innerHTML = `Para este bico o nome tem de ter pelo menos <b>${pct}%</b> (≈ ${Math.round(w * pct / S.nameSize)} mm de largura). <button class="tiny growBtn">Aumentar para ${pct}%</button>`;
+    el.querySelector('.growBtn').onclick = () => { S.nameSize = pct; S.ringManual = false; $('nameSize').value = pct; updateRangeLabels(); scheduleRebuild(true); scheduleScan() };
+  }
+}
 function partColor(id) { return { base: S.baseColor, letters: S.letterColor, outline: S.outlineColor, back: S.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
 
@@ -408,10 +445,11 @@ function packRaw(vertices, col) { const arr = new Float32Array(vertices.length *
 function makeBuffer(data) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); return { buf: b, n: data.length / 9 } }
 function rebuildBed() {
   if (!gl) return; if (plateBuffer) gl.deleteBuffer(plateBuffer.buf); if (gridBuffer) gl.deleteBuffer(gridBuffer.buf);
-  const half = S.plateSize / 2, z = -1.3; plateBuffer = makeBuffer(packRaw([[-half, -half, z], [half, -half, z], [half, half, z], [-half, -half, z], [half, half, z], [-half, half, z]], '#1e3345'));
+  const hw = plateW() / 2, hh = plateH() / 2, z = -1.3; plateBuffer = makeBuffer(packRaw([[-hw, -hh, z], [hw, -hh, z], [hw, hh, z], [-hw, -hh, z], [hw, hh, z], [-hw, hh, z]], '#1e3345'));
   const lines = [], line = (a, b) => { lines.push([...a, 0, 0, 1], [...b, 0, 0, 1]) };
-  for (let p = -half; p <= half + 1e-6; p += 10) { line([p, -half, z + .05], [p, half, z + .05]); line([-half, p, z + .05], [half, p, z + .05]) }
-  const pts = [[-half, -half], [half, -half], [half, half], [-half, half]]; for (let i = 0; i < 4; i++) line([...pts[i], z + .08], [...pts[(i + 1) % 4], z + .08]);
+  for (let p = 0; p <= hw + 1e-6; p += 10) for (const q of p ? [p, -p] : [0]) line([q, -hh, z + .05], [q, hh, z + .05]);
+  for (let p = 0; p <= hh + 1e-6; p += 10) for (const q of p ? [p, -p] : [0]) line([-hw, q, z + .05], [hw, q, z + .05]);
+  const pts = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]]; for (let i = 0; i < 4; i++) line([...pts[i], z + .08], [...pts[(i + 1) % 4], z + .08]);
   gridBuffer = makeBuffer(packRaw(lines, '#41607b'));
 }
 // Escala do canvas: px do dispositivo por px CSS. O V4 usava `devicePixelRatio||1>2?2:…`, que dava
@@ -510,7 +548,7 @@ function fitCamera() {
   const b = model && model.regions.bounds;
   if (S.plateView) { camera.cx = 0; camera.cy = 0; camera.cz = 0 }
   else { const c = pieceCenter(); camera.cx = c.x; camera.cy = c.y; camera.cz = c.z }
-  const width = S.plateView ? S.plateSize + 23 : Math.max(65, b ? b.width : 80) * 1.45, height = S.plateView ? S.plateSize + 23 : Math.max(33, b ? b.height : 40) * 1.9;
+  const width = S.plateView ? plateW() + 23 : Math.max(65, b ? b.width : 80) * 1.45, height = S.plateView ? plateH() + 23 : Math.max(33, b ? b.height : 40) * 1.9;
   camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
 }
 function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').textContent = side === 'front' ? '↻ Ver verso' : '↻ Ver frente'; requestRender() }
@@ -677,7 +715,7 @@ function renderFallback() {
   const c = $('gl'), ctx = fallbackCtx, r = c.width / Math.max(1, c.clientWidth), back = Math.cos(camera.yaw) < 0, R = model.regions;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0d1520'; ctx.fillRect(0, 0, c.width, c.height); ctx.setTransform(r, 0, 0, r, 0, 0);
   const drawPaths = (paths, dx, dy, fill) => { if (!paths || !paths.length) return; ctx.beginPath(); for (const p of paths) p.forEach((q, i) => { const s = project(q.X / SparrowGeo.SCALE + dx, q.Y / SparrowGeo.SCALE + dy, 0); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y) }), ctx.closePath(); ctx.fillStyle = fill; ctx.fill('evenodd') };
-  if (Math.cos(camera.yaw) > -.18) { const h = S.plateSize / 2; drawPaths([[{ X: -h * 1e4, Y: -h * 1e4 }, { X: h * 1e4, Y: -h * 1e4 }, { X: h * 1e4, Y: h * 1e4 }, { X: -h * 1e4, Y: h * 1e4 }]], 0, 0, '#1e3345') }
+  if (Math.cos(camera.yaw) > -.18) { const w = plateW() / 2 * 1e4, h = plateH() / 2 * 1e4; drawPaths([[{ X: -w, Y: -h }, { X: w, Y: -h }, { X: w, Y: h }, { X: -w, Y: h }]], 0, 0, '#1e3345') }
   for (const pos of objectPositions()) {
     drawPaths(R.base, pos.x, pos.y, S.baseColor);
     if (back) drawPaths(R.back, pos.x, pos.y, S.back === 'engraved' ? '#16416b' : S.letterColor);
@@ -690,15 +728,15 @@ const PLATE_MARGIN = 5;
 function modelBounds() { const b = model && model.regions.bounds; return b ? { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY, width: b.width, height: b.height } : { minX: -35, maxX: 35, minY: -16, maxY: 16, width: 70, height: 32 } }
 function clampToPlate() {
   if (!model) return;
-  const b = modelBounds(), h = S.plateSize / 2 - PLATE_MARGIN, loX = -h - b.minX, hiX = h - b.maxX, loY = -h - b.minY, hiY = h - b.maxY;
+  const b = modelBounds(), hx = plateW() / 2 - PLATE_MARGIN, hy = plateH() / 2 - PLATE_MARGIN, loX = -hx - b.minX, hiX = hx - b.maxX, loY = -hy - b.minY, hiY = hy - b.maxY;
   if (loX > hiX) S.positionX = (loX + hiX) / 2; else S.positionX = Math.min(hiX, Math.max(loX, S.positionX));
   if (loY > hiY) S.positionY = (loY + hiY) / 2; else S.positionY = Math.min(hiY, Math.max(loY, S.positionY));
   for (const side of [loX, hiX]) if (Math.abs(S.positionX - side) < 1.4) S.positionX = side;
   for (const side of [loY, hiY]) if (Math.abs(S.positionY - side) < 1.4) S.positionY = side;
 }
 function layoutPlan() {
-  const b = modelBounds(), gap = S.printMode === 'sequential' ? 32 : 6, inner = S.plateSize - PLATE_MARGIN * 2;
-  const cols = Math.max(0, Math.floor((inner + gap) / (b.width + gap))), rows = Math.max(0, Math.floor((inner + gap) / (b.height + gap)));
+  const b = modelBounds(), gap = S.printMode === 'sequential' ? 32 : 6, innerW = plateW() - PLATE_MARGIN * 2, innerH = plateH() - PLATE_MARGIN * 2;
+  const cols = Math.max(0, Math.floor((innerW + gap) / (b.width + gap))), rows = Math.max(0, Math.floor((innerH + gap) / (b.height + gap)));
   const capacity = cols * rows, count = Math.min(S.copies, capacity);
   if (S.copies === 1) return { positions: [{ x: S.positionX, y: S.positionY }], capacity: capacity >= 1 ? capacity : 0, gap, b };
   const useCols = Math.min(cols, Math.max(1, Math.ceil(count / Math.max(1, rows)))), useRows = Math.ceil(count / useCols), positions = [];
@@ -708,13 +746,13 @@ function layoutPlan() {
 function objectPositions() { return layoutPlan().positions }
 function drawMiniPlate() {
   const mini = $('miniPlate'), el = $('plateObject'); if (!mini || !el || !model) return;
-  const data = layoutPlan(), size = S.plateSize, b = data.b;
-  $('platePreset').textContent = PRINTERS[S.printer][0].toUpperCase(); $('plateXY').textContent = `${size} × ${size} mm`; $('copyVal').textContent = S.copies === 1 ? '1 peça' : `${S.copies} peças`;
+  const data = layoutPlan(), W = plateW(), H = plateH(), b = data.b; mini.style.aspectRatio = `${W} / ${H}`;
+  $('platePreset').textContent = PRINTERS[S.printer][0].toUpperCase(); $('plateXY').textContent = `${W} × ${H} mm`; $('copyVal').textContent = S.copies === 1 ? '1 peça' : `${S.copies} peças`;
   mini.querySelectorAll('.extraPlateObject').forEach(e => e.remove());
-  data.positions.forEach((pos, i) => { const node = i === 0 ? el : document.createElement('div'); if (i > 0) { node.className = 'extraPlateObject'; mini.appendChild(node) } node.style.width = `${100 * b.width / size}%`; node.style.height = `${100 * b.height / size}%`; node.style.left = `${(50 + (pos.x + b.minX) / size * 100).toFixed(3)}%`; node.style.top = `${(50 - (pos.y + b.maxY) / size * 100).toFixed(3)}%`; node.textContent = S.copies === 1 ? (S.name || 'Peça') : String(i + 1) });
+  data.positions.forEach((pos, i) => { const node = i === 0 ? el : document.createElement('div'); if (i > 0) { node.className = 'extraPlateObject'; mini.appendChild(node) } node.style.width = `${100 * b.width / W}%`; node.style.height = `${100 * b.height / H}%`; node.style.left = `${(50 + (pos.x + b.minX) / W * 100).toFixed(3)}%`; node.style.top = `${(50 - (pos.y + b.maxY) / H * 100).toFixed(3)}%`; node.textContent = S.copies === 1 ? (S.name || 'Peça') : String(i + 1) });
   el.classList.toggle('multi', S.copies > 1);
-  const tooBig = b.width > size - PLATE_MARGIN * 2 || b.height > size - PLATE_MARGIN * 2;
-  let msg = `Área útil estimada: ${size - 2 * PLATE_MARGIN} × ${size - 2 * PLATE_MARGIN} mm · margem de ${PLATE_MARGIN} mm. `;
+  const tooBig = b.width > W - PLATE_MARGIN * 2 || b.height > H - PLATE_MARGIN * 2;
+  let msg = `Área útil estimada: ${W - 2 * PLATE_MARGIN} × ${H - 2 * PLATE_MARGIN} mm · margem de ${PLATE_MARGIN} mm. `;
   if (tooBig) msg += '⚠ A peça é demasiado grande para este tabuleiro.'; else if (data.positions.length < S.copies) msg += `⚠ Só cabem ${data.positions.length} das ${S.copies} cópias com este espaçamento estimado.`; else msg += `Cabem ${data.positions.length} peça(s) no planeamento atual.`;
   if (S.printMode === 'sequential') msg += ' ⚠ Os 32 mm de separação são apenas uma estimativa: verifica as colisões da cabeça e o pórtico no slicer.';
   $('plateWarnings').textContent = msg;
@@ -722,9 +760,9 @@ function drawMiniPlate() {
 function initPlateDrag() {
   const mini = $('miniPlate'), obj = $('plateObject'); let pointer = null;
   obj.addEventListener('pointerdown', e => { if (S.copies > 1) return; pointer = { x: e.clientX, y: e.clientY, startX: S.positionX, startY: S.positionY }; obj.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault() });
-  obj.addEventListener('pointermove', e => { if (!pointer) return; const r = mini.getBoundingClientRect(); S.positionX = pointer.startX + (e.clientX - pointer.x) / r.width * S.plateSize; S.positionY = pointer.startY - (e.clientY - pointer.y) / r.height * S.plateSize; clampToPlate(); drawMiniPlate(); requestRender() });
+  obj.addEventListener('pointermove', e => { if (!pointer) return; const r = mini.getBoundingClientRect(); S.positionX = pointer.startX + (e.clientX - pointer.x) / r.width * plateW(); S.positionY = pointer.startY - (e.clientY - pointer.y) / r.height * plateH(); clampToPlate(); drawMiniPlate(); requestRender() });
   for (const ev of ['pointerup', 'pointercancel']) obj.addEventListener(ev, () => { pointer = null; drawMiniPlate() });
-  mini.addEventListener('pointerdown', e => { if (S.copies > 1 || e.target !== mini) return; const r = mini.getBoundingClientRect(), b = modelBounds(); S.positionX = ((e.clientX - r.left) / r.width - .5) * S.plateSize - (b.minX + b.maxX) / 2; S.positionY = (.5 - (e.clientY - r.top) / r.height) * S.plateSize - (b.minY + b.maxY) / 2; clampToPlate(); drawMiniPlate(); requestRender() });
+  mini.addEventListener('pointerdown', e => { if (S.copies > 1 || e.target !== mini) return; const r = mini.getBoundingClientRect(), b = modelBounds(); S.positionX = ((e.clientX - r.left) / r.width - .5) * plateW() - (b.minX + b.maxX) / 2; S.positionY = (.5 - (e.clientY - r.top) / r.height) * plateH() - (b.minY + b.maxY) / 2; clampToPlate(); drawMiniPlate(); requestRender() });
 }
 function bindViewCube() {
   document.querySelectorAll('.viewCube button').forEach(b => b.onclick = () => {
@@ -770,15 +808,15 @@ async function finalComponents() { if (building || interactiveBuild || (!worker 
 async function export3MF() {
   if (!components.length || !model) { alert('Não existe malha para exportar.'); return }
   const plan = layoutPlan(), b = plan.b;
-  if (plan.positions.length < S.copies || b.width > S.plateSize - PLATE_MARGIN * 2 || b.height > S.plateSize - PLATE_MARGIN * 2) { alert('Há peças fora do espaço disponível. Diminui o número de cópias ou o nome.'); return }
+  if (plan.positions.length < S.copies || b.width > plateW() - PLATE_MARGIN * 2 || b.height > plateH() - PLATE_MARGIN * 2) { alert('Há peças fora do espaço disponível. Diminui o número de cópias ou o nome.'); return }
   await withBusy($('export3MF'), '⏳ A criar 3MF…', async () => {
     await new Promise(r => setTimeout(r, 30));
     const parts = (await finalComponents()).map(c => ({ id: c.id, label: `${c.label} — ${filamentLabel(c.id)} ${c.color.toUpperCase()}`, color: c.color, mesh: c.mesh }));
-    const res = Sparrow3MF.build(parts, plan.positions, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateSize: S.plateSize });
+    const res = Sparrow3MF.build(parts, plan.positions, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });
     const bytes = await Sparrow3MF.zip(res.entries);
     download(bytes, `SparrowTech_${safeName(S.name)}_${PRINTERS[S.printer][0].replace(/[^A-Za-z0-9]/g, '')}.3mf`, 'model/3mf');
     const list = parts.map(p => `${p.label.split(' — ')[0]} → filamento ${res.extruders[p.id]} (${filamentLabel(p.id)})`).join(' · ');
-    $('qualityNotice').textContent = `3MF exportado (${plan.positions.length} cópia(s)). ${list}. Abre no ${PRINTERS[S.printer][3]} e carrega esses filamentos.`;
+    $('qualityNotice').textContent = `3MF exportado (${plan.positions.length} cópia(s)). ${list}. Abre no ${PRINTERS[S.printer][4]} e carrega esses filamentos.`;
   });
 }
 
@@ -794,15 +832,15 @@ async function exportTestPlate() {
       built.push({ font, r });
     }
     // Arruma em linhas dentro do tabuleiro (6 mm entre peças, 5 mm de margem).
-    const gap = 6, inner = S.plateSize - 2 * PLATE_MARGIN, placed = []; let x = -inner / 2, y = inner / 2, rowH = 0, skipped = [];
+    const gap = 6, innerW = plateW() - 2 * PLATE_MARGIN, innerH = plateH() - 2 * PLATE_MARGIN, placed = []; let x = -innerW / 2, y = innerH / 2, rowH = 0, skipped = [];
     for (const { font, r } of built) {
       const b = r.regions.bounds; if (!b) continue;
-      if (x + b.width > inner / 2) { x = -inner / 2; y -= rowH + gap; rowH = 0 }
-      if (b.width > inner || y - b.height < -inner / 2) { skipped.push(font); continue }
+      if (x + b.width > innerW / 2) { x = -innerW / 2; y -= rowH + gap; rowH = 0 }
+      if (b.width > innerW || y - b.height < -innerH / 2) { skipped.push(font); continue }
       placed.push({ font, r, pos: { x: x - b.minX, y: y - b.maxY } }); x += b.width + gap; rowH = Math.max(rowH, b.height);
     }
     const objects = placed.map(({ font, r, pos }) => ({ name: `${S.name || 'Nome'} — ${font}`, placements: [pos], parts: r.parts.map(p => ({ id: p.id, label: `${partLabel(p)} — ${filamentLabel(p.id)} ${partColor(p.id).toUpperCase()}`, color: partColor(p.id), mesh: p.mesh })) }));
-    const res = Sparrow3MF.buildObjects(objects, { name: `Teste de fontes — ${S.name}`, printerName: PRINTERS[S.printer][0], plateSize: S.plateSize });
+    const res = Sparrow3MF.buildObjects(objects, { name: `Teste de fontes — ${S.name}`, printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });
     download(await Sparrow3MF.zip(res.entries), `SparrowTech_teste_fontes_${safeName(S.name)}.3mf`, 'model/3mf');
     $('qualityNotice').textContent = `Placa de teste: ${placed.length} fonte(s) (${placed.map(p => p.font).join(', ')}).` + (skipped.length ? ` Não couberam: ${skipped.join(', ')}.` : '') + ` Bico ${fmt2(S.nozzle)} mm, camada ${String(S.layer).replace('.', ',')} mm.`;
   });

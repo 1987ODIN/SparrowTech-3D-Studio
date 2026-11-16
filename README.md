@@ -2,13 +2,13 @@
 
 Editor visual open source para criar nomes, porta-chaves, placas e outros modelos 3D personalizáveis, com foco em edição direta e impressão 3D multicolor.
 
-> **Estado:** protótipo em desenvolvimento (v5). A geometria das letras já é vetorial e a malha exportada é verificada como fechada; a importação do 3MF no Bambu Studio e no Creality Print ainda tem de ser confirmada nas aplicações. Não é uma aplicação validada para produção nem para impressão sequencial segura.
+> **Estado:** protótipo em desenvolvimento (v5). A geometria das letras já é vetorial e a malha exportada é verificada como fechada; a importação do 3MF no Bambu Studio ainda tem de ser confirmada na aplicação. Não é uma aplicação validada para produção nem para impressão sequencial segura.
 
 ## Usar
 
 Descarrega [`dist/sparrowtech_3d_studio_v5.html`](dist/sparrowtech_3d_studio_v5.html) e abre-o no Chrome, Edge ou Firefox. Funciona sem internet: bibliotecas e fontes estão embutidas.
 
-Escreve o nome, escolhe a fonte e carrega em **🖨 Imprimir**: sai um 3MF pronto para o Bambu Studio / Creality Print. A argola fica numa posição segura e reforçada; se a arrastares para um sítio frágil, a app avisa. Opções de impressora, bico, camadas e cópias estão em **⚙ Pro (beta)**.
+Escreve o nome, escolhe a fonte e carrega em **🖨 Imprimir**: sai um 3MF pronto para o Bambu Studio (ou STL, à escolha no topo). A argola fica numa posição segura e reforçada; se a arrastares para um sítio frágil, a app avisa. Opções de impressora, bico, camadas e cópias estão em **⚙ Pro (beta)**.
 
 | Rato | Ação |
 |---|---|
@@ -44,13 +44,14 @@ Escrever um nome, comparar fontes manuscritas em pré-visualização, editar dir
 - **Argola:** colocação automática numa zona estruturalmente válida, tamanho padrão ajustável, reposicionamento por arrastar.
 - **Frente/verso:** verso liso ou com texto, gravação, relevo, preenchimento e efeitos vazados; navegação e foco corretos.
 - **Cores:** partes independentes para base, contorno e letras; exportação 3MF com cores/componentes e transformações.
-- **Impressoras:** Bambu A1, Bambu A1 Mini e Creality K1C; limites reais do tabuleiro, margens, encaixe e distribuição de peças.
+- **Impressoras:** Bambu Lab (A1 mini, A1, P1P/P1S, P2S, X1C/X1E, A2L, H2S/H2D/H2C), agrupadas pelo tamanho do tabuleiro; margens, encaixe e distribuição de peças.
+- **Bico e camada:** 0,2 mm = Premium, 0,4 mm = Normal, 0,6/0,8 mm não recomendados para letras (a app indica o tamanho mínimo da peça). A camada vai gravada no 3MF; o bico escolhe-se no Bambu Studio.
 - **Impressão:** STL/3MF, validação de malha, visualização de colisões e aviso para impressão sequencial por objeto.
 
 ## Prioridades
 
 1. ~~Corrigir as letras «Minecraft»~~ — feito na v5: extrusão das curvas vetoriais da fonte.
-2. Separação de cores no 3MF — v5 exporta partes por filamento no formato Bambu/Orca/Creality; **falta confirmar nos slicers**.
+2. Separação de cores no 3MF — v5 exporta partes por filamento no formato Bambu Studio; **falta confirmar no slicer**.
 3. ~~Zoom sob o cursor, foco na peça, pan com esquerdo + direito~~ — feito na v5.
 4. Argola automática e regras de robustez de peças pequenas.
 5. Testar os perfis de impressora e a disposição de múltiplas peças.
@@ -59,7 +60,7 @@ Ver [requisitos](docs/REQUISITOS.md) e [plano de desenvolvimento](docs/ROADMAP.m
 
 ## Compatibilidade
 
-Destinos de teste: **Bambu Studio** e **Creality Print**. Qualquer exportação deve ser conferida no slicer antes de imprimir; a colocação de peças no tabuleiro não equivale à validação de segurança da impressão sequencial.
+Destino de teste: **Bambu Studio**. Qualquer exportação deve ser conferida no slicer antes de imprimir; a colocação de peças no tabuleiro não equivale à validação de segurança da impressão sequencial.
 
 ## Contribuições e licença
 

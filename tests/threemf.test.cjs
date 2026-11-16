@@ -41,7 +41,7 @@ const attrs = s => Object.fromEntries([...s.matchAll(/([\w:]+)="([^"]*)"/g)].map
   ];
   for (const [label, st, placements, plate = 256] of cases) {
     const model = M.build(st, { front: font }, 'fine');
-    const res = T.build(model.parts, placements, { name: st.name, printerName: 'Teste', plateSize: plate, date: '2026-11-15' });
+    const res = T.build(model.parts, placements, { name: st.name, printerName: 'Teste', plateSize: plate, date: '2026-11-15', layerHeight: 0.08, nozzle: 0.2 });
     const bytes = await T.zip(res.entries);
     fs.writeFileSync(path.join(OUT, `SparrowTech_${label}.3mf`), bytes);
     const f = unzip(bytes);
@@ -49,6 +49,7 @@ const attrs = s => Object.fromEntries([...s.matchAll(/([\w:]+)="([^"]*)"/g)].map
     for (const need of ['[Content_Types].xml', '_rels/.rels', '3D/3dmodel.model', '3D/_rels/3dmodel.model.rels', '3D/Objects/object_1.model', 'Metadata/model_settings.config']) check(f[need], `${label}: falta ${need}`);
     const main = f['3D/3dmodel.model'], sub = f['3D/Objects/object_1.model'], cfg = f['Metadata/model_settings.config'];
     check(/<metadata name="Application">BambuStudio-/.test(main), `${label}: Application não começa por BambuStudio-`);
+    check(/<object id="\d+">[\s\S]*?<metadata key="layer_height" value="0.08"\/>/.test(cfg), `${label}: falta a camada do objeto`);
     // componentes ↔ objetos do sub-modelo ↔ partes do config
     const comps = [...main.matchAll(/<component ([^>]*)\/>/g)].map(m => attrs(m[1]));
     const subObjs = [...sub.matchAll(/<object ([^>]*)>([\s\S]*?)<\/object>/g)].map(m => ({ a: attrs(m[1]), body: m[2] }));

@@ -121,3 +121,15 @@ Pormenores: os botões vêm de `event.buttons` (esquerdo = 1, direito = 2, ambos
 ## Largar a argola sem ela «fugir» (v5.5)
 
 Ao levantar o dedo, a ponta rola e os últimos eventos de movimento deslocam a argola uns milímetros (às vezes para trás). Correção (`releasePosition`): guarda-se o histórico do arrasto (posição + tempo); ao largar, entre as amostras a ≤ 22 px do ponto final, (1) se houve uma pausa ≥ 90 ms usa-se a posição dessa pausa; (2) senão, ignoram-se os últimos ~110 ms (60 ms com rato). Movimentos finais maiores do que 22 px contam como intencionais. Com o dedo há também um amortecimento curto do tremor durante o arrasto. Teste em `tests/mobile_check.py` (desvio 0,00 mm).
+
+## Só Bambu Lab, descarregar no topo e bicos por nível (v5.6)
+
+> Esta secção substitui o que as secções anteriores dizem sobre a Creality K1C e a paleta Creality: foram retiradas da app.
+
+* **Impressoras:** só Bambu Lab, agrupadas pelo tamanho do tabuleiro — 180×180 (A1 mini), 256×256 (A1, P1P, P1S, P2S, X1C, X1E) e grandes (A2L 330×320, H2S 340×320, H2D 325×320, H2C 300×320). O tabuleiro deixou de ser sempre quadrado (`plateW()`/`plateH()`; o 3MF recebe `plateW`/`plateH`).
+* **Paleta:** só filamentos Bambu Lab (`data/bambu_filaments_color_codes.json`).
+* **Topo:** cabeçalho mais pequeno com o botão **⬇** (descarrega no formato escolhido: 3MF, STL ou STL por cor). As medidas em mm deixaram de aparecer sobre o modelo.
+* **Bicos por nível:** 0,2 mm = Premium (camadas muito finas), 0,4 mm = Normal (o mínimo aceitável para letras), 0,6/0,8 mm = não recomendados para letras. Quando as letras não saem bem com o bico escolhido, a app calcula o tamanho mínimo da peça (`minScaleFor`, pesquisa binária até 400 %) e oferece «Aumentar para X %».
+* **Imprimibilidade mais exigente:** um traço só conta como imprimível se couberem 2 perímetros (abertura morfológica com raio = bico).
+* **Camadas por bico:** a lista de alturas depende do bico (0,2: 0,06–0,12; 0,4: 0,08–0,24; 0,6: 0,18–0,30; 0,8: 0,24–0,40), com uma recomendada; mudar de bico escolhe a recomendada.
+* **Camada no 3MF:** a altura de camada vai como definição do objeto (`<metadata key="layer_height">` em `model_settings.config`). **O bico não pode ir no ficheiro** — pertence à predefinição da impressora, que não exportamos (ver 3MF-CORES.md); a app diz qual escolher no Bambu Studio. Falta confirmar no Bambu Studio real que a camada do objeto é aplicada ao abrir.

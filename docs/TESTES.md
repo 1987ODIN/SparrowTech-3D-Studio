@@ -51,6 +51,7 @@ Testado com servidor local e `Content-Security-Policy`:
 * `worker-src 'none'`: modo compatível (cálculo na página, «Muito fina» só na exportação) — modelo, malhas fechadas e exportação 3MF OK, sem erros.
 
 ## Ainda por verificar manualmente
-* Abrir `tests/out/*.3mf` ou um 3MF exportado pela app no **Bambu Studio** e no **Creality Print** e confirmar: 1 objeto, 3–4 partes, filamentos 1/2/3, posição no tabuleiro.
+* Abrir `tests/out/*.3mf` ou um 3MF exportado pela app no **Bambu Studio** e confirmar: 1 objeto, 3–4 partes, filamentos 1/2/3, posição no tabuleiro e a altura de camada do objeto (v5.6).
+* Nota de 2026-11-16 (v5.6): 3MF 114/114, menus 103 passos, navegador, telemóvel e arrasto da argola OK. Geometria 3718/3719: a única falha é o limite de tempo de «Constança Margarida/fine» (6,2–6,4 s contra 6 s), que também falha no commit anterior nesta máquina — é velocidade do ambiente de teste, não geometria.
 * Imprimir uma peça de teste (relevo + contorno) e comparar com o `Parametric_Model_Maker_1.stl`.
 * Testar num GPU real. No Chrome em modo software (SwiftShader) com antialiasing aparecem alguns píxeis soltos na vista traseira; a geometria foi verificada e está correta (são artefactos do rasterizador por software).

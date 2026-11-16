@@ -83,8 +83,9 @@
    */
   function printability(text, nozzle) {
     if (!text.length) return { stroke: 0, gap: 0, status: 'ok', nozzle };
+    // Traço: pelo menos 2 linhas do bico (2 perímetros) → abertura de raio = bico. Espaços: ≥ 1 bico → fecho de raio bico/2.
     const r = nozzle / 2, a = Math.abs(G.regionArea(text)) || 1, tolP = 0.02;
-    const opened = G.offset(G.offset(text, -r, tolP), r, tolP), closed = G.offset(G.offset(text, r, tolP), -r, tolP);
+    const opened = G.offset(G.offset(text, -nozzle, tolP), nozzle, tolP), closed = G.offset(G.offset(text, r, tolP), -r, tolP);
     const stroke = Math.max(0, 1 - Math.abs(G.regionArea(opened)) / a), gap = Math.max(0, Math.abs(G.regionArea(closed)) / a - 1);
     const worst = Math.max(stroke, gap * 1.5);
     return { stroke, gap, nozzle, status: worst < 0.025 ? 'ok' : worst < 0.08 ? 'aviso' : 'mau' };
@@ -261,5 +262,14 @@
     };
   }
 
-  return { build, regionsFor, solidsFor, printability, scanFont, INLAY_DEPTH, OUTLINE_HEIGHT };
+  /** Menor tamanho do nome (%) com que as letras ficam imprimíveis para o bico (pesquisa binária). */
+  function minScaleFor(S, font, maxPct = 400) {
+    const ok = pct => scanFont(Object.assign({}, S, { nameSize: pct }), font).status === 'ok';
+    let lo = S.nameSize, hi = maxPct;
+    if (ok(lo)) return lo;
+    if (!ok(hi)) return null;
+    while (hi - lo > 2) { const mid = (lo + hi) / 2; if (ok(mid)) hi = mid; else lo = mid; }
+    return Math.ceil(hi / 5) * 5;
+  }
+  return { build, regionsFor, solidsFor, printability, scanFont, minScaleFor, INLAY_DEPTH, OUTLINE_HEIGHT };
 });

@@ -28,6 +28,10 @@ Esta é a mesma estrutura que o Bambu Studio grava (comparada com o `CatarinaTag
 
 **Não incluímos** `project_settings.config`. Esse ficheiro substitui as predefinições de impressora e filamentos do utilizador e, no Creality Print, define quantos filamentos existem; um ficheiro parcial pode fazer o slicer ignorar a configuração. Sem ele, o Bambu Studio acrescenta automaticamente os filamentos em falta (`add_missing_filaments`), e o Creality Print mantém os índices. **As cores dos filamentos não são definidas pelo ficheiro: escolhe-as no slicer.**
 
+**Altura de camada (v5.6):** cada objeto leva `<metadata key="layer_height" value="…"/>`, que o leitor do Bambu Studio coloca na configuração do objeto. O diâmetro do bico não vai no ficheiro: faz parte da predefinição da impressora (`project_settings.config`, que não incluímos), por isso escolhe-se no slicer. Por confirmar na aplicação real.
+
+**Nota (v5.6):** a app passou a ter só impressoras e filamentos Bambu Lab; as referências ao Creality Print abaixo descrevem a compatibilidade do formato, que já não é um destino da app.
+
 ## Como usar
 
 ### Bambu Studio
