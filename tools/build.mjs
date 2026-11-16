@@ -10,7 +10,7 @@ const catalog = JSON.parse(read('fonts/catalog.json'));
 const fonts = catalog.map(c => ({ name: c.name, group: c.group, data: fs.readFileSync(path.join(ROOT, 'fonts', c.file)).toString('base64') }));
 // "</script" dentro do código embutido fecharia a tag: protege-se.
 const safe = s => s.replace(/<\/script/gi, '<\\/script');
-const libs = ['vendor/opentype.min.js', 'vendor/clipper.js', 'vendor/earcut.min.js', 'src/geometry.js', 'src/model.js', 'src/threemf.js'].map(f => `/* ---- ${f} ---- */\n` + read(f)).join('\n;\n');
+const libs = ['vendor/opentype.min.js', 'vendor/clipper.js', 'vendor/earcut.min.js', 'src/geometry.js', 'src/model.js', 'src/threemf.js', 'src/filaments.js'].map(f => `/* ---- ${f} ---- */\n` + read(f)).join('\n;\n');
 let html = read('src/index.html');
 html = html.replace('<!--SPARROW:FONTS-->', `<script>window.SPARROW_FONTS=${JSON.stringify(fonts)};</script>`)
   .replace('<!--SPARROW:LIBS-->', () => safe(libs))

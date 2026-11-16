@@ -6,6 +6,6 @@
   "scripts": {
     "build": "node tools/build.mjs",
     "test": "node tests/geometry.test.cjs && node tests/threemf.test.cjs",
-    "test:browser": "node tools/build.mjs && python3 tests/browser_check.py && python3 tests/ui_all_controls.py"
+    "test:browser": "node tools/build.mjs && python3 tests/browser_check.py && python3 tests/ui_all_controls.py && python3 tests/ring_drag.py"
   }
 }

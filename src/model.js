@@ -59,11 +59,11 @@
       // Cresce 0,05 mm para sobrepor bem a peça (sem arestas tangentes) antes de unir.
       if (web > 0.05) joined = G.union(joined, G.offset(extra, 0.05, tol, ang));
     }
-    const wall = ro - ri, holeCuts = Math.abs(G.regionArea(G.intersection(inner, text))) > 0.05;
+    const wall = ro - ri, holeCuts = Math.abs(G.regionArea(G.intersection(inner, text))) > 0.05, cover = Math.abs(G.regionArea(G.intersection(outer, text))) / disc;
     let status = 'ok';
     if (overlap < 0.3) status = 'solta';
     else if (frac < 0.2 || wall < 1.2) status = 'fraca';
-    return { base: G.difference(joined, inner), info: { frac, overlap, web, wall, holeCuts, status } };
+    return { base: G.difference(joined, inner), info: { frac, overlap, web, wall, holeCuts, cover, status } };
   }
 
   // Garante que a forma envolve as letras (ovais/nuvens podiam cortar os cantos do texto).

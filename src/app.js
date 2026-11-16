@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, fileFormat: '3mf', filaments: {}, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -11,7 +11,62 @@ let fontScan = {};           // nome → resultado de imprimibilidade para o nom
 const SHAPES = [['contour', '✦ Segue letras'], ['cloud', '☁ Nuvem'], ['rounded', '▣ Tablet arredondado'], ['square', '▭ Tablet quadrado'], ['oval', '⬭ Oval'], ['none', '✎ Só letras']];
 const FRONT = [['raised', '↑ Relevo'], ['flush', '▰ À face'], ['engraved', '↓ Gravado'], ['cutout', '◯ Vazado']];
 const BACK = [['smooth', '▱ Liso'], ['inlay', '▰ À face'], ['raised', '↑ Relevo'], ['engraved', '↓ Gravado'], ['through', '↕ Passante']];
-const PRINTERS = { A1: ['Bambu Lab A1', 256], A1Mini: ['Bambu Lab A1 Mini', 180], K1C: ['Creality K1C', 220] };
+const PRINTERS = { A1: ['Bambu Lab A1', 256, 'Bambu Lab', 'Bambu Studio'], A1Mini: ['Bambu Lab A1 Mini', 180, 'Bambu Lab', 'Bambu Studio'], K1C: ['Creality K1C', 220, 'Creality', 'Creality Print'] };
+// Filamentos oficiais (src/filaments.js, gerado a partir das listas do Bambu Studio e do Creality Print).
+const FILAMENTS = window.SPARROW_FILAMENTS || {};
+const MAIN_SERIES = { 'Bambu Lab': 'PLA Basic', 'Creality': 'Hyper PLA' };
+const PARTS = [['base', 'Base', 'baseColor'], ['letters', 'Letras', 'letterColor'], ['outline', 'Contorno', 'outlineColor']];
+const brand = () => PRINTERS[S.printer][2];
+function hexDist(a, b) { const x = rgb(a), y = rgb(b); return (x[0] - y[0]) ** 2 * 0.3 + (x[1] - y[1]) ** 2 * 0.59 + (x[2] - y[2]) ** 2 * 0.11 }
+function nearestFilament(hex, br, series) { const list = (FILAMENTS[br] || {})[series || MAIN_SERIES[br]] || []; let best = null; for (const f of list) if (!best || hexDist(f.hex, hex) < hexDist(best.hex, hex)) best = f; return best && { brand: br, series: series || MAIN_SERIES[br], ...best } }
+function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)[2]; S.filaments[part] = fil; if (fil) S[key] = fil.hex.toLowerCase(); $(key).value = S[key] }
+function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
+function filamentLabel(part) { const f = S.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
+let pickerPart = null;
+function renderFilaChips() {
+  const box = $('filaChips'); box.textContent = '';
+  for (const [part, title, key] of PARTS) {
+    if (part === 'outline' && !S.outline) continue;
+    const f = S.filaments[part], b = document.createElement('button'); b.className = 'filachip' + (pickerPart === part ? ' on' : '');
+    b.innerHTML = `<i style="background:${S[key]}"></i><span>${title}<small>${f ? f.name : 'cor livre'}</small></span>`;
+    b.title = `${title}: ${filamentLabel(part)} ${S[key].toUpperCase()}`;
+    b.onclick = () => { pickerPart = pickerPart === part ? null : part; renderFilaChips(); renderPicker() };
+    box.appendChild(b);
+  }
+}
+function renderPicker() {
+  const box = $('filaPicker'); if (!pickerPart) { box.classList.add('hidden'); return }
+  box.classList.remove('hidden'); box.textContent = '';
+  const part = pickerPart, key = PARTS.find(p => p[0] === part)[2], br = brand(), cur = S.filaments[part];
+  const series = cur && cur.brand === br ? cur.series : MAIN_SERIES[br];
+  const sel = document.createElement('select'); sel.id = 'filaSeries';
+  for (const sname of Object.keys(FILAMENTS[br] || {})) { const o = document.createElement('option'); o.value = sname; o.textContent = `${br} ${sname} (${FILAMENTS[br][sname].length} cores)`; sel.appendChild(o) }
+  const free = document.createElement('option'); free.value = '__free'; free.textContent = '🎨 Cor livre (qualquer cor)'; sel.appendChild(free);
+  sel.value = cur ? series : '__free';
+  const grid = document.createElement('div'); grid.className = 'swatches';
+  const name = document.createElement('div'); name.className = 'filaname'; name.textContent = `${PARTS.find(p => p[0] === part)[1]}: ${filamentLabel(part)} · ${S[key].toUpperCase()}`;
+  const fill = sname => {
+    grid.textContent = '';
+    if (sname === '__free') { const inp = document.createElement('input'); inp.type = 'color'; inp.value = S[key]; inp.oninput = () => { S.filaments[part] = null; S[key] = inp.value; $(key).value = inp.value; refreshMeshColors(); requestRender(); renderFilaChips(); name.textContent = 'Cor livre ' + inp.value.toUpperCase() }; grid.appendChild(inp); return }
+    for (const f of FILAMENTS[br][sname]) {
+      const sw = document.createElement('button'); sw.className = 'swatch' + (cur && cur.series === sname && cur.code === f.code && cur.hex === f.hex ? ' on' : ''); sw.style.background = f.hex;
+      sw.title = `${br} ${sname} — ${f.name}${br === 'Bambu Lab' ? ' · código ' + f.code : ''} · ${f.hex}`;
+      sw.onclick = () => { setPartFilament(part, { brand: br, series: sname, ...f }); refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker() };
+      grid.appendChild(sw);
+    }
+  };
+  sel.onchange = () => fill(sel.value); fill(sel.value);
+  box.append(sel, grid, name);
+}
+function updatePrintBar() {
+  const fmtName = { '3mf': '3MF', stl: 'STL', stlparts: 'STLs por cor' }[S.fileFormat], slicer = PRINTERS[S.printer][3];
+  $('quickPrint').textContent = `🖨 Imprimir — descarregar ${fmtName}`;
+  const fil = PARTS.filter(p => p[0] !== 'outline' || S.outline).map(([part, title]) => `${title}: ${filamentLabel(part)}`).join(' · ');
+  $('printHint').textContent = S.fileFormat === '3mf'
+    ? `Abre no ${slicer}: base, letras${S.outline ? ' e contorno' : ''} já vêm em partes separadas, cada uma no seu filamento. Carrega lá os filamentos escolhidos acima (nome e código).`
+    : S.fileFormat === 'stl' ? `STL não guarda cores nem partes: imprime numa cor, ou pinta/atribui as cores no ${slicer}.`
+    : `Um STL por cor. No ${slicer}, importa todos juntos e responde «Sim» a «um objeto com várias partes»; depois atribui os filamentos escolhidos acima.`;
+}
 const QUALITY_LABEL = { draft: 'Rascunho', normal: 'Normal', fine: 'Fina', ultra: 'Muito fina' };
 const QUALITY_TOL = { draft: .05, normal: .02, fine: .01, ultra: .004 };
 const PERSPECTIVE = 320;
@@ -45,6 +100,7 @@ function updateControls() {
   updateRangeLabels();
   $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0] + ' · ' + S.plateSize + ' × ' + S.plateSize + ' mm'; updateModeNotice(); drawMiniPlate();
+  $('fileFormat').value = S.fileFormat; renderFilaChips(); renderPicker(); updatePrintBar();
 }
 function renderGallery() {
   const box = $('fontCards'), keep = box.scrollTop; box.textContent = '';
@@ -92,15 +148,16 @@ function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±'
 function bindControls() {
   [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
   [['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize') scheduleScan() }));
-  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild() }));
-  [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; refreshMeshColors(); requestRender() }));
+  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
+  [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
-  $('quickPrint').onclick = () => export3MF();
+  $('quickPrint').onclick = () => S.fileFormat === '3mf' ? export3MF() : exportMeshes(S.fileFormat === 'stl' ? 'combined' : 'separate');
+  $('fileFormat').onchange = () => { S.fileFormat = $('fileFormat').value; updatePrintBar() };
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { S.plateView = false; fitCamera(); requestRender() }; $('btnPlate').onclick = () => { S.plateView = true; fitCamera(); requestRender() };
   $('autoRing').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
-  $('printer').onchange = () => { S.printer = $('printer').value; S.plateSize = PRINTERS[S.printer][1]; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
+  $('printer').onchange = () => { S.printer = $('printer').value; S.plateSize = PRINTERS[S.printer][1]; matchFilamentsToBrand(); refreshMeshColors(); pickerPart = null; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
   $('quality').onchange = () => { S.quality = $('quality').value; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge(); scheduleRebuild(true) };
   $('copyCount').oninput = () => { S.copies = +$('copyCount').value; drawMiniPlate(); if (S.plateView) fitCamera(); requestRender() };
   $('autoArrange').onclick = () => { S.positionX = 0; S.positionY = 0; drawMiniPlate(); requestRender(); selectTab('print') };
@@ -143,7 +200,7 @@ const raw = {}, fonts = {};
 const getFont = n => { if (!fonts[n] && raw[n]) fonts[n] = opentype.parse(raw[n]); return fonts[n] || getFont(Object.keys(raw)[0]); };
 self.onmessage = e => {
   const m = e.data;
-  if (m.type === 'ping') return;
+  if (!m || m.type === 'ping') return;
   try {
     if (m.type === 'font') { raw[m.name] = m.buffer; delete fonts[m.name]; self.postMessage({ id: m.id, ok: true }); return; }
     if (m.type === 'check') { opentype.parse(m.buffer); self.postMessage({ id: m.id, ok: true }); return; }
@@ -215,7 +272,7 @@ function geometryState() {
 }
 
 // ---------------------------------------------------------------- reconstrução
-let building = false, buildAgain = false, interactiveBuild = false;
+let building = false, buildAgain = false, interactiveBuild = false, ringDragging = false;
 function scheduleRebuild(now = false, delay) { if (rebuildTimeout) clearTimeout(rebuildTimeout); rebuildTimeout = setTimeout(rebuildModel, now ? 0 : delay != null ? delay : worker ? 120 : 350) }
 // Análise de imprimibilidade de todas as fontes para o nome atual (marcas ✓/⚠ na galeria).
 let scanTimer = null, scanSeq = 0;
@@ -228,7 +285,7 @@ async function runScan() {
 async function rebuildModel() {
   if (building) { buildAgain = true; return }
   building = true; buildAgain = false;
-  let quality = interactiveBuild && (S.quality === 'fine' || S.quality === 'ultra') ? 'normal' : S.quality;
+  let quality = interactiveBuild ? (ringDragging ? 'draft' : (S.quality === 'fine' || S.quality === 'ultra') ? 'normal' : S.quality) : S.quality;
   if (!worker && quality === 'ultra') quality = 'fine';   // modo compatível: «Muito fina» só na exportação
   $('overlayStatus').textContent = 'A calcular geometria vetorial…';
   try {
@@ -289,7 +346,7 @@ function updateRingCheck() {
   const pct = Math.round(ri.frac * 100), cls = ri.status === 'ok' && !ri.holeCuts ? 'ok' : ri.status === 'ok' ? 'aviso' : 'mau';
   let html = ri.status === 'solta' ? '✗ <b>Argola solta</b>: não está ligada à peça.' : ri.status === 'fraca' ? `⚠ <b>Ligação frágil</b>: só ${pct}% da bola assenta na peça.` : `✓ <b>Ligação segura</b>: ${pct}% da bola assenta na peça${S.ringReinforce && ri.web > 0.05 ? ', com reforço' : ''}.`;
   if (ri.status !== 'ok') html += ' Arrasta a bola mais para dentro da base (ideal 30–50%) ou carrega em «◎ Reposicionar automaticamente».';
-  if (ri.holeCuts) html += ' ⚠ O furo corta letras.';
+  if (ri.holeCuts) html += ' ⚠ O furo corta letras.'; else if (ri.cover > .03) html += ' ⚠ A argola tapa parte das letras.';
   if (ri.wall < 1.6) html += ` ⚠ Parede da argola fina (${fmt(ri.wall)} mm): aumenta o diâmetro exterior ou diminui o furo.`;
   el.className = 'printcheck ' + cls; el.innerHTML = html;
 }
@@ -298,6 +355,7 @@ let ringTagUntil = Date.now() + 15000, ringDragged = false;
 function updateRingTag() {
   const tag = $('ringTag'), ri = model && model.regions.ring;
   if (!tag || !S.hasRing || !ri || !gl && !fallbackCtx) { tag && tag.classList.add('hidden'); return }
+  if (ringGhost) { const pos = objectPositions()[0], p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
   const weak = ri.status !== 'ok', show = weak || (!ringDragged && Date.now() < ringTagUntil) || S.selected === 'ring';
   if (!show || Math.cos(camera.yaw) < 0) { tag.classList.add('hidden'); return }
   const pos = objectPositions()[0], p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
@@ -324,10 +382,15 @@ function init3D() {
  gl_Position=vec4(xy.x/uViewport.x*2.0-1.0,1.0-xy.y/uViewport.y*2.0,clamp(-r.z/uDistance,-.99,.99),1.0);
  vec3 nr=vec3(cy*aNormal.x+sy*aNormal.z,aNormal.y,-sy*aNormal.x+cy*aNormal.z);
  vNormal=normalize(vec3(nr.x,cx*nr.y-sx*nr.z,sx*nr.y+cx*nr.z));vColor=aColor;}`);
-  const f = glCompile(gl.FRAGMENT_SHADER, `precision mediump float;varying vec3 vNormal,vColor;void main(){vec3 n=normalize(vNormal);float d=max(0.0,dot(n,normalize(vec3(-.35,.45,.82))));float s=pow(max(0.0,dot(reflect(-normalize(vec3(-.35,.45,.82)),n),vec3(0,0,1))),24.0);gl_FragColor=vec4(vColor*(.58+.42*d)+vec3(.10*s),1.0);}`);
+  // Material por filamento: Basic (acetinado), Matte (baço), Silk (brilho sedoso), PETG (brilhante).
+  const f = glCompile(gl.FRAGMENT_SHADER, `precision mediump float;varying vec3 vNormal,vColor;uniform vec3 uMat;uniform vec4 uTint;
+  void main(){vec3 n=normalize(vNormal);vec3 L=normalize(vec3(-.35,.45,.82)),L2=normalize(vec3(.6,-.3,.5));
+  float d=max(0.0,dot(n,L))*.75+max(0.0,dot(n,L2))*.25;float hemi=.5+.5*n.y;
+  float s=pow(max(0.0,dot(reflect(-L,n),vec3(0,0,1))),uMat.y)*uMat.x;float rim=pow(1.0-max(0.0,n.z),3.0)*uMat.z;
+  vec3 c=mix(vColor,uTint.rgb,uTint.a);gl_FragColor=vec4(c*(.42+.18*hemi+.48*d)+vec3(s+rim*.25),1.0);}`);
   shader = gl.createProgram(); gl.attachShader(shader, v); gl.attachShader(shader, f); gl.linkProgram(shader); if (!gl.getProgramParameter(shader, gl.LINK_STATUS)) throw Error(gl.getProgramInfoLog(shader));
   for (const [k, name] of Object.entries({ position: 'aPosition', normal: 'aNormal', color: 'aColor' })) attrib[k] = gl.getAttribLocation(shader, name);
-  for (const [k, name] of Object.entries({ yaw: 'uYaw', pitch: 'uPitch', scale: 'uScale', distance: 'uDistance', viewport: 'uViewport', pan: 'uPan', offset: 'uOffset', center: 'uModelCenter' })) uniform[k] = gl.getUniformLocation(shader, name);
+  for (const [k, name] of Object.entries({ yaw: 'uYaw', pitch: 'uPitch', scale: 'uScale', distance: 'uDistance', viewport: 'uViewport', pan: 'uPan', offset: 'uOffset', center: 'uModelCenter', mat: 'uMat', tint: 'uTint' })) uniform[k] = gl.getUniformLocation(shader, name);
   gl.enable(gl.DEPTH_TEST); gl.depthFunc(gl.LEQUAL); gl.clearColor(.052, .08, .123, 1);
   new ResizeObserver(() => { resizeCanvas(); requestRender() }).observe($('viewport')); resizeCanvas(); rebuildBed(); bindViewerEvents();
 }
@@ -356,17 +419,47 @@ function pixelRatio() { return Math.min(window.devicePixelRatio || 1, 2) }
 function resizeCanvas() { const r = $('viewport').getBoundingClientRect(), ratio = pixelRatio(); $('gl').width = Math.max(1, Math.round(r.width * ratio)); $('gl').height = Math.max(1, Math.round(r.height * ratio)); if (gl) gl.viewport(0, 0, $('gl').width, $('gl').height) }
 function bindBufferAndDraw(buffer, n, mode, offset) { if (!buffer) return; gl.bindBuffer(gl.ARRAY_BUFFER, buffer); const stride = 36; for (const [key, i] of [['position', 0], ['normal', 3], ['color', 6]]) { gl.enableVertexAttribArray(attrib[key]); gl.vertexAttribPointer(attrib[key], 3, gl.FLOAT, false, stride, i * 4) } gl.uniform2f(uniform.offset, offset[0], offset[1]); gl.drawArrays(mode, 0, n) }
 function requestRender() { if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render3D() }) }
+function materialFor(id) {
+  const f = S.filaments[id === 'back' ? 'letters' : id], sr = f ? f.series : '';
+  if (/Silk/i.test(sr)) return [.55, 36, .9];
+  if (/Matte/i.test(sr)) return [.02, 8, .15];
+  if (/PETG/i.test(sr)) return [.35, 60, .4];
+  return [.14, 24, .3];
+}
 function render3D() {
   if (!gl || !shader) { renderFallback(); return }
   const c = $('gl'), ratio = c.width / Math.max(1, c.clientWidth);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT); gl.useProgram(shader);
   gl.uniform1f(uniform.yaw, camera.yaw); gl.uniform1f(uniform.pitch, camera.pitch); gl.uniform1f(uniform.scale, camera.scale * ratio);
   gl.uniform1f(uniform.distance, PERSPECTIVE); gl.uniform2f(uniform.viewport, c.width, c.height); gl.uniform2f(uniform.pan, camera.panX * ratio, camera.panY * ratio); gl.uniform3f(uniform.center, camera.cx, camera.cy, camera.cz);
+  gl.uniform3f(uniform.mat, .05, 16, 0); gl.uniform4f(uniform.tint, 0, 0, 0, 0);
   if (Math.cos(camera.yaw) > -.18) { bindBufferAndDraw(plateBuffer && plateBuffer.buf, plateBuffer && plateBuffer.n, gl.TRIANGLES, [0, 0]); bindBufferAndDraw(gridBuffer && gridBuffer.buf, gridBuffer && gridBuffer.n, gl.LINES, [0, 0]) }
-  for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]);
+  for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) { const mt = materialFor(m.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
+  // Argola «fantasma» durante o arrasto: desenhada direto na GPU, segue o cursor sem recalcular a peça.
+  if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
   updateRingTag();
 }
 
+// Malha simples da argola (anel extrudido) para o arrasto em tempo real.
+let ringGhost = null, ringGhostBuf = null, ringDragBase = null, ringDragText = null;
+function buildRingGhost() {
+  if (!gl) return; if (ringGhostBuf) gl.deleteBuffer(ringGhostBuf.buf);
+  const ro = S.ringOuter / 2, ri = S.ringInner / 2, z0 = (model && model.zShift) || 0, z1 = z0 + S.bodyThickness, n = 64, v = [], c = rgb(S.baseColor);
+  const push = (x, y, z, nx, ny, nz) => v.push(x, y, z, nx, ny, nz, c[0], c[1], c[2]);
+  for (let i = 0; i < n; i++) {
+    const a0 = i / n * 2 * Math.PI, a1 = (i + 1) / n * 2 * Math.PI, c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
+    /* só a face de cima: é desenhada por cima de tudo, sem teste de profundidade */ for (const [z, nz] of [[z1 + .05, 1]]) { push(ro * c0, ro * s0, z, 0, 0, nz); push(ro * c1, ro * s1, z, 0, 0, nz); push(ri * c1, ri * s1, z, 0, 0, nz); push(ro * c0, ro * s0, z, 0, 0, nz); push(ri * c1, ri * s1, z, 0, 0, nz); push(ri * c0, ri * s0, z, 0, 0, nz) }
+  }
+  ringGhostBuf = makeBuffer(new Float32Array(v));
+}
+// Força da ligação calculada na página, ao vivo, contra a base sem argola (contornos simplificados).
+function ghostStatus(x, y) {
+  if (!ringDragBase) return 'ok';
+  const ro = S.ringOuter / 2, disc = Math.PI * ro * ro, f = Math.abs(SparrowGeo.regionArea(SparrowGeo.intersection(SparrowGeo.circle(x, y, ro, .2, .35), ringDragBase))) / disc;
+  ringGhost.frac = f; if (f * disc < .3) return 'solta'; if (f < .2) return 'fraca';
+  ringGhost.cover = ringDragText ? Math.abs(SparrowGeo.regionArea(SparrowGeo.intersection(SparrowGeo.circle(x, y, ro, .2, .35), ringDragText))) / disc : 0;
+  return ringGhost.cover > .03 ? 'tapa' : 'ok';
+}
 // ---------------------------------------------------------------- câmara: projeção igual à do shader
 function project(x, y, z) {
   const rect = $('gl').getBoundingClientRect(), W = rect.width, H = rect.height;
@@ -400,6 +493,19 @@ function fitCamera() {
   camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
 }
 function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').textContent = side === 'front' ? '↻ Ver verso' : '↻ Ver frente'; requestRender() }
+// Início do arrasto: a peça é recalculada (rascunho) SEM a argola e a argola passa a ser o fantasma na GPU.
+function startRingGhost(d) {
+  ringGhost = { x: S.ringX, y: S.ringY, status: 'ok', frac: 1 }; buildRingGhost();
+  ringDragging = true; interactiveBuild = true;
+  const st = geometryState(); st.hasRing = false;
+  geometryCall({ type: 'build', S: st, quality: 'draft' }).then(r => {
+    if (!ringGhost) return;
+    ringDragBase = SparrowGeo.simplify(r.regions.base, .1); ringDragText = SparrowGeo.simplify(r.regions.text, .1);
+    releaseMeshBuffers(); components = r.parts.map(p => ({ ...p, color: partColor(p.id) })); uploadMeshBuffers();
+    ringGhost.status = ghostStatus(ringGhost.x, ringGhost.y); requestRender();
+  }).catch(e => console.warn(e));
+}
+function endRingGhost() { ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
 function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - S.positionX, y: p.y - S.positionY } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
 function selectAt(evt) {
@@ -425,7 +531,7 @@ function bindViewerEvents() {
     // Repõe o que o primeiro botão possa ter mexido antes de o segundo ser premido.
     if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch }
     if (d.kind === 'move') { S.positionX = d.originalX; S.positionY = d.originalY; clampToPlate(); drawMiniPlate() }
-    if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; interactiveBuild = false; if (d.moved) scheduleRebuild(true) }
+    if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; interactiveBuild = false; endRingGhost(); if (d.moved) scheduleRebuild(true) }
     d.kind = 'pan'; d.chord = true; canvas.parentElement.classList.add('dragging'); requestRender();
   };
   canvas.addEventListener('pointerdown', e => {
@@ -454,14 +560,21 @@ function bindViewerEvents() {
     if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
     if (!d.moved) return;
     if (d.kind === 'pan') { camera.panX += dx; camera.panY += dy; requestRender() }
-    else if (d.kind === 'ring') { const p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness); if (p) { S.ringX = p.x; S.ringY = p.y; S.ringManual = true; interactiveBuild = true; scheduleRebuild(false) } }
+    else if (d.kind === 'ring') {
+      const p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness);
+      if (p) {
+        if (!ringGhost) startRingGhost(d);
+        S.ringX = p.x; S.ringY = p.y; S.ringManual = true;
+        ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
+      }
+    }
     else if (d.kind === 'move') { S.positionX = d.originalX + (e.clientX - d.startX) / camera.scale; S.positionY = d.originalY - (e.clientY - d.startY) / camera.scale; clampToPlate(); drawMiniPlate(); requestRender() }
     else { camera.yaw += dx * .008; camera.pitch = Math.max(-1.1, Math.min(1.1, camera.pitch + dy * .008)); requestRender() }
   });
   const endDrag = () => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
     if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
-    if (d.kind === 'ring' && d.moved) { interactiveBuild = false; scheduleRebuild(true) }
+    if (d.kind === 'ring' && d.moved) { endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true) }
   };
   canvas.addEventListener('pointerup', e => { if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag() });
   canvas.addEventListener('pointercancel', endDrag);
@@ -582,12 +695,12 @@ async function export3MF() {
   if (plan.positions.length < S.copies || b.width > S.plateSize - PLATE_MARGIN * 2 || b.height > S.plateSize - PLATE_MARGIN * 2) { alert('Há peças fora do espaço disponível. Diminui o número de cópias ou o nome.'); return }
   await withBusy($('export3MF'), '⏳ A criar 3MF…', async () => {
     await new Promise(r => setTimeout(r, 30));
-    const parts = (await finalComponents()).map(c => ({ id: c.id, label: c.label + ' (' + c.color.toUpperCase() + ')', color: c.color, mesh: c.mesh }));
+    const parts = (await finalComponents()).map(c => ({ id: c.id, label: `${c.label} — ${filamentLabel(c.id)} ${c.color.toUpperCase()}`, color: c.color, mesh: c.mesh }));
     const res = Sparrow3MF.build(parts, plan.positions, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateSize: S.plateSize });
     const bytes = await Sparrow3MF.zip(res.entries);
     download(bytes, `SparrowTech_${safeName(S.name)}_${PRINTERS[S.printer][0].replace(/[^A-Za-z0-9]/g, '')}.3mf`, 'model/3mf');
-    const list = parts.map(p => `${p.label.replace(/ \(#.*/, '')} → filamento ${res.extruders[p.id]}`).join(' · ');
-    $('qualityNotice').textContent = `3MF exportado (${plan.positions.length} cópia(s)). ${list}. No slicer, escolhe as cores desses filamentos.`;
+    const list = parts.map(p => `${p.label.split(' — ')[0]} → filamento ${res.extruders[p.id]} (${filamentLabel(p.id)})`).join(' · ');
+    $('qualityNotice').textContent = `3MF exportado (${plan.positions.length} cópia(s)). ${list}. Abre no ${PRINTERS[S.printer][3]} e carrega esses filamentos.`;
   });
 }
 
@@ -610,7 +723,7 @@ async function exportTestPlate() {
       if (b.width > inner || y - b.height < -inner / 2) { skipped.push(font); continue }
       placed.push({ font, r, pos: { x: x - b.minX, y: y - b.maxY } }); x += b.width + gap; rowH = Math.max(rowH, b.height);
     }
-    const objects = placed.map(({ font, r, pos }) => ({ name: `${S.name || 'Nome'} — ${font}`, placements: [pos], parts: r.parts.map(p => ({ id: p.id, label: `${partLabel(p)} (${partColor(p.id).toUpperCase()})`, color: partColor(p.id), mesh: p.mesh })) }));
+    const objects = placed.map(({ font, r, pos }) => ({ name: `${S.name || 'Nome'} — ${font}`, placements: [pos], parts: r.parts.map(p => ({ id: p.id, label: `${partLabel(p)} — ${filamentLabel(p.id)} ${partColor(p.id).toUpperCase()}`, color: partColor(p.id), mesh: p.mesh })) }));
     const res = Sparrow3MF.buildObjects(objects, { name: `Teste de fontes — ${S.name}`, printerName: PRINTERS[S.printer][0], plateSize: S.plateSize });
     download(await Sparrow3MF.zip(res.entries), `SparrowTech_teste_fontes_${safeName(S.name)}.3mf`, 'model/3mf');
     $('qualityNotice').textContent = `Placa de teste: ${placed.length} fonte(s) (${placed.map(p => p.font).join(', ')}).` + (skipped.length ? ` Não couberam: ${skipped.join(', ')}.` : '') + ` Bico ${fmt2(S.nozzle)} mm, camada ${String(S.layer).replace('.', ',')} mm.`;
@@ -626,7 +739,7 @@ async function boot() {
   const data = window.SPARROW_FONTS || [];
   await Promise.all(data.map(f => registerFont(f.name, b64ToBuffer(f.data), f.group)));
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
-  updateControls(); scheduleScan();
+  matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
 }
 boot();

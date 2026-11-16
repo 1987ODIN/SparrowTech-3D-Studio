@@ -97,6 +97,37 @@ with sync_playwright() as p:
     # Importar fonte (usa uma das fontes do projeto)
     page.click('#tabLetters')
     page.set_input_files('#fontFile', os.path.join(ROOT, 'fonts', 'Cookie.ttf')); page.wait_for_timeout(600); verify('importar fonte TTF')
+    # Filamentos: chips → paleta oficial → escolher cor; marca segue a impressora
+    page.select_option('#printer', 'A1'); page.wait_for_timeout(100)
+    page.locator('.filachip').first.click(); page.wait_for_timeout(100)
+    sw = page.locator('#filaPicker .swatch'); n = sw.count()
+    sw.nth(min(5, n - 1)).click(); page.wait_for_timeout(100); verify(f'paleta Bambu ({n} cores) → base escolhida')
+    fb = page.evaluate("S.filaments.base"); ok = fb and fb['brand'] == 'Bambu Lab' and page.evaluate("S.baseColor") == fb['hex'].lower()
+    print(('  ✓ ' if ok else '  ✗ ') + f"base = {fb and fb['series']} {fb and fb['name']} ({fb and fb['code']})"); fails.extend([] if ok else ['filamento base'])
+    page.select_option('#filaSeries', 'PLA Matte'); page.locator('#filaPicker .swatch').nth(2).click(); verify('série PLA Matte')
+    page.select_option('#printer', 'K1C'); page.wait_for_timeout(150)
+    brands = page.evaluate("Object.values(S.filaments).filter(Boolean).map(f => f.brand)"); hint = page.inner_text('#printHint')
+    ok = brands and all(b == 'Creality' for b in brands) and 'Creality Print' in hint and 'Bambu' not in hint
+    print(('  ✓ ' if ok else '  ✗ ') + f'K1C → filamentos Creality {brands}; dica: {hint[:70]}…'); fails.extend([] if ok else ['marca Creality'])
+    with page.expect_download(timeout=90000) as dl: page.click('#quickPrint')
+    pth = os.path.join(OUT, 'ui_k1c.3mf'); dl.value.save_as(pth)
+    import zipfile; z = zipfile.ZipFile(pth); cfg = z.read('Metadata/model_settings.config').decode(); main = z.read('3D/3dmodel.model').decode()
+    ok = 'Creality Hyper PLA' in cfg and 'Bambu' not in cfg.replace('BambuStudio', '') and 'Creality K1C' in main
+    print(('  ✓ ' if ok else '  ✗ ') + '3MF K1C com nomes de filamento Creality nas partes (sem Bambu Lab)'); fails.extend([] if ok else ['3mf k1c'])
+    page.select_option('#printer', 'A1'); page.wait_for_timeout(150)
+    with page.expect_download(timeout=90000) as dl: page.click('#quickPrint')
+    pth = os.path.join(OUT, 'ui_a1.3mf'); dl.value.save_as(pth); cfg = zipfile.ZipFile(pth).read('Metadata/model_settings.config').decode()
+    ok = 'Bambu Lab PLA' in cfg and 'Creality' not in cfg
+    print(('  ✓ ' if ok else '  ✗ ') + '3MF A1 com filamentos Bambu Lab nas partes (sem Creality)'); fails.extend([] if ok else ['3mf a1'])
+    # Formato no topo: 3MF / STL / STLs por cor
+    for fmt_, expect in [('stl', '.stl'), ('3mf', '.3mf')]:
+        page.select_option('#fileFormat', fmt_)
+        with page.expect_download(timeout=90000) as dl: page.click('#quickPrint')
+        ok = dl.value.suggested_filename.endswith(expect); print(('  ✓ ' if ok else '  ✗ ') + f'Imprimir em {fmt_} → {dl.value.suggested_filename}'); fails.extend([] if ok else ['formato ' + fmt_])
+    page.select_option('#fileFormat', 'stlparts'); got = []
+    page.on('download', lambda d: got.append(d.suggested_filename)); page.click('#quickPrint'); page.wait_for_timeout(2500)
+    ok = len(got) >= 3; print(('  ✓ ' if ok else '  ✗ ') + f'Imprimir em STLs por cor → {got}'); fails.extend([] if ok else ['stlparts'])
+    page.select_option('#fileFormat', '3mf')
     # Exportações: Imprimir (topo), 3MF, STL completo, STLs por cor, placa de teste
     for bid, n in [('quickPrint', 1), ('export3MF', 1), ('exportSTL', 1)]:
         if bid != 'quickPrint': page.click('#tabPrint')
