@@ -54,12 +54,15 @@ with sync_playwright() as p:
     pg.wait_for_timeout(400)
     lo = pg.evaluate("!document.getElementById('loupe').classList.contains('hidden') && !!ringGhost && loupeOn")
     lb = pg.locator('#loupe').bounding_box() if lo else None
+    if lo: pg.screenshot(path=os.path.join(OUT, 'mobile_camara_topo.png'), clip={'x': 0, 'y': 0, 'width': 390, 'height': 460})
+    px = pg.evaluate("(()=>{const cv=document.getElementById('loupeCv'),d=cv.getContext('2d').getImageData(0,0,cv.width,cv.height).data;let n=0;for(let i=0;i<d.length;i+=16)if(d[i]+d[i+1]+d[i+2]>120)n++;return n})()") if lo else 0
+    check(px > 200, f'a câmara mostra mesmo a peça ({px} pontos desenhados)')
     check(lo and lb and lb['width'] > 120, f"arrastar a argola com o dedo abre a câmara secundária ({lb and round(lb['width'])} px)")
     if lb: check(not (lb['x'] <= rp['x'] + 45 <= lb['x'] + lb['width'] and lb['y'] <= rp['y'] + 30 <= lb['y'] + lb['height']), 'a câmara fica longe do dedo')
     pg.screenshot(path=os.path.join(OUT, 'mobile_lupa_argola.png'))
     touch('touchEnd', []); pg.wait_for_timeout(700); pg.wait_for_function('() => !building', timeout=60000)
     check(pg.evaluate("document.getElementById('loupe').classList.contains('hidden') && !ringGhost && components.every(c=>SparrowGeo.isClosed(c.mesh))"), 'ao largar: câmara fecha e a peça é recalculada (fechada)')
-    if lb: check(lb['x'] < 20, 'a câmara da argola fica sempre do lado esquerdo')
+    if lb: check(lb['x'] < 20 and lb['y'] < 10, 'a câmara da argola fica fixa no canto superior esquerdo, por cima do título')
     check(intro_ok and not pg.locator('#introCard').is_visible(), 'cartão inicial explica a argola e fecha em «Começar»')
     hb = [pg.locator(i).bounding_box() for i in ('#dlSTL', '#dl3MF')]
     check(all(b and b['y'] < 54 and b['x'] + b['width'] <= 390 for b in hb), 'STL e 3MF no topo, à direita, dentro do ecrã')

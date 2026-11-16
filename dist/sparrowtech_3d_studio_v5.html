@@ -4,7 +4,7 @@
 :root{color-scheme:dark;--bg:#101824;--panel:#1b2432;--surface:#263345;--line:#334357;--blue:#348ff8;--text:#eaf1fb;--muted:#9bacbf}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,Segoe UI,Arial,sans-serif}button,input,select{font:inherit}button{background:var(--surface);color:var(--text);border:1px solid #41516a;border-radius:10px;padding:9px 12px;cursor:pointer}button:hover{background:#334961}button:disabled{opacity:.45;cursor:not-allowed}button.on{background:#1764bd;border-color:#3994f8;color:white}button.primary{background:#2087f2;border-color:#218cff;font-weight:750}button.ghost{background:transparent}button.tiny{padding:5px 9px;font-size:12px}h1{margin:0;font-size:20px;letter-spacing:-.4px}h2{font-size:14px;margin:0}.muted{color:var(--muted);font-size:12px}.app{display:grid;grid-template-columns:1fr minmax(310px,365px);height:100vh;min-height:650px}.work{display:flex;flex-direction:column;min-width:0;background:radial-gradient(circle at 45% 45%,#253a54 0%,#111c2b 65%,#0d1520 100%)}header{padding:16px 20px;border-bottom:1px solid #2d3d50;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:12px}.symbol{width:37px;height:37px;display:grid;place-items:center;background:linear-gradient(140deg,#4ba8ff,#235bc3);border-radius:10px;font-size:22px}.topactions{display:flex;gap:7px;flex-wrap:wrap}.viewport{position:relative;flex:1;min-height:360px;touch-action:none;overflow:hidden}#gl{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}.viewport.dragging #gl{cursor:grabbing}.help{position:absolute;left:14px;top:14px;display:flex;gap:7px;flex-wrap:wrap}.help span,.overlaystatus{background:#0a1525dd;border:1px solid #314159;border-radius:9px;padding:7px 10px;color:#c0d0e5;font-size:12px}.overlaystatus{position:absolute;right:14px;top:14px;max-width:260px;pointer-events:none}.selectionlabel{position:absolute;bottom:13px;left:14px;background:#12253ddc;border:1px solid #3268aa;padding:8px 11px;border-radius:9px;color:#dceeff;font-size:12px}.bottom{border-top:1px solid #314154;background:#121c29;padding:12px 18px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.bottom .grp{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.side{background:#1b2534;border-left:1px solid #33445c;overflow:auto;padding:18px 17px 26px}.mode{display:flex;background:#101826;padding:4px;border-radius:12px;gap:5px}.mode button{flex:1;border:0}.mode button.on{background:#2489ed}.contextnav{display:flex;gap:7px;margin:16px 0 12px}.contextnav button{flex:1;font-size:12px;padding:10px 3px}.contextnav button.on{box-shadow:inset 0 -3px #65b8ff}.section{background:#212e40;border:1px solid #354761;border-radius:14px;padding:14px;margin-bottom:11px}.sectiontitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px}.sectiontitle h2{margin:0}.label{font-weight:650;font-size:12px;margin:12px 0 6px;display:block;color:#d6e3f6}input[type=text],input[type=number],select{width:100%;border-radius:9px;border:1px solid #566982;color:#eaf0ff;background:#101a29;padding:9px 10px;outline:none}input:focus,select:focus{border-color:#52b1ff;box-shadow:0 0 0 2px #267fff33}input[type=range]{width:100%;accent-color:#339bff;cursor:pointer}.fieldrow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px}.fieldrow .right{color:#a9c1db;font-size:12px;font-variant-numeric:tabular-nums}.fontcards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fontcard{height:58px;padding:4px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden}.fontcard span{font-size:26px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;line-height:1.15}.fontcard small{font-size:10px;color:#aabbd0}.fontcard.on{outline:2px solid #2f9bfd}.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.options button{font-size:12px;min-height:38px}.options.three{grid-template-columns:repeat(3,1fr)}.switch{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:8px}.switch input{width:18px;height:18px;accent-color:#3294fc}.colors{display:flex;gap:7px}.color{display:grid;gap:4px;flex:1;font-size:11px;text-align:center;color:#a7b8c9}.color input{height:34px;width:100%;border-radius:8px;border:1px solid #52647b;padding:0;background:none}.pro-only{display:none}.pro .pro-only{display:block}.explain{display:flex;gap:9px;align-items:center;background:#101c2b;padding:10px;border-radius:10px;color:#bbcee4;font-size:12px;line-height:1.35;margin-top:8px}.explain svg{flex:0 0 90px}.miniPlate{width:100%;max-width:190px;aspect-ratio:1;margin:12px auto 4px;background:#152434;border:2px solid #63809c;border-radius:4px;position:relative;cursor:crosshair;touch-action:none;overflow:hidden;background-image:linear-gradient(#253a4a 1px,transparent 1px),linear-gradient(90deg,#253a4a 1px,transparent 1px);background-size:10% 10%}.plateObject{position:absolute;border:2px solid #58a8fa;background:#348ff34f;min-width:5px;min-height:4px;border-radius:4px;cursor:grab;display:grid;place-items:center;color:white;font-size:9px;user-select:none;touch-action:none;white-space:nowrap}.notice{background:#12263e;border:1px solid #285c92;border-radius:11px;padding:11px;line-height:1.5;font-size:12px;color:#c0d9ef}.warn{color:#ffc47f}.hidden{display:none!important}
 header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-size:19px;margin:0}#topDownload{font-weight:700}
-.loupe{position:absolute;z-index:6;pointer-events:none;border:2px solid #ffcc33;border-radius:14px;box-shadow:0 6px 24px #0008}
+.loupe canvas{width:100%;height:100%;border-radius:12px;display:block}.loupe{position:fixed;left:6px;top:4px;z-index:40;background:#08111c;pointer-events:none;border:2px solid #ffcc33;border-radius:14px;box-shadow:0 6px 24px #0008}
 .loupe span{position:absolute;left:8px;top:6px;font-size:11px;color:#ffe9a6;background:#0009;padding:2px 6px;border-radius:6px}
 .loupe i{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border:1px dashed #ffcc33aa;border-radius:50%}
 @media(max-width:830px){.help,.overlaystatus{display:none}.fontswitch{top:8px}.fontswitch .fname{min-width:110px;font-size:17px}.fontswitch .fcount,.fontswitch .fhint{display:none!important}
@@ -48,7 +48,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 .printcheck.aviso{background:#3a2e12;border-color:#7a5d1a}.printcheck.mau{background:#3d1919;border-color:#8a2e2e}
 </style></head>
 <body><div class="app"><section class="work"><header><div class="brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate" class="hidden">▦ Plate</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
-<div class="viewport" id="viewport"><canvas id="gl"></canvas><div class="help"><span title="Botão esquerdo e arrastar">🖱 Esq.: rodar</span><span title="Esquerdo + direito ao mesmo tempo, só o direito, a roda premida ou Shift + esquerdo">Esq.+Dir.: mover vista</span><span>Roda: zoom no cursor</span><span title="Na vista do tabuleiro">Ctrl: mover peça</span></div><div class="fontswitch" id="fontSwitch" title="Roda do rato aqui (ou clica nas letras e roda) para trocar de fonte"><button id="fontPrev" class="tiny">◀</button><span class="fname" id="fontName">Pacifico</span><button id="fontNext" class="tiny">▶</button><span class="fcount" id="fontCount">1/50</span><span class="fhint">Roda: trocar fonte · Esc: sair</span></div><div class="loupe hidden" id="loupe"><span>📷 vista da argola</span><i></i></div><div class="ringtag hidden" id="ringTag">◉ arrasta a argola</div><div class="cardov hidden" id="introCard"><div class="card"><h2>Como funciona</h2><ul><li><b>Escreve o nome</b> e escolhe a letra e as cores.</li><li><b>A argola põe-se onde quiseres:</b> agarra-a com o dedo (ou com o rato) e arrasta-a para junto da peça.</li><li><b>Toca uma vez na argola</b> para mudar o tamanho ou repor a posição.</li><li>No fim, descarrega em <b>STL</b> ou <b>3MF</b> nos botões do topo.</li></ul><div class="cardrow"><button id="introGo" class="primary">Começar</button></div></div></div><div class="cardov hidden" id="infoCard"><div class="card"><h2>3MF com cores</h2><div id="infoBody"></div><label class="skip"><input type="checkbox" id="infoSkip"> Não mostrar outra vez</label><div class="cardrow"><button id="infoCancel">Cancelar</button><button id="infoStudio" class="deskonly" title="Descarrega o 3MF e inicia o Bambu Studio neste computador">⬇ e abrir o Bambu Studio</button><button id="infoGo" class="primary">⬇ Descarregar 3MF</button></div></div></div><div class="ringmenu hidden" id="ringMenu" title="Argola: tamanho e posição"><b>◉</b><span id="rmVal">7,2 mm</span><button id="rmPlus" title="Argola maior">＋</button><input id="rmSize" type="range" min="6" max="13" step="0.5" value="7.2" aria-label="Tamanho da argola"><button id="rmMinus" title="Argola mais pequena">−</button><button id="rmReset" class="primary" title="Repor a posição da argola">↺</button><button id="rmClose" class="tiny" title="Fechar">✕</button></div><div class="overlaystatus" id="overlayStatus">A preparar o modelo...</div><div class="viewCube" aria-label="Vistas do modelo"><button data-view="front" title="Frente">F</button><button data-view="back" title="Verso">V</button><button data-view="top" title="Vista superior">▲</button><button data-view="iso" title="Vista 3D">3D</button><button data-view="zoomIn" title="Aproximar">＋</button><button data-view="zoomOut" title="Afastar">−</button></div><div class="selectionlabel" id="selectionLabel">✎ Selecionado: letras · clique para editar</div></div>
+<div class="viewport" id="viewport"><canvas id="gl"></canvas><div class="help"><span title="Botão esquerdo e arrastar">🖱 Esq.: rodar</span><span title="Esquerdo + direito ao mesmo tempo, só o direito, a roda premida ou Shift + esquerdo">Esq.+Dir.: mover vista</span><span>Roda: zoom no cursor</span><span title="Na vista do tabuleiro">Ctrl: mover peça</span></div><div class="fontswitch" id="fontSwitch" title="Roda do rato aqui (ou clica nas letras e roda) para trocar de fonte"><button id="fontPrev" class="tiny">◀</button><span class="fname" id="fontName">Pacifico</span><button id="fontNext" class="tiny">▶</button><span class="fcount" id="fontCount">1/50</span><span class="fhint">Roda: trocar fonte · Esc: sair</span></div><div class="loupe hidden" id="loupe"><canvas id="loupeCv"></canvas><span>📷 vista da argola</span><i></i></div><div class="ringtag hidden" id="ringTag">◉ arrasta a argola</div><div class="cardov hidden" id="introCard"><div class="card"><h2>Como funciona</h2><ul><li><b>Escreve o nome</b> e escolhe a letra e as cores.</li><li><b>A argola põe-se onde quiseres:</b> agarra-a com o dedo (ou com o rato) e arrasta-a para junto da peça.</li><li><b>Toca uma vez na argola</b> para mudar o tamanho ou repor a posição.</li><li>No fim, descarrega em <b>STL</b> ou <b>3MF</b> nos botões do topo.</li></ul><div class="cardrow"><button id="introGo" class="primary">Começar</button></div></div></div><div class="cardov hidden" id="infoCard"><div class="card"><h2>3MF com cores</h2><div id="infoBody"></div><label class="skip"><input type="checkbox" id="infoSkip"> Não mostrar outra vez</label><div class="cardrow"><button id="infoCancel">Cancelar</button><button id="infoStudio" class="deskonly" title="Descarrega o 3MF e inicia o Bambu Studio neste computador">⬇ e abrir o Bambu Studio</button><button id="infoGo" class="primary">⬇ Descarregar 3MF</button></div></div></div><div class="ringmenu hidden" id="ringMenu" title="Argola: tamanho e posição"><b>◉</b><span id="rmVal">7,2 mm</span><button id="rmPlus" title="Argola maior">＋</button><input id="rmSize" type="range" min="6" max="13" step="0.5" value="7.2" aria-label="Tamanho da argola"><button id="rmMinus" title="Argola mais pequena">−</button><button id="rmReset" class="primary" title="Repor a posição da argola">↺</button><button id="rmClose" class="tiny" title="Fechar">✕</button></div><div class="overlaystatus" id="overlayStatus">A preparar o modelo...</div><div class="viewCube" aria-label="Vistas do modelo"><button data-view="front" title="Frente">F</button><button data-view="back" title="Verso">V</button><button data-view="top" title="Vista superior">▲</button><button data-view="iso" title="Vista 3D">3D</button><button data-view="zoomIn" title="Aproximar">＋</button><button data-view="zoomOut" title="Afastar">−</button></div><div class="selectionlabel" id="selectionLabel">✎ Selecionado: letras · clique para editar</div></div>
 <div class="bottom"><div class="grp hidden"><span class="pill" id="machineBadge">Bambu Lab A1 · 256 × 256 mm</span><span class="pill" id="sizeBadge">— mm</span><span class="pill" id="triangleBadge">— triângulos</span><span class="pill" id="qualityBadge">Malha fina</span></div><div class="grp"><button id="frontView" class="tiny on">Frente</button><button id="backView" class="tiny">Verso</button><button id="resetCam" class="tiny">Isométrica</button></div></div><div class="statusbar" id="status">Protótipo experimental: antes de imprimir, confirma o 3MF e a configuração no slicer.</div></section>
 <aside class="side"><div class="printbar"><div class="pbrow"><label>Impressora Bambu Lab<select id="printer"><optgroup label="Tabuleiro pequeno"><option value="A1Mini">A1 mini</option></optgroup><optgroup label="Tabuleiro normal"><option value="A1" selected>A1</option><option value="P1S">P1S</option><option value="P1P">P1P</option><option value="P2S">P2S</option><option value="X1C">X1 Carbon</option><option value="X1E">X1E</option></optgroup><optgroup label="Tabuleiro grande"><option value="A2L">A2L</option><option value="H2S">H2S</option><option value="H2D">H2D</option><option value="H2C">H2C</option></optgroup></select></label><label>Cópias<input id="copyTop" type="number" min="1" max="40" value="1" inputmode="numeric"></label></div><div class="filachips" id="filaChips"></div><div class="filapicker hidden" id="filaPicker"></div></div>
 <div class="contextnav"><button class="on" id="tabLetters">✎ Letras</button><button id="tabBase">▱ Base</button><button id="tabRing">◉ Argola</button><button id="tabPrint" title="Impressora, cópias, bico, qualidade e outros formatos">⚙ Pro <small>beta</small></button></div>
@@ -9162,19 +9162,19 @@ function render3D() {
   for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) { const mt = materialFor(m.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
   // Argola «fantasma» durante o arrasto: desenhada direto na GPU, segue o cursor sem recalcular a peça.
   if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
-  if (ringGhost && loupeOn) renderLoupe(c, ratio); else $('loupe').classList.add('hidden');
+  // Câmara da argola: desenha-se num canto, copia-se para o quadro fixo no topo e volta a desenhar-se a cena por cima.
+  if (ringGhost && loupeOn) { if (!loupePass) { renderLoupe(c, ratio); loupePass = true; try { render3D() } finally { loupePass = false } return } } else $('loupe').classList.add('hidden');
   $('viewport').classList.toggle('loupeActive', !!(ringGhost && loupeOn));
   updateRingTag();
 }
 // Câmara secundária (lupa) durante o arrasto da argola com o dedo: vista de cima, ampliada, centrada
 // na argola, no canto oposto ao dedo — o dedo deixa de tapar o sítio onde a argola vai ficar.
-let loupeOn = false, loupeFinger = { x: 0, y: 0 };
+let loupeOn = false, loupePass = false, loupeFinger = { x: 0, y: 0 };
 function renderLoupe(c, ratio) {
-  const W = c.clientWidth, H = c.clientHeight, size = Math.round(Math.min(W, H) * 0.42), m = 10;
-  // Sempre do lado esquerdo (a palma da mão direita tapa o lado direito); em cima ou em baixo, longe do dedo.
-  const left = m, top = loupeFinger.y > H * 0.45 ? m + 44 : H - size - m;
-  const el = $('loupe'); el.classList.remove('hidden'); Object.assign(el.style, { left: left + 'px', top: top + 'px', width: size + 'px', height: size + 'px' });
-  const dx = Math.round(left * ratio), dy = Math.round((H - top - size) * ratio), ds = Math.round(size * ratio), pos = objectPositions()[0];
+  // Lugar fixo: canto superior esquerdo do ecrã, por cima do título — nunca fica debaixo do dedo nem da palma.
+  const size = Math.round(Math.min(150, innerWidth * 0.4, c.clientWidth, c.clientHeight)), ds = Math.round(size * ratio), dx = 0, dy = 0, pos = objectPositions()[0];
+  const el = $('loupe'), cv = $('loupeCv'); el.classList.remove('hidden'); el.style.width = el.style.height = size + 'px';
+  if (cv.width !== ds || cv.height !== ds) { cv.width = ds; cv.height = ds }
   gl.enable(gl.SCISSOR_TEST); gl.scissor(dx, dy, ds, ds); gl.viewport(dx, dy, ds, ds); gl.clearColor(.03, .06, .1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   const zoom = Math.max(camera.scale * 2.2, size / (S.ringOuter * 4.2));
   gl.uniform1f(uniform.yaw, 0); gl.uniform1f(uniform.pitch, 0); gl.uniform1f(uniform.scale, zoom * ratio); gl.uniform2f(uniform.viewport, ds, ds); gl.uniform2f(uniform.pan, 0, 0);
@@ -9184,6 +9184,7 @@ function renderLoupe(c, ratio) {
   const st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55);
   gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST);
   gl.uniform4f(uniform.tint, 0, 0, 0, 0); gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, c.width, c.height); gl.clearColor(.052, .08, .123, 1);
+  cv.getContext('2d').drawImage(c, 0, c.height - ds, ds, ds, 0, 0, ds, ds);
 }
 
 // Malha simples da argola (anel extrudido) para o arrasto em tempo real.
@@ -9238,21 +9239,24 @@ function fitCamera() {
   const width = S.plateView ? plateW() + 23 : Math.max(65, b ? b.width : 80) * 1.45, height = S.plateView ? plateH() + 23 : Math.max(33, b ? b.height : 40) * 1.9;
   camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
 }
-function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').textContent = side === 'front' ? '↻ Ver verso' : '↻ Ver frente'; requestRender() }
+function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
 /**
  * Correção ao largar: ao levantar o dedo (ou soltar o botão) a ponta «rola» e os últimos ~100 ms
  * deslocam a argola uns milímetros. Usa-se a posição de ~100 ms antes de largar (60 ms com rato),
  * desde que esse movimento final seja pequeno (≤ 22 px no ecrã); um gesto intencional rápido conta.
  */
-function releasePosition(d) {
+function releasePosition(d, upTime) {
   const h = d.hist; if (!h || h.length < 2) return null;
-  const last = h[h.length - 1], tUp = performance.now(), windowMs = d.touch ? 110 : 60;
+  const last = h[h.length - 1], tUp = upTime || performance.now(), windowMs = d.touch ? 110 : 60;
   // Amostras recentes perto do ponto final (≤ 22 px e ≤ 700 ms): é aí que pode estar o «rolar».
   const cand = [];
   for (let i = h.length - 1; i >= 0; i--) { const q = h[i]; if (tUp - q.t > 700 || Math.hypot(last.sx - q.sx, last.sy - q.sy) > 22) break; cand.push(i) }
   if (cand.length < 2) return null;
   // 1) Houve uma pausa (dedo parado ≥ 90 ms)? Fica a posição dessa pausa.
-  for (const i of cand) if (i + 1 < h.length && h[i + 1].t - h[i].t >= 90) return { x: h[i].x, y: h[i].y };
+  // (Num aparelho lento os eventos já chegam espaçados; só conta como pausa um intervalo bem maior do que o habitual.)
+  const gaps = []; for (let i = 1; i < h.length; i++) gaps.push(h[i].t - h[i - 1].t); gaps.sort((a, b) => a - b);
+  const pause = Math.max(90, 2.5 * gaps[gaps.length >> 1]);
+  for (const i of cand) if (i + 1 < h.length && h[i + 1].t - h[i].t >= pause) return { x: h[i].x, y: h[i].y };
   // 2) Sem pausa: ignora só os últimos ~100 ms (60 ms com rato).
   for (const i of cand) if (tUp - h[i].t >= windowMs) return { x: h[i].x, y: h[i].y };
   return null;
@@ -9341,7 +9345,7 @@ function bindViewerEvents() {
       const rr = canvas.getBoundingClientRect(); loupeFinger = { x: e.clientX - rr.left, y: e.clientY - rr.top };
     }
     const d = dragAction; if (!d || e.pointerId !== d.id) return;
-    if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(); return }
+    if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(e); return }
     if ((e.buttons & 3) === 3 && d.kind !== 'pan') startPan(d);
     const dx = e.clientX - d.lastX, dy = e.clientY - d.lastY; d.lastX = e.clientX; d.lastY = e.clientY;
     if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
@@ -9355,7 +9359,7 @@ function bindViewerEvents() {
         if (e.pointerType === 'touch' && d.smooth) p = { x: d.smooth.x + (p.x - d.smooth.x) * 0.55, y: d.smooth.y + (p.y - d.smooth.y) * 0.55 };
         d.smooth = p;
         // Histórico com tempo, para corrigir o «rolar» do dedo ao largar.
-        const now = performance.now(); (d.hist || (d.hist = [])).push({ t: now, x: p.x, y: p.y, sx: e.clientX, sy: e.clientY });
+        const now = e.timeStamp || performance.now(); (d.hist || (d.hist = [])).push({ t: now, x: p.x, y: p.y, sx: e.clientX, sy: e.clientY });
         if (d.hist.length > 40) d.hist.shift();   // por número, não por tempo: com o dedo parado não há eventos
         S.ringX = p.x; S.ringY = p.y; S.ringManual = true;
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
@@ -9364,11 +9368,11 @@ function bindViewerEvents() {
     else if (d.kind === 'move') { S.positionX = d.originalX + (e.clientX - d.startX) / camera.scale; S.positionY = d.originalY - (e.clientY - d.startY) / camera.scale; clampToPlate(); drawMiniPlate(); requestRender() }
     else { camera.yaw += dx * .008; camera.pitch = Math.max(-1.1, Math.min(1.1, camera.pitch + dy * .008)); requestRender() }
   });
-  const endDrag = () => {
+  const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
     if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
     if (d.kind === 'ring' && d.moved) {
-      const fix = releasePosition(d); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
+      const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
       endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
     }
   };
@@ -9379,8 +9383,8 @@ function bindViewerEvents() {
     if (touches.size === 0) touchLock = false;
     return false;
   };
-  canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag() });
-  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; endDrag() });
+  canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag(e) });
+  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; endDrag(e) });
   canvas.addEventListener('lostpointercapture', () => { if (dragAction && dragAction.kind !== 'pinch') endDrag() });
   let wheelAcc = 0;
   canvas.addEventListener('wheel', e => {

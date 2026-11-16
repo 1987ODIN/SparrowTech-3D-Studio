@@ -515,19 +515,19 @@ function render3D() {
   for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) { const mt = materialFor(m.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
   // Argola «fantasma» durante o arrasto: desenhada direto na GPU, segue o cursor sem recalcular a peça.
   if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
-  if (ringGhost && loupeOn) renderLoupe(c, ratio); else $('loupe').classList.add('hidden');
+  // Câmara da argola: desenha-se num canto, copia-se para o quadro fixo no topo e volta a desenhar-se a cena por cima.
+  if (ringGhost && loupeOn) { if (!loupePass) { renderLoupe(c, ratio); loupePass = true; try { render3D() } finally { loupePass = false } return } } else $('loupe').classList.add('hidden');
   $('viewport').classList.toggle('loupeActive', !!(ringGhost && loupeOn));
   updateRingTag();
 }
 // Câmara secundária (lupa) durante o arrasto da argola com o dedo: vista de cima, ampliada, centrada
 // na argola, no canto oposto ao dedo — o dedo deixa de tapar o sítio onde a argola vai ficar.
-let loupeOn = false, loupeFinger = { x: 0, y: 0 };
+let loupeOn = false, loupePass = false, loupeFinger = { x: 0, y: 0 };
 function renderLoupe(c, ratio) {
-  const W = c.clientWidth, H = c.clientHeight, size = Math.round(Math.min(W, H) * 0.42), m = 10;
-  // Sempre do lado esquerdo (a palma da mão direita tapa o lado direito); em cima ou em baixo, longe do dedo.
-  const left = m, top = loupeFinger.y > H * 0.45 ? m + 44 : H - size - m;
-  const el = $('loupe'); el.classList.remove('hidden'); Object.assign(el.style, { left: left + 'px', top: top + 'px', width: size + 'px', height: size + 'px' });
-  const dx = Math.round(left * ratio), dy = Math.round((H - top - size) * ratio), ds = Math.round(size * ratio), pos = objectPositions()[0];
+  // Lugar fixo: canto superior esquerdo do ecrã, por cima do título — nunca fica debaixo do dedo nem da palma.
+  const size = Math.round(Math.min(150, innerWidth * 0.4, c.clientWidth, c.clientHeight)), ds = Math.round(size * ratio), dx = 0, dy = 0, pos = objectPositions()[0];
+  const el = $('loupe'), cv = $('loupeCv'); el.classList.remove('hidden'); el.style.width = el.style.height = size + 'px';
+  if (cv.width !== ds || cv.height !== ds) { cv.width = ds; cv.height = ds }
   gl.enable(gl.SCISSOR_TEST); gl.scissor(dx, dy, ds, ds); gl.viewport(dx, dy, ds, ds); gl.clearColor(.03, .06, .1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
   const zoom = Math.max(camera.scale * 2.2, size / (S.ringOuter * 4.2));
   gl.uniform1f(uniform.yaw, 0); gl.uniform1f(uniform.pitch, 0); gl.uniform1f(uniform.scale, zoom * ratio); gl.uniform2f(uniform.viewport, ds, ds); gl.uniform2f(uniform.pan, 0, 0);
@@ -537,6 +537,7 @@ function renderLoupe(c, ratio) {
   const st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55);
   gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST);
   gl.uniform4f(uniform.tint, 0, 0, 0, 0); gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, c.width, c.height); gl.clearColor(.052, .08, .123, 1);
+  cv.getContext('2d').drawImage(c, 0, c.height - ds, ds, ds, 0, 0, ds, ds);
 }
 
 // Malha simples da argola (anel extrudido) para o arrasto em tempo real.
@@ -591,21 +592,24 @@ function fitCamera() {
   const width = S.plateView ? plateW() + 23 : Math.max(65, b ? b.width : 80) * 1.45, height = S.plateView ? plateH() + 23 : Math.max(33, b ? b.height : 40) * 1.9;
   camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
 }
-function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').textContent = side === 'front' ? '↻ Ver verso' : '↻ Ver frente'; requestRender() }
+function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
 /**
  * Correção ao largar: ao levantar o dedo (ou soltar o botão) a ponta «rola» e os últimos ~100 ms
  * deslocam a argola uns milímetros. Usa-se a posição de ~100 ms antes de largar (60 ms com rato),
  * desde que esse movimento final seja pequeno (≤ 22 px no ecrã); um gesto intencional rápido conta.
  */
-function releasePosition(d) {
+function releasePosition(d, upTime) {
   const h = d.hist; if (!h || h.length < 2) return null;
-  const last = h[h.length - 1], tUp = performance.now(), windowMs = d.touch ? 110 : 60;
+  const last = h[h.length - 1], tUp = upTime || performance.now(), windowMs = d.touch ? 110 : 60;
   // Amostras recentes perto do ponto final (≤ 22 px e ≤ 700 ms): é aí que pode estar o «rolar».
   const cand = [];
   for (let i = h.length - 1; i >= 0; i--) { const q = h[i]; if (tUp - q.t > 700 || Math.hypot(last.sx - q.sx, last.sy - q.sy) > 22) break; cand.push(i) }
   if (cand.length < 2) return null;
   // 1) Houve uma pausa (dedo parado ≥ 90 ms)? Fica a posição dessa pausa.
-  for (const i of cand) if (i + 1 < h.length && h[i + 1].t - h[i].t >= 90) return { x: h[i].x, y: h[i].y };
+  // (Num aparelho lento os eventos já chegam espaçados; só conta como pausa um intervalo bem maior do que o habitual.)
+  const gaps = []; for (let i = 1; i < h.length; i++) gaps.push(h[i].t - h[i - 1].t); gaps.sort((a, b) => a - b);
+  const pause = Math.max(90, 2.5 * gaps[gaps.length >> 1]);
+  for (const i of cand) if (i + 1 < h.length && h[i + 1].t - h[i].t >= pause) return { x: h[i].x, y: h[i].y };
   // 2) Sem pausa: ignora só os últimos ~100 ms (60 ms com rato).
   for (const i of cand) if (tUp - h[i].t >= windowMs) return { x: h[i].x, y: h[i].y };
   return null;
@@ -694,7 +698,7 @@ function bindViewerEvents() {
       const rr = canvas.getBoundingClientRect(); loupeFinger = { x: e.clientX - rr.left, y: e.clientY - rr.top };
     }
     const d = dragAction; if (!d || e.pointerId !== d.id) return;
-    if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(); return }
+    if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(e); return }
     if ((e.buttons & 3) === 3 && d.kind !== 'pan') startPan(d);
     const dx = e.clientX - d.lastX, dy = e.clientY - d.lastY; d.lastX = e.clientX; d.lastY = e.clientY;
     if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
@@ -708,7 +712,7 @@ function bindViewerEvents() {
         if (e.pointerType === 'touch' && d.smooth) p = { x: d.smooth.x + (p.x - d.smooth.x) * 0.55, y: d.smooth.y + (p.y - d.smooth.y) * 0.55 };
         d.smooth = p;
         // Histórico com tempo, para corrigir o «rolar» do dedo ao largar.
-        const now = performance.now(); (d.hist || (d.hist = [])).push({ t: now, x: p.x, y: p.y, sx: e.clientX, sy: e.clientY });
+        const now = e.timeStamp || performance.now(); (d.hist || (d.hist = [])).push({ t: now, x: p.x, y: p.y, sx: e.clientX, sy: e.clientY });
         if (d.hist.length > 40) d.hist.shift();   // por número, não por tempo: com o dedo parado não há eventos
         S.ringX = p.x; S.ringY = p.y; S.ringManual = true;
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
@@ -717,11 +721,11 @@ function bindViewerEvents() {
     else if (d.kind === 'move') { S.positionX = d.originalX + (e.clientX - d.startX) / camera.scale; S.positionY = d.originalY - (e.clientY - d.startY) / camera.scale; clampToPlate(); drawMiniPlate(); requestRender() }
     else { camera.yaw += dx * .008; camera.pitch = Math.max(-1.1, Math.min(1.1, camera.pitch + dy * .008)); requestRender() }
   });
-  const endDrag = () => {
+  const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
     if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
     if (d.kind === 'ring' && d.moved) {
-      const fix = releasePosition(d); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
+      const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
       endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
     }
   };
@@ -732,8 +736,8 @@ function bindViewerEvents() {
     if (touches.size === 0) touchLock = false;
     return false;
   };
-  canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag() });
-  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; endDrag() });
+  canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag(e) });
+  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; endDrag(e) });
   canvas.addEventListener('lostpointercapture', () => { if (dragAction && dragAction.kind !== 'pinch') endDrag() });
   let wheelAcc = 0;
   canvas.addEventListener('wheel', e => {
