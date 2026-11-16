@@ -135,8 +135,12 @@
       let best = null;
       for (const o of polys) {
         if (o.b.minX > h.b.minX || o.b.maxX < h.b.maxX || o.b.minY > h.b.minY || o.b.maxY < h.b.maxY || o.a < h.a) continue;
-        let inside = 0;
-        for (const q of h.p) { const r = C.Clipper.PointInPolygon(q, o.outer); if (r !== -1) { inside = r; break; } }
+        let inside = 0, decided = false;
+        for (const q of h.p) { const r = C.Clipper.PointInPolygon(q, o.outer); if (r !== -1) { inside = r; decided = true; break; } }
+        if (!decided) {   // furo minúsculo com todos os vértices no contorno: testa o centro dele
+          let cx = 0, cy = 0; for (const q of h.p) { cx += q.X; cy += q.Y; }
+          const r = C.Clipper.PointInPolygon({ X: Math.round(cx / h.p.length), Y: Math.round(cy / h.p.length) }, o.outer); inside = r === 0 ? 0 : 1;
+        }
         if (inside === 1 && (!best || o.a < best.a)) best = o;
       }
       if (best) best.holes.push(h.p);

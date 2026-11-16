@@ -2,7 +2,15 @@
 <html lang="pt-PT"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>SparrowTech 3D Studio — v5</title>
 <style>
 :root{color-scheme:dark;--bg:#101824;--panel:#1b2432;--surface:#263345;--line:#334357;--blue:#348ff8;--text:#eaf1fb;--muted:#9bacbf}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,Segoe UI,Arial,sans-serif}button,input,select{font:inherit}button{background:var(--surface);color:var(--text);border:1px solid #41516a;border-radius:10px;padding:9px 12px;cursor:pointer}button:hover{background:#334961}button:disabled{opacity:.45;cursor:not-allowed}button.on{background:#1764bd;border-color:#3994f8;color:white}button.primary{background:#2087f2;border-color:#218cff;font-weight:750}button.ghost{background:transparent}button.tiny{padding:5px 9px;font-size:12px}h1{margin:0;font-size:20px;letter-spacing:-.4px}h2{font-size:14px;margin:0}.muted{color:var(--muted);font-size:12px}.app{display:grid;grid-template-columns:1fr minmax(310px,365px);height:100vh;min-height:650px}.work{display:flex;flex-direction:column;min-width:0;background:radial-gradient(circle at 45% 45%,#253a54 0%,#111c2b 65%,#0d1520 100%)}header{padding:16px 20px;border-bottom:1px solid #2d3d50;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:12px}.symbol{width:37px;height:37px;display:grid;place-items:center;background:linear-gradient(140deg,#4ba8ff,#235bc3);border-radius:10px;font-size:22px}.topactions{display:flex;gap:7px;flex-wrap:wrap}.viewport{position:relative;flex:1;min-height:360px;touch-action:none;overflow:hidden}#gl{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}.viewport.dragging #gl{cursor:grabbing}.help{position:absolute;left:14px;top:14px;display:flex;gap:7px;flex-wrap:wrap}.help span,.overlaystatus{background:#0a1525dd;border:1px solid #314159;border-radius:9px;padding:7px 10px;color:#c0d0e5;font-size:12px}.overlaystatus{position:absolute;right:14px;top:14px;max-width:260px;pointer-events:none}.selectionlabel{position:absolute;bottom:13px;left:14px;background:#12253ddc;border:1px solid #3268aa;padding:8px 11px;border-radius:9px;color:#dceeff;font-size:12px}.bottom{border-top:1px solid #314154;background:#121c29;padding:12px 18px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.bottom .grp{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.side{background:#1b2534;border-left:1px solid #33445c;overflow:auto;padding:18px 17px 26px}.mode{display:flex;background:#101826;padding:4px;border-radius:12px;gap:5px}.mode button{flex:1;border:0}.mode button.on{background:#2489ed}.contextnav{display:flex;gap:7px;margin:16px 0 12px}.contextnav button{flex:1;font-size:12px;padding:10px 3px}.contextnav button.on{box-shadow:inset 0 -3px #65b8ff}.section{background:#212e40;border:1px solid #354761;border-radius:14px;padding:14px;margin-bottom:11px}.sectiontitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px}.sectiontitle h2{margin:0}.label{font-weight:650;font-size:12px;margin:12px 0 6px;display:block;color:#d6e3f6}input[type=text],input[type=number],select{width:100%;border-radius:9px;border:1px solid #566982;color:#eaf0ff;background:#101a29;padding:9px 10px;outline:none}input:focus,select:focus{border-color:#52b1ff;box-shadow:0 0 0 2px #267fff33}input[type=range]{width:100%;accent-color:#339bff;cursor:pointer}.fieldrow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px}.fieldrow .right{color:#a9c1db;font-size:12px;font-variant-numeric:tabular-nums}.fontcards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fontcard{height:58px;padding:4px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden}.fontcard span{font-size:26px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;line-height:1.15}.fontcard small{font-size:10px;color:#aabbd0}.fontcard.on{outline:2px solid #2f9bfd}.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.options button{font-size:12px;min-height:38px}.options.three{grid-template-columns:repeat(3,1fr)}.switch{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:8px}.switch input{width:18px;height:18px;accent-color:#3294fc}.colors{display:flex;gap:7px}.color{display:grid;gap:4px;flex:1;font-size:11px;text-align:center;color:#a7b8c9}.color input{height:34px;width:100%;border-radius:8px;border:1px solid #52647b;padding:0;background:none}.pro-only{display:none}.pro .pro-only{display:block}.explain{display:flex;gap:9px;align-items:center;background:#101c2b;padding:10px;border-radius:10px;color:#bbcee4;font-size:12px;line-height:1.35;margin-top:8px}.explain svg{flex:0 0 90px}.miniPlate{width:100%;max-width:190px;aspect-ratio:1;margin:12px auto 4px;background:#152434;border:2px solid #63809c;border-radius:4px;position:relative;cursor:crosshair;touch-action:none;overflow:hidden;background-image:linear-gradient(#253a4a 1px,transparent 1px),linear-gradient(90deg,#253a4a 1px,transparent 1px);background-size:10% 10%}.plateObject{position:absolute;border:2px solid #58a8fa;background:#348ff34f;min-width:5px;min-height:4px;border-radius:4px;cursor:grab;display:grid;place-items:center;color:white;font-size:9px;user-select:none;touch-action:none;white-space:nowrap}.notice{background:#12263e;border:1px solid #285c92;border-radius:11px;padding:11px;line-height:1.5;font-size:12px;color:#c0d9ef}.warn{color:#ffc47f}.hidden{display:none!important}.hr{height:1px;background:#35465b;margin:13px 0}.actionrow{display:flex;gap:7px;flex-wrap:wrap}.actionrow button{flex:1}.statusbar{padding:0 18px 11px;background:#121c29;font-size:11px;color:#96aac4}.pill{padding:3px 8px;border:1px solid #3b5571;border-radius:20px;background:#16283b;font-size:11px}.no-wrap{white-space:nowrap}@media(max-width:830px){.app{display:flex;flex-direction:column;height:auto}.work{min-height:64vh}.viewport{height:57vh;min-height:340px}.side{border-left:0;border-top:1px solid #374b62;padding:15px}header{padding:13px}.bottom{padding:10px}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,Segoe UI,Arial,sans-serif}button,input,select{font:inherit}button{background:var(--surface);color:var(--text);border:1px solid #41516a;border-radius:10px;padding:9px 12px;cursor:pointer}button:hover{background:#334961}button:disabled{opacity:.45;cursor:not-allowed}button.on{background:#1764bd;border-color:#3994f8;color:white}button.primary{background:#2087f2;border-color:#218cff;font-weight:750}button.ghost{background:transparent}button.tiny{padding:5px 9px;font-size:12px}h1{margin:0;font-size:20px;letter-spacing:-.4px}h2{font-size:14px;margin:0}.muted{color:var(--muted);font-size:12px}.app{display:grid;grid-template-columns:1fr minmax(310px,365px);height:100vh;min-height:650px}.work{display:flex;flex-direction:column;min-width:0;background:radial-gradient(circle at 45% 45%,#253a54 0%,#111c2b 65%,#0d1520 100%)}header{padding:16px 20px;border-bottom:1px solid #2d3d50;display:flex;align-items:center;justify-content:space-between;gap:12px}.brand{display:flex;align-items:center;gap:12px}.symbol{width:37px;height:37px;display:grid;place-items:center;background:linear-gradient(140deg,#4ba8ff,#235bc3);border-radius:10px;font-size:22px}.topactions{display:flex;gap:7px;flex-wrap:wrap}.viewport{position:relative;flex:1;min-height:360px;touch-action:none;overflow:hidden}#gl{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}.viewport.dragging #gl{cursor:grabbing}.help{position:absolute;left:14px;top:14px;display:flex;gap:7px;flex-wrap:wrap}.help span,.overlaystatus{background:#0a1525dd;border:1px solid #314159;border-radius:9px;padding:7px 10px;color:#c0d0e5;font-size:12px}.overlaystatus{position:absolute;right:14px;top:14px;max-width:260px;pointer-events:none}.selectionlabel{position:absolute;bottom:13px;left:14px;background:#12253ddc;border:1px solid #3268aa;padding:8px 11px;border-radius:9px;color:#dceeff;font-size:12px}.bottom{border-top:1px solid #314154;background:#121c29;padding:12px 18px;display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap}.bottom .grp{display:flex;gap:7px;align-items:center;flex-wrap:wrap}.side{background:#1b2534;border-left:1px solid #33445c;overflow:auto;padding:18px 17px 26px}.mode{display:flex;background:#101826;padding:4px;border-radius:12px;gap:5px}.mode button{flex:1;border:0}.mode button.on{background:#2489ed}.contextnav{display:flex;gap:7px;margin:16px 0 12px}.contextnav button{flex:1;font-size:12px;padding:10px 3px}.contextnav button.on{box-shadow:inset 0 -3px #65b8ff}.section{background:#212e40;border:1px solid #354761;border-radius:14px;padding:14px;margin-bottom:11px}.sectiontitle{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:6px}.sectiontitle h2{margin:0}.label{font-weight:650;font-size:12px;margin:12px 0 6px;display:block;color:#d6e3f6}input[type=text],input[type=number],select{width:100%;border-radius:9px;border:1px solid #566982;color:#eaf0ff;background:#101a29;padding:9px 10px;outline:none}input:focus,select:focus{border-color:#52b1ff;box-shadow:0 0 0 2px #267fff33}input[type=range]{width:100%;accent-color:#339bff;cursor:pointer}.fieldrow{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px}.fieldrow .right{color:#a9c1db;font-size:12px;font-variant-numeric:tabular-nums}.fontcards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.fontcard{height:58px;padding:4px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden}.fontcard span{font-size:26px;white-space:nowrap;max-width:100%;overflow:hidden;text-overflow:ellipsis;line-height:1.15}.fontcard small{font-size:10px;color:#aabbd0}.fontcard.on{outline:2px solid #2f9bfd}.options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.options button{font-size:12px;min-height:38px}.options.three{grid-template-columns:repeat(3,1fr)}.switch{display:flex;justify-content:space-between;align-items:center;padding:8px 0;gap:8px}.switch input{width:18px;height:18px;accent-color:#3294fc}.colors{display:flex;gap:7px}.color{display:grid;gap:4px;flex:1;font-size:11px;text-align:center;color:#a7b8c9}.color input{height:34px;width:100%;border-radius:8px;border:1px solid #52647b;padding:0;background:none}.pro-only{display:none}.pro .pro-only{display:block}.explain{display:flex;gap:9px;align-items:center;background:#101c2b;padding:10px;border-radius:10px;color:#bbcee4;font-size:12px;line-height:1.35;margin-top:8px}.explain svg{flex:0 0 90px}.miniPlate{width:100%;max-width:190px;aspect-ratio:1;margin:12px auto 4px;background:#152434;border:2px solid #63809c;border-radius:4px;position:relative;cursor:crosshair;touch-action:none;overflow:hidden;background-image:linear-gradient(#253a4a 1px,transparent 1px),linear-gradient(90deg,#253a4a 1px,transparent 1px);background-size:10% 10%}.plateObject{position:absolute;border:2px solid #58a8fa;background:#348ff34f;min-width:5px;min-height:4px;border-radius:4px;cursor:grab;display:grid;place-items:center;color:white;font-size:9px;user-select:none;touch-action:none;white-space:nowrap}.notice{background:#12263e;border:1px solid #285c92;border-radius:11px;padding:11px;line-height:1.5;font-size:12px;color:#c0d9ef}.warn{color:#ffc47f}.hidden{display:none!important}
+.loupe{position:absolute;z-index:6;pointer-events:none;border:2px solid #ffcc33;border-radius:14px;box-shadow:0 6px 24px #0008}
+.loupe span{position:absolute;left:8px;top:6px;font-size:11px;color:#ffe9a6;background:#0009;padding:2px 6px;border-radius:6px}
+.loupe i{position:absolute;left:50%;top:50%;width:22px;height:22px;margin:-11px 0 0 -11px;border:1px dashed #ffcc33aa;border-radius:50%}
+@media(max-width:830px){.help,.overlaystatus{display:none}.fontswitch{top:8px}.fontswitch .fname{min-width:110px;font-size:17px}.fontswitch .fcount,.fontswitch .fhint{display:none!important}
+ header .top button{padding:7px 9px;font-size:12px}.viewCube{transform:scale(.85);transform-origin:bottom right}.printbar button{font-size:16px}
+ .fontcards{grid-template-columns:1fr 1fr}input[type=range]{height:28px}.swatches{grid-template-columns:repeat(7,1fr)}
+ header{padding:8px 10px!important;gap:6px}header h1{font-size:17px}.brand .muted{display:none}header .top{display:flex;flex-wrap:nowrap;gap:5px}.viewport{height:62vh!important}}
+.loupeActive .viewCube,.loupeActive #selectionLabel,.loupeActive .fontswitch{visibility:hidden}.hr{height:1px;background:#35465b;margin:13px 0}.actionrow{display:flex;gap:7px;flex-wrap:wrap}.actionrow button{flex:1}.statusbar{padding:0 18px 11px;background:#121c29;font-size:11px;color:#96aac4}.pill{padding:3px 8px;border:1px solid #3b5571;border-radius:20px;background:#16283b;font-size:11px}.no-wrap{white-space:nowrap}@media(max-width:830px){.app{display:flex;flex-direction:column;height:auto}.work{min-height:64vh}.viewport{height:57vh;min-height:340px}.side{border-left:0;border-top:1px solid #374b62;padding:15px}header{padding:13px}.bottom{padding:10px}}
 
 .viewCube{position:absolute;right:14px;bottom:14px;display:grid;grid-template-columns:repeat(3,35px);gap:3px;background:#0d1c2fdb;padding:7px;border:1px solid #48607b;border-radius:13px;z-index:4}
 .viewCube button{height:33px;padding:4px;font-size:12px;font-weight:800;border-radius:7px}.viewCube button.active{background:#2489ed;color:#fff}.plateLabel{display:flex;justify-content:space-between;margin-top:10px;color:#a4b8c7;font-size:10px;font-weight:750;letter-spacing:.7px}.plateObject{border-radius:8px;overflow:hidden;background:#248cf58f;border:1px solid #71bdff;font-weight:700}.plateObject.multi{border-style:dashed;background:#348ff326}.miniPlate{max-width:260px;aspect-ratio:1;box-shadow:inset 0 0 0 5px #223241,0 9px 19px #0005;border:3px solid #63778a;border-radius:7px;background-color:#202f3c;background-image:repeating-linear-gradient(0deg,#cfdbea08 0px,#cfdbea08 1px,transparent 2px,transparent 5px),linear-gradient(#5262713a 1px,transparent 1px),linear-gradient(90deg,#5262713a 1px,transparent 1px);background-size:auto,10% 10%,10% 10%}.miniPlate::before{content:'SparrowTech • Plate';position:absolute;font-size:8px;letter-spacing:2px;color:#7893a6;left:10px;bottom:8px;pointer-events:none}.plateObject.snap{box-shadow:0 0 0 2px #8ad5ff;transition:box-shadow .12s}.extraPlateObject{position:absolute;border:2px solid #4c9ceb;background:#348ff24d;border-radius:5px;color:#c7e5ff;font-size:9px;display:grid;place-items:center;pointer-events:none}
@@ -39,13 +47,13 @@
 .printcheck.aviso{background:#3a2e12;border-color:#7a5d1a}.printcheck.mau{background:#3d1919;border-color:#8a2e2e}
 </style></head>
 <body><div class="app"><section class="work"><header><div class="brand"><span class="symbol">✦</span><div><h1>SparrowTech <span style="color:#56a9ff">3D Studio</span> <small class="muted">v5</small></h1><div class="muted">Editor de nomes 3D · pré-visualização em tempo real</div></div></div><div class="topactions"><button id="btnFit">⌖ Peça</button><button id="btnPlate">▦ Plate</button><button class="on" id="btnFlip">↻ Ver verso</button></div></header>
-<div class="viewport" id="viewport"><canvas id="gl"></canvas><div class="help"><span title="Botão esquerdo e arrastar">🖱 Esq.: rodar</span><span title="Esquerdo + direito ao mesmo tempo, só o direito, a roda premida ou Shift + esquerdo">Esq.+Dir.: mover vista</span><span>Roda: zoom no cursor</span><span title="Na vista do tabuleiro">Ctrl: mover peça</span></div><div class="fontswitch" id="fontSwitch" title="Roda do rato aqui (ou clica nas letras e roda) para trocar de fonte"><button id="fontPrev" class="tiny">◀</button><span class="fname" id="fontName">Pacifico</span><button id="fontNext" class="tiny">▶</button><span class="fcount" id="fontCount">1/50</span><span class="fhint">Roda: trocar fonte · Esc: sair</span></div><div class="ringtag hidden" id="ringTag">◉ arrasta a argola</div><div class="overlaystatus" id="overlayStatus">A preparar o modelo...</div><div class="viewCube" aria-label="Vistas do modelo"><button data-view="front" title="Frente">F</button><button data-view="back" title="Verso">V</button><button data-view="top" title="Vista superior">▲</button><button data-view="iso" title="Vista 3D">3D</button><button data-view="zoomIn" title="Aproximar">＋</button><button data-view="zoomOut" title="Afastar">−</button></div><div class="selectionlabel" id="selectionLabel">✎ Selecionado: letras · clique para editar</div></div>
+<div class="viewport" id="viewport"><canvas id="gl"></canvas><div class="help"><span title="Botão esquerdo e arrastar">🖱 Esq.: rodar</span><span title="Esquerdo + direito ao mesmo tempo, só o direito, a roda premida ou Shift + esquerdo">Esq.+Dir.: mover vista</span><span>Roda: zoom no cursor</span><span title="Na vista do tabuleiro">Ctrl: mover peça</span></div><div class="fontswitch" id="fontSwitch" title="Roda do rato aqui (ou clica nas letras e roda) para trocar de fonte"><button id="fontPrev" class="tiny">◀</button><span class="fname" id="fontName">Pacifico</span><button id="fontNext" class="tiny">▶</button><span class="fcount" id="fontCount">1/50</span><span class="fhint">Roda: trocar fonte · Esc: sair</span></div><div class="loupe hidden" id="loupe"><span>📷 vista da argola</span><i></i></div><div class="ringtag hidden" id="ringTag">◉ arrasta a argola</div><div class="overlaystatus" id="overlayStatus">A preparar o modelo...</div><div class="viewCube" aria-label="Vistas do modelo"><button data-view="front" title="Frente">F</button><button data-view="back" title="Verso">V</button><button data-view="top" title="Vista superior">▲</button><button data-view="iso" title="Vista 3D">3D</button><button data-view="zoomIn" title="Aproximar">＋</button><button data-view="zoomOut" title="Afastar">−</button></div><div class="selectionlabel" id="selectionLabel">✎ Selecionado: letras · clique para editar</div></div>
 <div class="bottom"><div class="grp"><span class="pill" id="machineBadge">Bambu Lab A1 · 256 × 256 mm</span><span class="pill" id="sizeBadge">— mm</span><span class="pill" id="triangleBadge">— triângulos</span><span class="pill" id="qualityBadge">Malha fina</span></div><div class="grp"><button id="frontView" class="tiny on">Frente</button><button id="backView" class="tiny">Verso</button><button id="resetCam" class="tiny">Isométrica</button></div></div><div class="statusbar" id="status">Protótipo experimental: antes de imprimir, confirma o 3MF e a configuração no slicer.</div></section>
 <aside class="side"><div class="printbar"><div class="pbrow"><label>Impressora<select id="printer"><option value="A1">Bambu Lab A1</option><option value="A1Mini">Bambu Lab A1 Mini</option><option value="K1C">Creality K1C</option></select></label><label>Ficheiro<select id="fileFormat"><option value="3mf">3MF (com cores)</option><option value="stl">STL (uma peça)</option><option value="stlparts">STL por cor</option></select></label></div><div class="filachips" id="filaChips"></div><div class="filapicker hidden" id="filaPicker"></div><button id="quickPrint" class="primary">🖨 Imprimir — descarregar 3MF</button><div class="muted" id="printHint">—</div></div>
 <div class="contextnav"><button class="on" id="tabLetters">✎ Letras</button><button id="tabBase">▱ Base</button><button id="tabRing">◉ Argola</button><button id="tabPrint" title="Impressora, cópias, bico, qualidade e outros formatos">⚙ Pro <small>beta</small></button></div>
 <div id="lettersPanel">
 <div class="section"><div class="sectiontitle"><h2>✎ Modificar nome</h2><span class="pill">Letra branca</span></div><label class="label" for="inputName">Nome (editável)</label><input type="text" id="inputName" value="Filipa" maxlength="28" autocomplete="off"><label class="label">Escolher fonte — nome em direto</label><div class="muted">Dica: clica nas letras do modelo e roda o rato para ir trocando de fonte. ★ marca fontes para a placa de teste. ✓/⚠ = cabe no bico escolhido.</div><div class="fontgallery" id="fontCards"></div><div class="actionrow" style="margin-top:8px"><button id="importFont" class="tiny">＋ Importar fonte (TTF / OTF / WOFF)</button><button id="testPlate" class="tiny">⬇ Placa de teste (★ 0)</button></div><input type="file" id="fontFile" accept=".ttf,.otf,.woff,font/ttf,font/otf,font/woff" hidden></div>
-<div class="section"><div class="sectiontitle"><h2>Acabamento das letras</h2><span class="pill">Frente</span></div><div class="options" id="finishFront"></div><div class="explain" id="frontExplain"></div><div class="fieldrow"><label class="label">Altura / profundidade</label><span class="right" id="heightVal">0,6 mm</span></div><input id="letterHeight" type="range" min="0.2" max="1.6" step="0.2" value="0.6"><div class="fieldrow"><label class="label">Espessura das letras</label><span class="right" id="weightVal">0,00 mm</span></div><input id="textWeight" type="range" min="-0.2" max="0.8" step="0.05" value="0"><div class="fieldrow"><label class="label">Espaçamento entre letras</label><span class="right" id="spacingVal">0%</span></div><input id="letterSpacing" type="range" min="-10" max="20" step="1" value="0"><div class="printcheck hidden" id="printCheck">—</div><div class="switch"><span>Contorno preto à volta das letras</span><input type="checkbox" id="hasOutline" checked></div><div id="outlineControls"><div class="fieldrow"><label class="label">Largura do contorno preto</label><span class="right" id="outlineVal">0,8 mm</span></div><input type="range" id="outlineWidth" min="0.3" max="2.2" step="0.1" value="0.8"></div><div class="colors"><label class="color">Letras<input type="color" id="letterColor" value="#ffffff"></label><label class="color">Contorno<input type="color" id="outlineColor" value="#090c13"></label></div>
+<div class="section"><div class="sectiontitle"><h2>Acabamento das letras</h2><span class="pill">Frente</span></div><div class="options" id="finishFront"></div><div class="explain" id="frontExplain"></div><div class="fieldrow"><label class="label">Altura / profundidade</label><span class="right" id="heightVal">0,6 mm</span></div><input id="letterHeight" type="range" min="0.2" max="1.6" step="0.2" value="0.6"><div class="fieldrow"><label class="label">Espessura das letras</label><span class="right" id="weightVal">0,00 mm</span></div><input id="textWeight" type="range" min="-0.2" max="0.8" step="0.05" value="0"><div class="fieldrow"><label class="label">Espaçamento entre letras</label><span class="right" id="spacingVal">0%</span></div><input id="letterSpacing" type="range" min="-10" max="20" step="1" value="0"><div class="switch"><span>Letras com topo arredondado (3D)</span><input type="checkbox" id="roundTop"></div><div class="fieldrow"><label class="label">Pontas arredondadas</label><span class="right" id="tipVal">0,0 mm</span></div><input id="letterRound" type="range" min="0" max="0.8" step="0.05" value="0"><div class="printcheck hidden" id="printCheck">—</div><div class="switch"><span>Contorno preto à volta das letras</span><input type="checkbox" id="hasOutline" checked></div><div id="outlineControls"><div class="fieldrow"><label class="label">Largura do contorno preto</label><span class="right" id="outlineVal">0,8 mm</span></div><input type="range" id="outlineWidth" min="0.3" max="2.2" step="0.1" value="0.8"></div><div class="colors"><label class="color">Letras<input type="color" id="letterColor" value="#ffffff"></label><label class="color">Contorno<input type="color" id="outlineColor" value="#090c13"></label></div>
 <div class="pro-only"><div class="fieldrow"><label class="label">Tamanho do nome</label><span class="right" id="nameSizeVal">100%</span></div><input id="nameSize" type="range" min="55" max="155" step="5" value="100"></div></div>
 <div class="section"><div class="sectiontitle"><h2>O outro lado do nome</h2><button id="editBack" class="tiny">↻ Ver verso</button></div><label class="label" for="backText">Nome / telefone no verso</label><input type="text" id="backText" placeholder="Opcional: contacto ou texto" maxlength="28"><div class="options" id="finishBack" style="margin-top:10px"></div><div class="explain" id="backExplain"></div><div class="muted" style="margin-top:10px">O verso aparece mesmo do lado oposto, sem espelhar as letras na leitura.</div></div></div>
 <div id="basePanel" class="hidden"><div class="section"><div class="sectiontitle"><h2>▱ Formato da base</h2><span class="pill">Área azul</span></div><div class="options" id="shapeButtons"></div><div class="fieldrow"><label class="label">Rebordo à volta das letras</label><span class="right" id="borderVal">3,5 mm</span></div><input id="borderWidth" type="range" min="1.0" max="9" step="0.5" value="3.5"><div class="fieldrow"><label class="label">Espessura da base</label><span class="right" id="bodyVal">2,4 mm</span></div><input id="bodyThickness" type="range" min="1.2" max="5" step="0.2" value="2.4"><div class="switch"><span>Fechar buracos muito pequenos</span><input id="fillHoles" type="checkbox" checked></div><div class="pro-only"><div class="fieldrow"><label class="label">Fechar até esta área</label><span class="right" id="holeVal">1,5 mm²</span></div><input id="smallHole" type="range" min="0.5" max="7" step="0.5" value="1.5"></div><label class="color">Cor da base<input id="baseColor" type="color" value="#348cf0"></label><div class="explain">A base segue realmente a silhueta das letras no modo «Contorno». As outras formas criam uma placa à volta do nome.</div></div></div>
@@ -7833,8 +7841,12 @@
       let best = null;
       for (const o of polys) {
         if (o.b.minX > h.b.minX || o.b.maxX < h.b.maxX || o.b.minY > h.b.minY || o.b.maxY < h.b.maxY || o.a < h.a) continue;
-        let inside = 0;
-        for (const q of h.p) { const r = C.Clipper.PointInPolygon(q, o.outer); if (r !== -1) { inside = r; break; } }
+        let inside = 0, decided = false;
+        for (const q of h.p) { const r = C.Clipper.PointInPolygon(q, o.outer); if (r !== -1) { inside = r; decided = true; break; } }
+        if (!decided) {   // furo minúsculo com todos os vértices no contorno: testa o centro dele
+          let cx = 0, cy = 0; for (const q of h.p) { cx += q.X; cy += q.Y; }
+          const r = C.Clipper.PointInPolygon({ X: Math.round(cx / h.p.length), Y: Math.round(cy / h.p.length) }, o.outer); inside = r === 0 ? 0 : 1;
+        }
         if (inside === 1 && (!best || o.a < best.a)) best = o;
       }
       if (best) best.holes.push(h.p);
@@ -8311,6 +8323,9 @@
     // Espessura: engrossa (ou afina) o traço das letras, como nos geradores de porta-chaves.
     const weight = S.textWeight || 0;
     if (Math.abs(weight) > 1e-3 && text.length) text = G.offset(text, weight, tol, ang);
+    // Pontas arredondadas: «abertura» (encolhe e volta a crescer) tira os bicos das terminações.
+    const tipR = Math.max(0, S.letterRound || 0);
+    if (tipR > 1e-3 && text.length) text = G.offset(G.offset(text, -tipR, tol, ang), tipR, tol, ang);
     text = G.depinch(text);
     const tb = G.bounds(text) || { minX: -20, maxX: 20, minY: -8, maxY: 8, width: 40, height: 16 };
     const print = printability(text, S.nozzle || 0.4);
@@ -8361,7 +8376,28 @@
       }
       back = G.depinch(G.intersection(K, margin));   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
     }
-    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, bounds: G.bounds(base), textBounds: tb };
+    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
+  }
+
+  /**
+   * Topo arredondado («almofadado»): a parte saliente é feita de camadas finas cada vez mais
+   * estreitas, seguindo um quarto de círculo de raio rr. Os degraus (≤ 0,08 mm) ficam abaixo da
+   * altura de camada da impressora, por isso o slicer vê uma curva.
+   * up = true: arredonda em cima (z1); false: em baixo (z0, letras em relevo no verso).
+   */
+  function domed(paths, z0, z1, up, tol, ang) {
+    const h = z1 - z0, rr = Math.min(h, 0.8);
+    if (!paths.length || rr < 0.15) return [{ paths, z0, z1 }];
+    const n = Math.max(3, Math.min(8, Math.ceil(rr / 0.08))), out = [];
+    if (h - rr > 1e-6) out.push(up ? { paths, z0, z1: z1 - rr } : { paths, z0: z0 + rr, z1 });
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, inset = rr * (1 - Math.sqrt(1 - t * t));
+      const reg = inset < 0.012 ? paths : G.depinch(G.offset(paths, -inset, tol, ang));   // recuos < 12 µm não contam (evita faixas finíssimas)
+      if (!reg.length) break;
+      const a = rr * i / n, b2 = rr * (i + 1) / n;
+      out.push(up ? { paths: reg, z0: z1 - rr + a, z1: z1 - rr + b2 } : { paths: reg, z0: z0 + rr - b2, z1: z0 + rr - a });
+    }
+    return out;
   }
 
   function solidsFor(S, R0) {
@@ -8380,9 +8416,11 @@
     const push = (arr, paths, z0, z1) => { if (paths && paths.length && z1 > z0 + 1e-6) arr.push({ paths, z0, z1 }); };
     // L/O/K: volumes das partes; pockets: o que é retirado à base (pegadas sem recorte);
     // extra: volumes adicionais para o sólido único (STL completo) acima/abaixo da base.
+    const q = R.quality || { tol: 0.01, angle: 0.06 };
+    const raisedSolids = (paths, z0, z1, up) => S.roundTop ? domed(paths, z0, z1, up, q.tol, q.angle) : [{ paths, z0, z1 }];
     if (S.front === 'raised') {
-      push(L, Tp, b, b + fh); push(O, R.outline, b, b + oh);
-      push(extra, Tp, b, b + fh); push(extra, F.length ? G.intersection(F, R.base) : [], b, b + oh);
+      for (const sl of raisedSolids(Tp, b, b + fh, true)) { push(L, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); }
+      push(O, R.outline, b, b + oh); push(extra, F.length ? G.intersection(F, R.base) : [], b, b + oh);
     } else if (S.front === 'flush') {
       push(L, Tp, b - d, b); push(O, R.outline, b - d, b); push(pockets, F.length ? F : T, b - d, b);
     } else if (S.front === 'engraved') {
@@ -8394,7 +8432,7 @@
     }
     if (through) { push(L, Tp, 0, b); push(pockets, T, 0, b); }
     if (S.back === 'inlay') { push(K, R.back, 0, d); push(pockets, backPocket, 0, d); }
-    else if (S.back === 'raised') { push(K, R.back, -fh, 0); push(extra, R.back, -fh, 0); }
+    else if (S.back === 'raised') { for (const sl of raisedSolids(R.back, -fh, 0, false)) { push(K, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); } }
     else if (S.back === 'engraved') push(pockets, backPocket, 0, eh);
     const zShift = S.back === 'raised' && R.back.length ? fh : 0;
     const shift = arr => arr.map(s => ({ paths: s.paths, z0: s.z0 + zShift, z1: s.z1 + zShift }));
@@ -8594,7 +8632,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, fileFormat: '3mf', filaments: {}, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, fileFormat: '3mf', filaments: {}, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -8689,7 +8727,7 @@ function updateControls() {
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0] + ' · ' + S.plateSize + ' × ' + S.plateSize + ' mm'; updateModeNotice(); drawMiniPlate();
   $('fileFormat').value = S.fileFormat; renderFilaChips(); renderPicker(); updatePrintBar();
 }
@@ -8726,7 +8764,8 @@ let fontSettle = null;
 function chooseFont(font, quick) {
   S.font = font;
   for (const b of document.querySelectorAll('.fontcard')) b.classList.toggle('on', b.dataset.font === font);
-  const on = document.querySelector('.fontcard.on'); if (on && quick) on.scrollIntoView({ block: 'nearest' });
+  // Rola só a galeria (não a página: no telemóvel o modelo sairia do ecrã).
+  const on = document.querySelector('.fontcard.on'), box = $('fontCards'); if (on && quick) { const r = on.getBoundingClientRect(), br = box.getBoundingClientRect(); if (r.top < br.top || r.bottom > br.bottom) box.scrollTop += r.top - br.top - br.height / 2 + r.height / 2 }
   updateFontSwitch();
   if (quick) { interactiveBuild = true; scheduleRebuild(false, 40); clearTimeout(fontSettle); fontSettle = setTimeout(() => { interactiveBuild = false; scheduleRebuild(true) }, 650) }
   else { interactiveBuild = false; scheduleRebuild(true) }
@@ -8738,8 +8777,8 @@ function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel'
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
   [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
-  [['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize') scheduleScan() }));
-  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
+  [['letterRound', 'letterRound'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
+  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundTop', 'roundTop']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   $('quickPrint').onclick = () => S.fileFormat === '3mf' ? export3MF() : exportMeshes(S.fileFormat === 'stl' ? 'combined' : 'separate');
@@ -8765,7 +8804,7 @@ function bindControls() {
   $('fontFile').onchange = async () => { const f = $('fontFile').files[0]; $('fontFile').value = ''; if (f) await importFont(f) };
   initPlateDrag(); bindViewCube();
 }
-function updateRangeLabels() { $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('weightVal').textContent = (S.textWeight >= 0 ? '+' : '') + S.textWeight.toFixed(2).replace('.', ',') + ' mm'; $('spacingVal').textContent = (S.letterSpacing > 0 ? '+' : '') + S.letterSpacing + '%'; $('outlineControls').classList.toggle('hidden', !S.outline) }
+function updateRangeLabels() { $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('tipVal').textContent = S.letterRound.toFixed(2).replace('.', ',') + ' mm'; $('weightVal').textContent = (S.textWeight >= 0 ? '+' : '') + S.textWeight.toFixed(2).replace('.', ',') + ' mm'; $('spacingVal').textContent = (S.letterSpacing > 0 ? '+' : '') + S.letterSpacing + '%'; $('outlineControls').classList.toggle('hidden', !S.outline) }
 function updateModeNotice() { $('printModeNotice').textContent = S.printMode === 'layers' ? 'O slicer imprime cada camada de todos os objetos. Recomendado para letras salientes, multicolor e peças próximas.' : 'Modo sequencial: o slicer imprime um objeto completo antes do próximo. A distância segura depende do volume da cabeça e do pórtico da impressora. O editor NÃO valida colisões com a cabeça nem o pórtico: confirma no slicer e ativa lá a impressão por objeto.' }
 
 // ---------------------------------------------------------------- fontes
@@ -8858,7 +8897,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState() {
-  const k = ['name', 'font', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = S[key]; return o;
 }
 
@@ -9028,7 +9067,27 @@ function render3D() {
   for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) { const mt = materialFor(m.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
   // Argola «fantasma» durante o arrasto: desenhada direto na GPU, segue o cursor sem recalcular a peça.
   if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
+  if (ringGhost && loupeOn) renderLoupe(c, ratio); else $('loupe').classList.add('hidden');
+  $('viewport').classList.toggle('loupeActive', !!(ringGhost && loupeOn));
   updateRingTag();
+}
+// Câmara secundária (lupa) durante o arrasto da argola com o dedo: vista de cima, ampliada, centrada
+// na argola, no canto oposto ao dedo — o dedo deixa de tapar o sítio onde a argola vai ficar.
+let loupeOn = false, loupeFinger = { x: 0, y: 0 };
+function renderLoupe(c, ratio) {
+  const W = c.clientWidth, H = c.clientHeight, size = Math.round(Math.min(W, H) * 0.42), m = 10;
+  const left = loupeFinger.x > W / 2 ? m : W - size - m, top = loupeFinger.y > H * 0.45 ? m + 44 : H - size - m;
+  const el = $('loupe'); el.classList.remove('hidden'); Object.assign(el.style, { left: left + 'px', top: top + 'px', width: size + 'px', height: size + 'px' });
+  const dx = Math.round(left * ratio), dy = Math.round((H - top - size) * ratio), ds = Math.round(size * ratio), pos = objectPositions()[0];
+  gl.enable(gl.SCISSOR_TEST); gl.scissor(dx, dy, ds, ds); gl.viewport(dx, dy, ds, ds); gl.clearColor(.03, .06, .1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+  const zoom = Math.max(camera.scale * 2.2, size / (S.ringOuter * 4.2));
+  gl.uniform1f(uniform.yaw, 0); gl.uniform1f(uniform.pitch, 0); gl.uniform1f(uniform.scale, zoom * ratio); gl.uniform2f(uniform.viewport, ds, ds); gl.uniform2f(uniform.pan, 0, 0);
+  gl.uniform3f(uniform.center, pos.x + ringGhost.x, pos.y + ringGhost.y, 0);
+  gl.uniform4f(uniform.tint, 0, 0, 0, 0);
+  for (const mm of components) if (mm.glBuffer) { const mt = materialFor(mm.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(mm.glBuffer, mm.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
+  const st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55);
+  gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST);
+  gl.uniform4f(uniform.tint, 0, 0, 0, 0); gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, c.width, c.height); gl.clearColor(.052, .08, .123, 1);
 }
 
 // Malha simples da argola (anel extrudido) para o arrasto em tempo real.
@@ -9096,14 +9155,14 @@ function startRingGhost(d) {
     ringGhost.status = ghostStatus(ringGhost.x, ringGhost.y); requestRender();
   }).catch(e => console.warn(e));
 }
-function endRingGhost() { ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
+function endRingGhost() { loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
 function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - S.positionX, y: p.y - S.positionY } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
-function selectAt(evt) {
+function selectAt(evt, extra = 0) {
   if (!model) return '';
   const back = Math.cos(camera.yaw) < 0, z = back ? 0 : (model.zShift || 0) + S.bodyThickness, p = screenLocal(evt, z); if (!p) return '';
   const R = model.regions;
-  if (S.hasRing && Math.hypot(p.x - S.ringX, p.y - S.ringY) < S.ringOuter / 2 + 2) return 'ring';
+  if (S.hasRing && Math.hypot(p.x - S.ringX, p.y - S.ringY) < S.ringOuter / 2 + 2 + extra) return 'ring';
   if (back && inRegion(R.back, p)) return 'letters';
   if (!back && (inRegion(R.text, p) || inRegion(R.outline, p))) return 'letters';
   if (inRegion(R.base, p)) return 'base';
@@ -9125,10 +9184,23 @@ function bindViewerEvents() {
     if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; interactiveBuild = false; endRingGhost(); if (d.moved) scheduleRebuild(true) }
     d.kind = 'pan'; d.chord = true; canvas.parentElement.classList.add('dragging'); requestRender();
   };
+  // Toque: 1 dedo roda / arrasta a argola / toca para selecionar; 2 dedos = aproximar/afastar + deslocar.
+  const touches = new Map(); let touchLock = false;
+  const pinchState = () => { const [a, b] = [...touches.values()], r = canvas.getBoundingClientRect(); return { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2 - r.left - r.width / 2, my: (a.y + b.y) / 2 - r.top - r.height / 2 } };
   canvas.addEventListener('pointerdown', e => {
+    if (e.pointerType === 'touch') {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (touches.size === 2) {
+        const d = dragAction; if (d && d.kind !== 'pinch') { if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch } if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; endRingGhost(); scheduleRebuild(true) } }
+        const p0 = pinchState(); dragAction = { kind: 'pinch', p0, s0: camera.scale, px: camera.panX, py: camera.panY, chord: true }; touchLock = true;
+        try { canvas.setPointerCapture(e.pointerId) } catch (err) { }
+        return;
+      }
+      if (touches.size > 2 || touchLock) return;
+    }
     if (dragAction) { if ((e.buttons & 3) === 3 && dragAction.kind !== 'pan') startPan(dragAction); return }
     const both = (e.buttons & 3) === 3, left = e.button === 0 && !both;
-    const clicked = left ? selectAt(e) : '';
+    const clicked = left ? selectAt(e, e.pointerType === 'touch' ? 26 / camera.scale : 0) : '';
     let kind = 'rotate';
     if (!left || e.shiftKey) kind = 'pan';
     else if (e.ctrlKey && S.plateView) kind = 'move';
@@ -9144,6 +9216,16 @@ function bindViewerEvents() {
     if (!dragAction && e.buttons === 0 && performance.now() - hoverT > 60) { hoverT = performance.now(); canvas.style.cursor = selectAt(e) === 'ring' ? 'move' : fontMode ? 'ns-resize' : '' }
   });
   canvas.addEventListener('pointermove', e => {
+    if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
+      touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (dragAction && dragAction.kind === 'pinch') {
+        if (touches.size < 2) return;
+        const d = dragAction, p = pinchState(), after = Math.min(80, Math.max(.3, d.s0 * p.d / d.p0.d)), k = after / d.s0;
+        camera.panX = p.mx - (d.p0.mx - d.px) * k; camera.panY = p.my - (d.p0.my - d.py) * k; camera.scale = after; requestRender(); return;
+      }
+      if (touchLock) return;
+      const rr = canvas.getBoundingClientRect(); loupeFinger = { x: e.clientX - rr.left, y: e.clientY - rr.top };
+    }
     const d = dragAction; if (!d || e.pointerId !== d.id) return;
     if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(); return }
     if ((e.buttons & 3) === 3 && d.kind !== 'pan') startPan(d);
@@ -9154,7 +9236,7 @@ function bindViewerEvents() {
     else if (d.kind === 'ring') {
       const p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness);
       if (p) {
-        if (!ringGhost) startRingGhost(d);
+        if (!ringGhost) { startRingGhost(d); loupeOn = e.pointerType === 'touch' || window.SPARROW_LOUPE === true }
         S.ringX = p.x; S.ringY = p.y; S.ringManual = true;
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
       }
@@ -9167,9 +9249,16 @@ function bindViewerEvents() {
     if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
     if (d.kind === 'ring' && d.moved) { endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true) }
   };
-  canvas.addEventListener('pointerup', e => { if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag() });
-  canvas.addEventListener('pointercancel', endDrag);
-  canvas.addEventListener('lostpointercapture', () => { if (dragAction) endDrag() });
+  const touchEnd = e => {
+    if (e.pointerType !== 'touch') return false;
+    touches.delete(e.pointerId);
+    if (dragAction && dragAction.kind === 'pinch') { if (touches.size === 0) { dragAction = null; touchLock = false } return true }
+    if (touches.size === 0) touchLock = false;
+    return false;
+  };
+  canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag() });
+  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; endDrag() });
+  canvas.addEventListener('lostpointercapture', () => { if (dragAction && dragAction.kind !== 'pinch') endDrag() });
   let wheelAcc = 0;
   canvas.addEventListener('wheel', e => {
     e.preventDefault();

@@ -108,3 +108,12 @@ Pormenores: os botões vêm de `event.buttons` (esquerdo = 1, direito = 2, ambos
 * **Topo do painel:** impressora, ficheiro (3MF com cores / STL uma peça / STL por cor), chips de filamento por parte e botão Imprimir; a dica indica o slicer certo (Bambu Studio ou Creality Print).
 * **Materiais na pré-visualização:** Basic acetinado, Matte baço, Silk brilho sedoso, PETG brilhante.
 * **Arrasto da argola em tempo real:** ao começar a arrastar, a peça é recalculada uma vez (rascunho, sem argola) e a argola passa a ser uma forma desenhada diretamente na GPU que segue o cursor; a força da ligação (% da bola na peça, ou «tapa letras») é calculada ao vivo e mostrada na cor e na etiqueta. Ao largar, a peça é recalculada com o reforço. Teste: `tests/ring_drag.py` (1 cálculo para 40 movimentos).
+
+## Telemóvel, câmara da argola e letras redondas (v5.4)
+
+* **Toque:** 1 dedo roda; 2 dedos aproximam/afastam (zoom em torno do ponto entre os dedos) e deslocam; toque simples seleciona (nas letras ativa o modo fonte, troca com ◀ ▶). A zona de toque da argola é maior. Ao trocar de fonte só a galeria rola — a página não salta e o modelo não sai do ecrã.
+* **Câmara secundária da argola:** ao arrastar a argola com o dedo abre-se, no canto oposto ao dedo, uma segunda vista (de cima, ampliada ~2×, centrada na argola) desenhada pela GPU no mesmo canvas (scissor/viewport), com a argola colorida pela força da ligação. O cubo de vistas, a etiqueta de seleção e o seletor de fonte escondem-se enquanto a câmara está aberta.
+* **Ecrã pequeno:** cabeçalho compacto, modelo com 62 % da altura, painel por baixo, botões maiores.
+* **Topo arredondado (3D):** a parte saliente das letras é feita de lajes cada vez mais estreitas segundo um quarto de círculo (raio até 0,8 mm, degraus ≤ 0,1 mm — da ordem da altura de camada), também nas letras em relevo do verso.
+* **Pontas arredondadas:** «abertura» morfológica (encolhe r, cresce r) que arredonda bicos e terminações finas das letras.
+* Testes: `tests/mobile_check.py` (emulação de toque com multitoque real via CDP) e novos casos em `geometry.test.cjs` (3719 verificações).

@@ -107,6 +107,9 @@
     // Espessura: engrossa (ou afina) o traço das letras, como nos geradores de porta-chaves.
     const weight = S.textWeight || 0;
     if (Math.abs(weight) > 1e-3 && text.length) text = G.offset(text, weight, tol, ang);
+    // Pontas arredondadas: «abertura» (encolhe e volta a crescer) tira os bicos das terminações.
+    const tipR = Math.max(0, S.letterRound || 0);
+    if (tipR > 1e-3 && text.length) text = G.offset(G.offset(text, -tipR, tol, ang), tipR, tol, ang);
     text = G.depinch(text);
     const tb = G.bounds(text) || { minX: -20, maxX: 20, minY: -8, maxY: 8, width: 40, height: 16 };
     const print = printability(text, S.nozzle || 0.4);
@@ -157,7 +160,28 @@
       }
       back = G.depinch(G.intersection(K, margin));   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
     }
-    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, bounds: G.bounds(base), textBounds: tb };
+    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
+  }
+
+  /**
+   * Topo arredondado («almofadado»): a parte saliente é feita de camadas finas cada vez mais
+   * estreitas, seguindo um quarto de círculo de raio rr. Os degraus (≤ 0,08 mm) ficam abaixo da
+   * altura de camada da impressora, por isso o slicer vê uma curva.
+   * up = true: arredonda em cima (z1); false: em baixo (z0, letras em relevo no verso).
+   */
+  function domed(paths, z0, z1, up, tol, ang) {
+    const h = z1 - z0, rr = Math.min(h, 0.8);
+    if (!paths.length || rr < 0.15) return [{ paths, z0, z1 }];
+    const n = Math.max(3, Math.min(8, Math.ceil(rr / 0.08))), out = [];
+    if (h - rr > 1e-6) out.push(up ? { paths, z0, z1: z1 - rr } : { paths, z0: z0 + rr, z1 });
+    for (let i = 0; i < n; i++) {
+      const t = (i + 0.5) / n, inset = rr * (1 - Math.sqrt(1 - t * t));
+      const reg = inset < 0.012 ? paths : G.depinch(G.offset(paths, -inset, tol, ang));   // recuos < 12 µm não contam (evita faixas finíssimas)
+      if (!reg.length) break;
+      const a = rr * i / n, b2 = rr * (i + 1) / n;
+      out.push(up ? { paths: reg, z0: z1 - rr + a, z1: z1 - rr + b2 } : { paths: reg, z0: z0 + rr - b2, z1: z0 + rr - a });
+    }
+    return out;
   }
 
   function solidsFor(S, R0) {
@@ -176,9 +200,11 @@
     const push = (arr, paths, z0, z1) => { if (paths && paths.length && z1 > z0 + 1e-6) arr.push({ paths, z0, z1 }); };
     // L/O/K: volumes das partes; pockets: o que é retirado à base (pegadas sem recorte);
     // extra: volumes adicionais para o sólido único (STL completo) acima/abaixo da base.
+    const q = R.quality || { tol: 0.01, angle: 0.06 };
+    const raisedSolids = (paths, z0, z1, up) => S.roundTop ? domed(paths, z0, z1, up, q.tol, q.angle) : [{ paths, z0, z1 }];
     if (S.front === 'raised') {
-      push(L, Tp, b, b + fh); push(O, R.outline, b, b + oh);
-      push(extra, Tp, b, b + fh); push(extra, F.length ? G.intersection(F, R.base) : [], b, b + oh);
+      for (const sl of raisedSolids(Tp, b, b + fh, true)) { push(L, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); }
+      push(O, R.outline, b, b + oh); push(extra, F.length ? G.intersection(F, R.base) : [], b, b + oh);
     } else if (S.front === 'flush') {
       push(L, Tp, b - d, b); push(O, R.outline, b - d, b); push(pockets, F.length ? F : T, b - d, b);
     } else if (S.front === 'engraved') {
@@ -190,7 +216,7 @@
     }
     if (through) { push(L, Tp, 0, b); push(pockets, T, 0, b); }
     if (S.back === 'inlay') { push(K, R.back, 0, d); push(pockets, backPocket, 0, d); }
-    else if (S.back === 'raised') { push(K, R.back, -fh, 0); push(extra, R.back, -fh, 0); }
+    else if (S.back === 'raised') { for (const sl of raisedSolids(R.back, -fh, 0, false)) { push(K, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); } }
     else if (S.back === 'engraved') push(pockets, backPocket, 0, eh);
     const zShift = S.back === 'raised' && R.back.length ? fh : 0;
     const shift = arr => arr.map(s => ({ paths: s.paths, z0: s.z0 + zShift, z1: s.z1 + zShift }));

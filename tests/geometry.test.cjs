@@ -101,6 +101,19 @@ console.log(`2b) Todas as ${CATALOG.length} fontes do catálogo (relevo + contor
   check(M.scanFont({ ...BASE_STATE, nozzle: 0.6, letterSpacing: -10, textWeight: 0.6 }, fonts.Pacifico).gap > M.scanFont({ ...BASE_STATE, nozzle: 0.6 }, fonts.Pacifico).gap, 'letras apertadas deviam aumentar os espaços estreitos');
 }
 
+console.log('2c) Letras redondas: topo arredondado (3D) e pontas arredondadas');
+for (const fname of COMBO_FONTS) for (const extra of [{ roundTop: true }, { roundTop: true, letterRound: 0.4, letterHeight: 1.0, back: 'raised', backText: 'Ana' }, { letterRound: 0.6, front: 'flush' }]) {
+  const model = M.build({ ...BASE_STATE, ...extra }, { front: fonts[fname] }, 'fine');
+  for (const p of model.parts) checkMesh(p.mesh, `${fname}/${JSON.stringify(extra)}/${p.id}`);
+  checkMesh(model.unionMesh(), `${fname}/${JSON.stringify(extra)}/união`);
+}
+{ // o topo arredondado tem de ficar mais estreito em cima do que em baixo
+  const m = M.build({ ...BASE_STATE, roundTop: true, letterHeight: 1.0 }, { front: fonts.Pacifico }, 'fine'), L = m.parts.find(p => p.id === 'letters').mesh, P = L.positions;
+  let top = 0; for (let i = 2; i < P.length; i += 3) top = Math.max(top, P[i]);
+  const at = z => { let n = 0; for (let i = 2; i < P.length; i += 3) if (Math.abs(P[i] - z) < 1e-4) n++; return n };
+  check(at(top) > 0 && G.meshStats(L).volume < G.meshStats(M.build({ ...BASE_STATE, letterHeight: 1.0 }, { front: fonts.Pacifico }, 'fine').parts.find(p => p.id === 'letters').mesh).volume * 0.97, 'topo arredondado não reduz o volume das letras');
+}
+
 console.log('3) Partes sem sobreposição (volume da união = soma das partes)');
 for (const front of FRONT) for (const back of ['smooth', 'inlay', 'raised', 'through']) {
   const S = { ...BASE_STATE, front, back, backText: 'Teste' };
