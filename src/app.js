@@ -188,7 +188,7 @@ function bindControls() {
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   bindCards();
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
-  $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
+  $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { S.plateView = false; fitCamera(); requestRender() }; $('btnPlate').onclick = () => { S.plateView = true; fitCamera(); requestRender() };
   $('autoRing').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
   $('printer').onchange = () => { S.printer = $('printer').value; matchFilamentsToBrand(); refreshMeshColors(); pickerPart = null; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
@@ -592,7 +592,7 @@ function fitCamera() {
   const width = S.plateView ? plateW() + 23 : Math.max(65, b ? b.width : 80) * 1.45, height = S.plateView ? plateH() + 23 : Math.max(33, b ? b.height : 40) * 1.9;
   camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
 }
-function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
+function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
 /**
  * Correção ao largar: ao levantar o dedo (ou soltar o botão) a ponta «rola» e os últimos ~100 ms
  * deslocam a argola uns milímetros. Usa-se a posição de ~100 ms antes de largar (60 ms com rato),

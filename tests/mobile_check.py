@@ -78,6 +78,14 @@ with sync_playwright() as p:
     pg.tap('#rmReset'); pg.wait_for_timeout(900); pg.wait_for_function('() => !building', timeout=60000)
     check(pg.evaluate('S.ringManual') is False and pg.evaluate("model.regions.ring.status") == 'ok', 'Repor posição devolve a argola ao sítio seguro')
     pg.screenshot(path=os.path.join(OUT, 'mobile_menu_argola.png'))
+    # Ecrã baixo (ex.: Motorola G86 dentro de uma app): o menu tem de caber inteiro na vista do modelo
+    pg.set_viewport_size({'width': 412, 'height': 560}); pg.wait_for_timeout(300)
+    vb = pg.locator('#viewport').bounding_box(); mb = pg.locator('#ringMenu').bounding_box(); cb = pg.locator('#rmClose').bounding_box(); sb = pg.locator('#rmSize').bounding_box()
+    check(mb['y'] >= vb['y'] and mb['y'] + mb['height'] <= vb['y'] + vb['height'] + .5 and cb['y'] + cb['height'] <= mb['y'] + mb['height'] and sb['height'] >= 36, f"menu da argola cabe num ecrã baixo (vista {round(vb['height'])} px, menu {round(mb['height'])} px, cursor {round(sb['height'])} px)")
+    pg.screenshot(path=os.path.join(OUT, 'mobile_menu_argola_baixo.png'), clip={'x': 0, 'y': 0, 'width': 412, 'height': 420})
+    hb = [pg.locator(i).bounding_box() for i in ('#btnFit', '#resetCam', '#btnFlip', '#dlSTL', '#dl3MF')]
+    check(all(b and b['x'] + b['width'] <= 412 for b in hb) and len({round(b['y']) for b in hb}) == 1 and not pg.evaluate("!!document.getElementById('frontView')"), 'vistas só no topo (⌖, 3D, ↻), numa linha; sem botões repetidos em baixo')
+    pg.set_viewport_size({'width': 390, 'height': 844}); pg.wait_for_timeout(300)
     pg.tap('#rmClose'); pg.wait_for_timeout(100)
     check(pg.evaluate("document.getElementById('ringMenu').classList.contains('hidden')"), '✕ fecha o menu da argola')
     # Ao largar: o «rolar» do dedo (movimento pequeno nos últimos ms) não pode mover a argola

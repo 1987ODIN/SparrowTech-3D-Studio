@@ -75,11 +75,11 @@ with sync_playwright() as p:
     page.click('#autoArrange'); verify('organizar automaticamente')
     page.evaluate("(() => { const e = document.getElementById('copyCount'); e.value = 1; e.dispatchEvent(new Event('input')); })()")
     # Vistas e botões do topo
-    for bid in ['btnFit', 'btnFlip', 'btnFlip', 'frontView', 'backView', 'resetCam']:
+    for bid in ['btnFit', 'btnFlip', 'btnFlip', 'resetCam']:
         page.click('#' + bid); verify(f'botão {bid}')
     for v in ['front', 'back', 'top', 'iso', 'zoomIn', 'zoomOut']:
         page.click(f'.viewCube button[data-view="{v}"]'); verify(f'cubo de vistas {v}')
-    page.click('#frontView')
+    page.evaluate("setView('front')")
     # Seletor de fonte ◀ ▶ e modo fonte
     page.click('#fontNext'); verify('fonte seguinte ▶'); page.click('#fontPrev'); verify('fonte anterior ◀')
     page.click('#fontName'); check_mode = page.evaluate('fontMode'); page.keyboard.press('ArrowRight'); verify(f'modo fonte por clique no nome ({check_mode}) + seta →'); page.keyboard.press('Escape')
