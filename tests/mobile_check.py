@@ -57,6 +57,8 @@ with sync_playwright() as p:
     pg.screenshot(path=os.path.join(OUT, 'mobile_lupa_argola.png'))
     touch('touchEnd', []); pg.wait_for_timeout(700); pg.wait_for_function('() => !building', timeout=60000)
     check(pg.evaluate("document.getElementById('loupe').classList.contains('hidden') && !ringGhost && components.every(c=>SparrowGeo.isClosed(c.mesh))"), 'ao largar: câmara fecha e a peça é recalculada (fechada)')
+    if lb: check(lb['x'] < 20, 'a câmara da argola fica sempre do lado esquerdo')
+    check(not pg.locator('#openStudio').is_visible(), 'o botão de abrir o Bambu Studio não aparece no telemóvel')
     # Menu da argola no ecrã: toca na argola → tamanho (＋/−) e repor posição, sem ir ao painel
     rq = pg.evaluate("(()=>{const r=model.regions.ring,pos=objectPositions()[0],c=document.getElementById('gl').getBoundingClientRect(),s=project(r.x+pos.x,r.y+pos.y,(model.zShift||0)+S.bodyThickness);return {x:s.x+c.left,y:s.y+c.top,vb:c.bottom,vt:c.top}})()")
     pg.touchscreen.tap(rq['x'], rq['y']); pg.wait_for_timeout(250)

@@ -170,6 +170,14 @@ function bindControls() {
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   $('topDownload').onclick = () => $('quickPrint').click();
   $('quickPrint').onclick = () => S.fileFormat === 'stl' ? exportSTL() : export3MF();
+  // Computador: descarrega o 3MF e pede ao sistema para iniciar o Bambu Studio (protocolo bambustudio://).
+  // Uma página local não consegue entregar o ficheiro ao programa: abre-se lá a partir das transferências.
+  $('openStudio').onclick = async () => {
+    await export3MF();
+    const f = document.createElement('iframe'); f.style.display = 'none'; f.src = 'bambustudio://open'; document.body.appendChild(f); setTimeout(() => f.remove(), 4000);
+    $('qualityNotice').textContent = 'O 3MF foi descarregado e pedi ao computador para abrir o Bambu Studio. Arrasta o ficheiro das transferências para a janela do Bambu Studio (ou Ficheiro → Abrir projeto).';
+    $('printHint').textContent = '3MF descarregado. No Bambu Studio: arrasta o ficheiro das transferências para a janela (ou Ficheiro → Abrir projeto). Se o Bambu Studio não abriu sozinho, abre-o à mão.';
+  };
   $('fileFormat').onchange = () => { S.fileFormat = $('fileFormat').value; updatePrintBar() };
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
@@ -508,7 +516,8 @@ function render3D() {
 let loupeOn = false, loupeFinger = { x: 0, y: 0 };
 function renderLoupe(c, ratio) {
   const W = c.clientWidth, H = c.clientHeight, size = Math.round(Math.min(W, H) * 0.42), m = 10;
-  const left = loupeFinger.x > W / 2 ? m : W - size - m, top = loupeFinger.y > H * 0.45 ? m + 44 : H - size - m;
+  // Sempre do lado esquerdo (a palma da mão direita tapa o lado direito); em cima ou em baixo, longe do dedo.
+  const left = m, top = loupeFinger.y > H * 0.45 ? m + 44 : H - size - m;
   const el = $('loupe'); el.classList.remove('hidden'); Object.assign(el.style, { left: left + 'px', top: top + 'px', width: size + 'px', height: size + 'px' });
   const dx = Math.round(left * ratio), dy = Math.round((H - top - size) * ratio), ds = Math.round(size * ratio), pos = objectPositions()[0];
   gl.enable(gl.SCISSOR_TEST); gl.scissor(dx, dy, ds, ds); gl.viewport(dx, dy, ds, ds); gl.clearColor(.03, .06, .1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);

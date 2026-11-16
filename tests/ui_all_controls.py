@@ -146,7 +146,7 @@ with sync_playwright() as p:
     ok = len(got) == npl; print(('  ✓ ' if ok else '  ✗ ') + f'STL com 40 cópias → {got}'); fails.extend([] if ok else ['stl tabuleiros'])
     page.fill('#copyTop', '1'); page.select_option('#fileFormat', '3mf'); page.wait_for_timeout(300)
     # Exportações: Imprimir (topo), 3MF, STL completo, STLs por cor, placa de teste
-    for bid, n in [('quickPrint', 1), ('topDownload', 1)]:
+    for bid, n in [('quickPrint', 1), ('topDownload', 1), ('openStudio', 1)]:
         with page.expect_download(timeout=90000) as dl: page.click('#' + bid)
         d = dl.value; path = os.path.join(OUT, 'ui_' + d.suggested_filename); d.save_as(path)
         ok = os.path.getsize(path) > 1000; print(('  ✓ ' if ok else '  ✗ ') + f'{bid} → {d.suggested_filename} ({os.path.getsize(path) // 1024} KB)'); fails.extend([] if ok else [bid])
