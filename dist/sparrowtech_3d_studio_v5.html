@@ -9143,6 +9143,24 @@ function fitCamera() {
   camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
 }
 function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('frontView').classList.toggle('on', side === 'front'); $('backView').classList.toggle('on', side === 'back'); $('btnFlip').textContent = side === 'front' ? '↻ Ver verso' : '↻ Ver frente'; requestRender() }
+/**
+ * Correção ao largar: ao levantar o dedo (ou soltar o botão) a ponta «rola» e os últimos ~100 ms
+ * deslocam a argola uns milímetros. Usa-se a posição de ~100 ms antes de largar (60 ms com rato),
+ * desde que esse movimento final seja pequeno (≤ 22 px no ecrã); um gesto intencional rápido conta.
+ */
+function releasePosition(d) {
+  const h = d.hist; if (!h || h.length < 2) return null;
+  const last = h[h.length - 1], tUp = performance.now(), windowMs = d.touch ? 110 : 60;
+  // Amostras recentes perto do ponto final (≤ 22 px e ≤ 700 ms): é aí que pode estar o «rolar».
+  const cand = [];
+  for (let i = h.length - 1; i >= 0; i--) { const q = h[i]; if (tUp - q.t > 700 || Math.hypot(last.sx - q.sx, last.sy - q.sy) > 22) break; cand.push(i) }
+  if (cand.length < 2) return null;
+  // 1) Houve uma pausa (dedo parado ≥ 90 ms)? Fica a posição dessa pausa.
+  for (const i of cand) if (i + 1 < h.length && h[i + 1].t - h[i].t >= 90) return { x: h[i].x, y: h[i].y };
+  // 2) Sem pausa: ignora só os últimos ~100 ms (60 ms com rato).
+  for (const i of cand) if (tUp - h[i].t >= windowMs) return { x: h[i].x, y: h[i].y };
+  return null;
+}
 // Início do arrasto: a peça é recalculada (rascunho) SEM a argola e a argola passa a ser o fantasma na GPU.
 function startRingGhost(d) {
   ringGhost = { x: S.ringX, y: S.ringY, status: 'ok', frac: 1 }; buildRingGhost();
@@ -9205,7 +9223,7 @@ function bindViewerEvents() {
     if (!left || e.shiftKey) kind = 'pan';
     else if (e.ctrlKey && S.plateView) kind = 'move';
     else if (clicked === 'ring') kind = 'ring';
-    dragAction = { id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, yaw: camera.yaw, pitch: camera.pitch, originalX: S.positionX, originalY: S.positionY, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
+    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, yaw: camera.yaw, pitch: camera.pitch, originalX: S.positionX, originalY: S.positionY, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
     canvas.setPointerCapture(e.pointerId);
     if (kind === 'pan') canvas.parentElement.classList.add('dragging');
   });
@@ -9234,9 +9252,15 @@ function bindViewerEvents() {
     if (!d.moved) return;
     if (d.kind === 'pan') { camera.panX += dx; camera.panY += dy; requestRender() }
     else if (d.kind === 'ring') {
-      const p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness);
+      let p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness);
       if (p) {
         if (!ringGhost) { startRingGhost(d); loupeOn = e.pointerType === 'touch' || window.SPARROW_LOUPE === true }
+        // Dedo: amortece o tremor (média móvel exponencial curta, ~30 ms de atraso).
+        if (e.pointerType === 'touch' && d.smooth) p = { x: d.smooth.x + (p.x - d.smooth.x) * 0.55, y: d.smooth.y + (p.y - d.smooth.y) * 0.55 };
+        d.smooth = p;
+        // Histórico com tempo, para corrigir o «rolar» do dedo ao largar.
+        const now = performance.now(); (d.hist || (d.hist = [])).push({ t: now, x: p.x, y: p.y, sx: e.clientX, sy: e.clientY });
+        if (d.hist.length > 40) d.hist.shift();   // por número, não por tempo: com o dedo parado não há eventos
         S.ringX = p.x; S.ringY = p.y; S.ringManual = true;
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
       }
@@ -9247,7 +9271,10 @@ function bindViewerEvents() {
   const endDrag = () => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
     if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
-    if (d.kind === 'ring' && d.moved) { endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true) }
+    if (d.kind === 'ring' && d.moved) {
+      const fix = releasePosition(d); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
+      endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
+    }
   };
   const touchEnd = e => {
     if (e.pointerType !== 'touch') return false;

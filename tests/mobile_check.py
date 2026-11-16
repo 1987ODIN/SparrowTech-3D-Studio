@@ -57,6 +57,19 @@ with sync_playwright() as p:
     pg.screenshot(path=os.path.join(OUT, 'mobile_lupa_argola.png'))
     touch('touchEnd', []); pg.wait_for_timeout(700); pg.wait_for_function('() => !building', timeout=60000)
     check(pg.evaluate("document.getElementById('loupe').classList.contains('hidden') && !ringGhost && components.every(c=>SparrowGeo.isClosed(c.mesh))"), 'ao largar: câmara fecha e a peça é recalculada (fechada)')
+    # Ao largar: o «rolar» do dedo (movimento pequeno nos últimos ms) não pode mover a argola
+    pg.evaluate("setView('front'); fitCamera(); requestRender()"); pg.wait_for_timeout(100)
+    rp = pg.evaluate("(()=>{const r=model.regions.ring,pos=objectPositions()[0],c=document.getElementById('gl').getBoundingClientRect(),s=project(r.x+pos.x,r.y+pos.y,(model.zShift||0)+S.bodyThickness);return {x:s.x+c.left,y:s.y+c.top}})()")
+    tx, ty = rp['x'] + 30, rp['y'] + 18
+    touch('touchStart', [(rp['x'], rp['y'])])
+    for k in range(1, 11): touch('touchMove', [(rp['x'] + 3 * k, rp['y'] + 1.8 * k)]); pg.wait_for_timeout(20)
+    pg.wait_for_timeout(250)                                   # dedo parado no sítio certo
+    target = pg.evaluate("[S.ringX, S.ringY]")
+    for k in range(1, 4): touch('touchMove', [(tx - 4 * k, ty - 2 * k)])   # rola ao levantar (rápido)
+    touch('touchEnd', []); pg.wait_for_timeout(700); pg.wait_for_function('() => !building', timeout=60000)
+    final = pg.evaluate("[S.ringX, S.ringY, model.regions.ring.x, model.regions.ring.y]")
+    err = ((final[0] - target[0]) ** 2 + (final[1] - target[1]) ** 2) ** .5
+    check(err < 0.15 and abs(final[2] - final[0]) < 1e-6, f'ao largar, o rolar do dedo é ignorado (desvio {err:.2f} mm)')
     # Letras redondas
     pg.evaluate("S.roundTop = true; S.letterRound = 0.3; updateControls(); scheduleRebuild(true)"); pg.wait_for_timeout(500); pg.wait_for_function('() => !building', timeout=90000)
     check(pg.evaluate("components.every(c=>SparrowGeo.isClosed(c.mesh)) && components.find(c=>c.id==='letters').mesh.triangleCount > 20000"), 'topo arredondado + pontas arredondadas (malhas fechadas)')

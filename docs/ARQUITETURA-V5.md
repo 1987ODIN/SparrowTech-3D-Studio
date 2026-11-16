@@ -117,3 +117,7 @@ Pormenores: os botões vêm de `event.buttons` (esquerdo = 1, direito = 2, ambos
 * **Topo arredondado (3D):** a parte saliente das letras é feita de lajes cada vez mais estreitas segundo um quarto de círculo (raio até 0,8 mm, degraus ≤ 0,1 mm — da ordem da altura de camada), também nas letras em relevo do verso.
 * **Pontas arredondadas:** «abertura» morfológica (encolhe r, cresce r) que arredonda bicos e terminações finas das letras.
 * Testes: `tests/mobile_check.py` (emulação de toque com multitoque real via CDP) e novos casos em `geometry.test.cjs` (3719 verificações).
+
+## Largar a argola sem ela «fugir» (v5.5)
+
+Ao levantar o dedo, a ponta rola e os últimos eventos de movimento deslocam a argola uns milímetros (às vezes para trás). Correção (`releasePosition`): guarda-se o histórico do arrasto (posição + tempo); ao largar, entre as amostras a ≤ 22 px do ponto final, (1) se houve uma pausa ≥ 90 ms usa-se a posição dessa pausa; (2) senão, ignoram-se os últimos ~110 ms (60 ms com rato). Movimentos finais maiores do que 22 px contam como intencionais. Com o dedo há também um amortecimento curto do tremor durante o arrasto. Teste em `tests/mobile_check.py` (desvio 0,00 mm).
