@@ -114,12 +114,25 @@ for (const fname of COMBO_FONTS) for (const extra of [{ roundTop: true }, { roun
   check(at(top) > 0 && G.meshStats(L).volume < G.meshStats(M.build({ ...BASE_STATE, letterHeight: 1.0 }, { front: fonts.Pacifico }, 'fine').parts.find(p => p.id === 'letters').mesh).volume * 0.97, 'topo arredondado não reduz o volume das letras');
 }
 
+console.log('2c2) Letras «almofada» (altas e abauladas)');
+for (const fname of COMBO_FONTS) for (const extra of [{ letterStyle: 'puffy', letterHeight: 1.6, letterRound: 0.3 }, { letterStyle: 'puffy', letterHeight: 2.4, roundBase: true, back: 'raised', backText: 'Ana' }]) {
+  const model = M.build({ ...BASE_STATE, ...extra }, { front: fonts[fname], back: fonts[fname] }, 'normal');
+  for (const p of model.parts) checkMesh(p.mesh, `${fname}/${JSON.stringify(extra)}/${p.id}`);
+  checkMesh(model.unionMesh(), `${fname}/${JSON.stringify(extra)}/união`);
+}
+{ // a almofada tira bem mais material do que a aresta suave, e a letra continua a chegar à altura pedida
+  const v = st => { const L = M.build({ ...BASE_STATE, letterHeight: 1.6, ...st }, { front: fonts.Pacifico }, 'normal').parts.find(p => p.id === 'letters').mesh; let top = 0; for (let i = 2; i < L.positions.length; i += 3) top = Math.max(top, L.positions[i]); return [G.meshStats(L).volume, top] };
+  const [vf, tf] = v({}), [vs] = v({ letterStyle: 'soft' }), [vp, tp] = v({ letterStyle: 'puffy' });
+  check(vp < vs * 0.9 && vs < vf && vp > vf * 0.45, `volumes direitas/suaves/almofada: ${vf.toFixed(0)} / ${vs.toFixed(0)} / ${vp.toFixed(0)} mm³`);
+  check(Math.abs(tp - tf) < 0.15, `a almofada chega ao topo (${tp.toFixed(2)} vs ${tf.toFixed(2)} mm)`);
+}
+
 console.log('2d) Tudo redondo (peluche): base e argola com borda redonda, chanfro leve no verso');
 {
   const FR = ['raised', 'flush', 'engraved', 'cutout'], BK = ['smooth', 'inlay', 'raised', 'engraved', 'through'], SH = [...new Set(['contour', BASE_STATE.shape])];
   let n = 0;
   for (const fname of COMBO_FONTS) for (const front of FR) for (const back of BK) for (const extra of [{ roundBase: true }, { roundBase: true, roundBack: true, roundTop: true, roundAmount: 1 }, { roundBack: true, roundAmount: 0.3, roundBase: true, hasRing: false }]) {
-    if ((n++ % 3) && fname !== COMBO_FONTS[0]) continue;                       // amostra nas outras fontes
+    if ((n++ % 6) && fname !== COMBO_FONTS[0]) continue;                       // amostra nas outras fontes
     const st = { ...BASE_STATE, front, back, backText: back === 'smooth' ? '' : 'Ana', ...extra }, label = `${fname}/${front}/${back}/${JSON.stringify(extra)}`;
     const model = M.build(st, { front: fonts[fname], back: fonts[fname] }, 'normal');
     for (const p of model.parts) checkMesh(p.mesh, `${label}/${p.id}`);

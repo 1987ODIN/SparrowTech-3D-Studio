@@ -170,13 +170,15 @@
    * altura de camada da impressora, por isso o slicer vê uma curva.
    * up = true: arredonda em cima (z1); false: em baixo (z0, letras em relevo no verso).
    */
-  function domed(paths, z0, z1, up, tol, ang) {
-    const h = z1 - z0, rr = Math.min(h, 0.8);
+  function domed(paths, z0, z1, up, tol, ang, puffy, jitter) {
+    // «Almofada» (puffy): a curva ocupa quase toda a altura e entra até ~2 mm para dentro do traço
+    // (perfil elíptico), por isso a letra fica mesmo abaulada e os traços finos ficam mais baixos.
+    const h = z1 - z0, rr = puffy ? Math.max(0.15, h - 0.2) : Math.min(h, 0.8), w = (puffy ? Math.min(2.2, Math.max(rr, 1.4 * h)) : rr) * (1 - 0.037 * (jitter || 0));
     if (!paths.length || rr < 0.15) return [{ paths, z0, z1 }];
-    const n = Math.max(3, Math.min(8, Math.ceil(rr / 0.08))), out = [];
+    const n = Math.max(3, Math.min(puffy ? 14 : 8, Math.ceil(rr / 0.08))), out = [];
     if (h - rr > 1e-6) out.push(up ? { paths, z0, z1: z1 - rr } : { paths, z0: z0 + rr, z1 });
     for (let i = 0; i < n; i++) {
-      const t = (i + 0.5) / n, inset = rr * (1 - Math.sqrt(1 - t * t));
+      const t = (i + 0.5) / n, inset = w * (1 - Math.sqrt(1 - t * t));
       const reg = inset < 0.012 ? paths : G.depinch(G.offset(paths, -inset, tol, ang));   // recuos < 12 µm não contam (evita faixas finíssimas)
       if (!reg.length) break;
       const a = rr * i / n, b2 = rr * (i + 1) / n;
@@ -230,7 +232,9 @@
     // L/O/K: volumes das partes; pockets: o que é retirado à base (pegadas sem recorte);
     // extra: volumes adicionais para o sólido único (STL completo) acima/abaixo da base.
     const q = R.quality || { tol: 0.01, angle: 0.06 };
-    const raisedSolids = (paths, z0, z1, up) => S.roundTop ? domed(paths, z0, z1, up, q.tol, q.angle) : [{ paths, z0, z1 }];
+    // Estilo das letras: 'flat' (direitas), 'soft' (aresta suave) ou 'puffy' (almofada). roundTop = compatibilidade ('soft').
+    const style = S.letterStyle && S.letterStyle !== 'flat' ? S.letterStyle : (S.roundTop ? 'soft' : 'flat');
+    const raisedSolids = (paths, z0, z1, up) => style !== 'flat' ? domed(paths, z0, z1, up, q.tol, q.angle, style === 'puffy', S._jitter) : [{ paths, z0, z1 }];
     if (S.front === 'raised') {
       for (const sl of raisedSolids(Tp, b, b + fh, true)) { push(L, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); }
       push(O, R.outline, b, b + oh); push(extra, F.length ? G.intersection(F, R.base) : [], b, b + oh);
@@ -267,7 +271,7 @@
     const q = typeof quality === 'string' ? G.QUALITY[quality] || G.QUALITY.fine : quality;
     const t0 = Date.now();
     const R = regionsFor(S, fonts, q);
-    const Z = solidsFor(S, R);
+    let Z = solidsFor(S, R);
     const t1 = Date.now();
     const defs = [
       { id: 'base', label: 'Base e argola', color: S.baseColor, solids: Z.base, pockets: Z.pockets },
@@ -275,11 +279,15 @@
       { id: 'outline', label: 'Contorno', color: S.outlineColor, solids: Z.outline, pockets: [] },
       { id: 'back', label: 'Letras do verso', color: S.letterColor, solids: Z.back, pockets: [] }
     ];
-    const parts = [];
-    for (const d of defs) {
-      if (!d.solids.length) continue;
-      const mesh = G.buildPart(d.solids, d.pockets);
-      if (mesh.triangleCount) parts.push({ id: d.id, label: d.label, color: d.color, mesh });
+    let parts = [];
+    const make = () => { parts = []; for (const d of defs) { if (!d.solids.length) continue; const mesh = G.buildPart(d.solids, d.pockets); if (mesh.triangleCount) parts.push({ id: d.id, label: d.label, color: d.color, mesh }); } };
+    make();
+    // Letras arredondadas: em casos raros duas camadas quase se tocam e a malha fica com uma fenda.
+    // Repete-se com a curva ligeiramente mais estreita (invisível) até fechar.
+    const rounded = (S.letterStyle && S.letterStyle !== 'flat') || S.roundTop;
+    for (let j = 1; rounded && j <= 4 && parts.some(p => (p.id === 'letters' || p.id === 'back') && !G.isClosed(p.mesh)); j++) {
+      Z = solidsFor(Object.assign({}, S, { _jitter: j }), R);
+      defs[1].solids = Z.letters; defs[3].solids = Z.back; make();
     }
     const t2 = Date.now();
     const top = Math.max(...parts.map(p => { let m = 0; const P = p.mesh.positions; for (let i = 2; i < P.length; i += 3) if (P[i] > m) m = P[i]; return m; }), 0);
@@ -287,7 +295,11 @@
       regions: R, parts, zShift: Z.zShift, height: top, quality: q, round: Z.round,
       timing: { regions: t1 - t0, meshes: t2 - t1 },
       // União de todas as partes num único sólido (STL «completo»).
-      unionMesh: () => G.buildPart([...Z.base, ...Z.extra], Z.purePockets)
+      unionMesh: () => {
+        let m = G.buildPart([...Z.base, ...Z.extra], Z.purePockets);
+        for (let j = 1; rounded && j <= 4 && !G.isClosed(m); j++) { const Zj = solidsFor(Object.assign({}, S, { _jitter: (S._jitter || 0) + j }), R); m = G.buildPart([...Zj.base, ...Zj.extra], Zj.purePockets); }
+        return m;
+      }
     };
   }
 

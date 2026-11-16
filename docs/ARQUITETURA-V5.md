@@ -157,3 +157,9 @@ Em «Letras → Arredondar» escolhe-se o que arredonda, em separado:
 * **Verso — chanfro leve** (`roundBack`): 45°, no máximo 0,3 mm. Em baixo não se usa curva: junto ao tabuleiro ficaria no ar e não se aguentava. Não se aplica quando o verso tem letras em relevo.
 
 Resistência (`roundPlan`): o raio é limitado para a parede da argola ficar com ≥ 0,8 mm planos em cima e para as letras/contorno nunca ficarem sem chão; a base engrossa metade do raio (+ ⅓ do chanfro) para repor o material retirado — o volume da base redonda fica ≥ 98 % do original (teste 2d). **A resistência real só se confirma imprimindo.**
+
+## Estilos de letra e menus no ecrã (v5.10)
+
+* **Estilos prontos** (`letterStyle`, cartões em «Letras → Estilo das letras»): **Direitas** (topo plano), **Pontas** (topo plano, pontas redondas), **Suaves** (aresta de cima arredondada, o antigo `roundTop`) e **Almofada** (`puffy`): a letra sobe para ≥ 1,6 mm e a curva ocupa quase toda a altura com perfil elíptico que entra até 2,2 mm no traço — fica abaulada e os traços finos ficam mais baixos, como nos porta-chaves «puffy» do MakerWorld.
+* **Menus no ecrã:** tocar/clicar nas letras ou na base abre, do lado direito da vista, o menu dessa parte (os mesmos cartões; base: Direita/Redonda). A argola mantém o seu menu.
+* **Robustez:** em casos raros duas camadas da curva quase se tocam e a malha fica com uma fenda; `build` repete com a curva 3,7 % mais estreita (até 4 vezes) até fechar. Verificado nas 57 fontes (228 combinações) e nos testes 2c2.

@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .16, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: 'A1', positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .16, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: 'A1', positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -111,7 +111,7 @@ function selectTab(tab) {
   S.selected = tab;
   ['letters', 'base', 'ring', 'print'].forEach(t => { $(t + 'Panel').classList.toggle('hidden', t !== tab); $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab) });
   $('selectionLabel').textContent = selectionText(tab);
-  ringMenuClosed = false; updateRingMenu();
+  ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
 }
 function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Pro (beta): impressora, cópias, bico e formatos' }[tab] }
 function optionButtons(id, items, current, callback) { const node = $(id); node.textContent = ''; for (const [value, label] of items) { const b = document.createElement('button'); b.textContent = label; b.classList.toggle('on', value === current); b.addEventListener('click', () => { callback(value); updateControls(); scheduleRebuild() }); node.appendChild(b) } }
@@ -124,7 +124,7 @@ function updateControls() {
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('copyTop').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('copyTop').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0]; updateModeNotice(); drawMiniPlate();
   renderFilaChips(); renderPicker(); updatePrintBar();
 }
@@ -183,7 +183,7 @@ function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±'
 function bindControls() {
   [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
-  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundTop', 'roundTop'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
+  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   bindCards();
@@ -195,7 +195,7 @@ function bindControls() {
   $('quality').onchange = () => { S.quality = $('quality').value; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge(); scheduleRebuild(true) };
   const setCopies = n => { S.copies = Math.max(1, Math.min(40, Math.round(n) || 1)); $('copyCount').value = S.copies; if (document.activeElement !== $('copyTop')) $('copyTop').value = S.copies; drawMiniPlate(); updatePrintBar(); if (S.plateView) fitCamera(); requestRender() };
   $('copyCount').oninput = () => setCopies(+$('copyCount').value); $('copyTop').oninput = () => setCopies(+$('copyTop').value); $('copyTop').onchange = () => { $('copyTop').value = S.copies };
-  bindRingMenu();
+  bindRingMenu(); bindPartMenu();
   $('autoArrange').onclick = () => { S.positionX = 0; S.positionY = 0; drawMiniPlate(); requestRender(); selectTab('print') };
   $('importFont').onclick = () => $('fontFile').click();
   $('nozzle').onchange = () => { S.nozzle = +$('nozzle').value; S.layer = (LAYERS[S.nozzle].find(l => l[1]) || LAYERS[S.nozzle][0])[0]; fillLayers(); scheduleRebuild(true); scheduleScan(); updatePrintBar() };
@@ -209,7 +209,33 @@ function bindControls() {
   $('fontFile').onchange = async () => { const f = $('fontFile').files[0]; $('fontFile').value = ''; if (f) await importFont(f) };
   initPlateDrag(); bindViewCube();
 }
-function updateRangeLabels() { $('roundAmountVal').textContent = fmt(S.roundAmount) + ' mm'; $('roundBaseBox').classList.toggle('hidden', !S.roundBase); $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('tipVal').textContent = S.letterRound.toFixed(2).replace('.', ',') + ' mm'; $('weightVal').textContent = (S.textWeight >= 0 ? '+' : '') + S.textWeight.toFixed(2).replace('.', ',') + ' mm'; $('spacingVal').textContent = (S.letterSpacing > 0 ? '+' : '') + S.letterSpacing + '%'; $('outlineControls').classList.toggle('hidden', !S.outline) }
+// Estilos de letra (exemplos prontos): direitas · pontas redondas · aresta suave · almofada (alta e abaulada).
+function currentStyle() { return S.letterStyle !== 'flat' ? S.letterStyle : S.letterRound > 0 ? 'tips' : 'flat' }
+function setLetterStyle(v) {
+  const was = S.letterStyle;
+  if (v === 'puffy') { if (was !== 'puffy') { S._heightBefore = S.letterHeight; S._tipBefore = S.letterRound } S.letterStyle = 'puffy'; S.letterHeight = Math.max(S.letterHeight, 1.6); S.letterRound = Math.max(S.letterRound, .3) }
+  else {
+    if (was === 'puffy' && S._heightBefore) { S.letterHeight = S._heightBefore; S.letterRound = S._tipBefore || 0 }
+    S.letterStyle = v === 'soft' ? 'soft' : 'flat';
+    if (v === 'flat') S.letterRound = 0; else if (v === 'tips') S.letterRound = Math.max(S.letterRound, .3);
+  }
+  S.roundTop = false; updateControls(); updateRangeLabels(); scheduleRebuild(true);
+}
+let partMenuFor = null;
+function updatePartMenu() {
+  const cur = currentStyle(); for (const b of document.querySelectorAll('.stylecard[data-style]')) b.classList.toggle('on', b.dataset.style === cur);
+  for (const b of document.querySelectorAll('.stylecard[data-base]')) b.classList.toggle('on', (b.dataset.base === '1') === !!S.roundBase);
+  const m = $('partMenu'), on = (partMenuFor === 'letters' || partMenuFor === 'base') && S.selected === partMenuFor && !S.plateView;
+  m.classList.toggle('hidden', !on); $('viewport').classList.toggle('partMenuOn', on);
+  if (on) { $('pmTitle').textContent = partMenuFor === 'letters' ? 'Letras' : 'Base'; $('pmLetters').style.display = partMenuFor === 'letters' ? '' : 'none'; $('pmBase').style.display = partMenuFor === 'base' ? '' : 'none' }
+}
+function bindPartMenu() {
+  const m = $('partMenu'); for (const t of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'click', 'touchstart']) m.addEventListener(t, e => e.stopPropagation());
+  for (const b of document.querySelectorAll('.stylecard[data-style]')) b.onclick = () => setLetterStyle(b.dataset.style);
+  for (const b of document.querySelectorAll('.stylecard[data-base]')) b.onclick = () => { S.roundBase = b.dataset.base === '1'; updateControls(); updateRangeLabels(); scheduleRebuild(true) };
+  $('pmClose').onclick = () => { partMenuFor = null; updatePartMenu() };
+}
+function updateRangeLabels() { updatePartMenu(); $('roundAmountVal').textContent = fmt(S.roundAmount) + ' mm'; $('roundBaseBox').classList.toggle('hidden', !S.roundBase); $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('tipVal').textContent = S.letterRound.toFixed(2).replace('.', ',') + ' mm'; $('weightVal').textContent = (S.textWeight >= 0 ? '+' : '') + S.textWeight.toFixed(2).replace('.', ',') + ' mm'; $('spacingVal').textContent = (S.letterSpacing > 0 ? '+' : '') + S.letterSpacing + '%'; $('outlineControls').classList.toggle('hidden', !S.outline) }
 function updateModeNotice() { $('printModeNotice').textContent = S.printMode === 'layers' ? 'O slicer imprime cada camada de todos os objetos. Recomendado para letras salientes, multicolor e peças próximas.' : 'Modo sequencial: o slicer imprime um objeto completo antes do próximo. A distância segura depende do volume da cabeça e do pórtico da impressora. O editor NÃO valida colisões com a cabeça nem o pórtico: confirma no slicer e ativa lá a impressão por objeto.' }
 
 // ---------------------------------------------------------------- fontes
@@ -304,7 +330,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState() {
-  const k = ['name', 'font', 'roundTop', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = S[key]; return o;
 }
 
@@ -723,7 +749,7 @@ function bindViewerEvents() {
   });
   const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
-    if (!d.moved && !d.chord) { if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters') }
+    if (!d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
       endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
