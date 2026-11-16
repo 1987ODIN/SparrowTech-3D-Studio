@@ -103,6 +103,19 @@ const attrs = s => Object.fromEntries([...s.matchAll(/([\w:]+)="([^"]*)"/g)].map
     check(/key="extruder" value="3"/.test(cfg), 'placa de teste: filamentos por parte');
     console.log(`• placa_teste: ${(bytes.length / 1024).toFixed(0)} KB, 3 objetos`);
   }
+  {
+    // Vários tabuleiros: grelha do Bambu Studio (colunas = teto(raiz(n)), passo = tamanho × 1,2, linhas para −Y)
+    const m = M.build({ ...S, name: 'Ana', back: 'smooth' }, { front: font }, 'draft');
+    const pl = []; for (let p = 0; p < 3; p++) for (let i = 0; i < 2; i++) pl.push({ x: i * 10, y: 5, plate: p });
+    const res = T.build(m.parts, pl, { name: 'Ana', plateW: 256, plateH: 256 });
+    const main = res.entries.find(e => e[0] === '3D/3dmodel.model')[1], cfg = res.entries.find(e => e[0] === 'Metadata/model_settings.config')[1];
+    const tr = [...main.matchAll(/<item [^>]*transform="([^"]+)"/g)].map(x => x[1].split(' ').map(Number));
+    check(res.plates === 3 && (cfg.match(/<plate>/g) || []).length === 3, 'tabuleiros: devia haver 3');
+    check(/plater_id" value="3"/.test(cfg) && (cfg.match(/<model_instance>/g) || []).length === 6, 'tabuleiros: instâncias por tabuleiro');
+    check(tr.length === 6 && Math.abs(tr[2][9] - (128 + 307.2)) < 1e-3 && Math.abs(tr[2][10] - 133) < 1e-3, 'tabuleiros: o 2.º fica à direita (+307,2 mm)');
+    check(Math.abs(tr[4][9] - 128) < 1e-3 && Math.abs(tr[4][10] - (133 - 307.2)) < 1e-3, 'tabuleiros: o 3.º fica na linha de baixo (−307,2 mm)');
+    console.log('• tabuleiros: 6 peças em 3 tabuleiros');
+  }
   console.log(`\n${checks - fails}/${checks} verificações 3MF OK${fails ? ` — ${fails} FALHAS` : ''}`);
   process.exit(fails ? 1 : 0);
 })();

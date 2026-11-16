@@ -66,13 +66,13 @@ function renderPicker() {
   box.append(sel, grid, name);
 }
 function updatePrintBar() {
-  const fmtName = { '3mf': '3MF', stl: 'STL', stlparts: 'STLs por cor' }[S.fileFormat], slicer = PRINTERS[S.printer][4];
+  const fmtName = S.fileFormat === 'stl' ? 'STL' : '3MF', slicer = PRINTERS[S.printer][4];
   $('quickPrint').textContent = `🖨 Imprimir — descarregar ${fmtName}`; $('topDownload').textContent = `⬇ ${fmtName}`; $('topDownload').title = `Descarregar ${fmtName} para o ${slicer}`;
   const fil = PARTS.filter(p => p[0] !== 'outline' || S.outline).map(([part, title]) => `${title}: ${filamentLabel(part)}`).join(' · ');
   $('printHint').textContent = S.fileFormat === '3mf'
     ? `Abre no ${slicer}: base, letras${S.outline ? ' e contorno' : ''} já vêm em partes separadas, cada uma no seu filamento, e com camada de ${String(S.layer).replace('.', ',')} mm. No ${slicer} escolhe a impressora com bico ${String(S.nozzle).replace('.', ',')} mm${S.nozzle <= .2 ? ' (premium)' : S.nozzle <= .4 ? ' (normal)' : ''} e carrega os filamentos escolhidos acima.`
-    : S.fileFormat === 'stl' ? `STL não guarda cores nem partes: imprime numa cor, ou pinta/atribui as cores no ${slicer}.`
-    : `Um STL por cor. No ${slicer}, importa todos juntos e responde «Sim» a «um objeto com várias partes»; depois atribui os filamentos escolhidos acima.`;
+    : `STL não guarda cores nem partes: imprime numa cor, ou pinta as cores no ${slicer}.`;
+  if (S.copies > 1 && model) { const pl = layoutPlan().plates.length; $('printHint').textContent += pl > 1 ? ` ${S.copies} cópias em ${pl} tabuleiros${S.fileFormat === 'stl' ? ' (um ficheiro STL por tabuleiro)' : ''}.` : ` ${S.copies} cópias no tabuleiro.` }
 }
 const QUALITY_LABEL = { draft: 'Rascunho', normal: 'Normal', fine: 'Fina', ultra: 'Muito fina' };
 const QUALITY_TOL = { draft: .05, normal: .02, fine: .01, ultra: .004 };
@@ -93,6 +93,7 @@ function selectTab(tab) {
   S.selected = tab;
   ['letters', 'base', 'ring', 'print'].forEach(t => { $(t + 'Panel').classList.toggle('hidden', t !== tab); $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab) });
   $('selectionLabel').textContent = selectionText(tab);
+  ringMenuClosed = false; updateRingMenu();
 }
 function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Pro (beta): impressora, cópias, bico e formatos' }[tab] }
 function optionButtons(id, items, current, callback) { const node = $(id); node.textContent = ''; for (const [value, label] of items) { const b = document.createElement('button'); b.textContent = label; b.classList.toggle('on', value === current); b.addEventListener('click', () => { callback(value); updateControls(); scheduleRebuild() }); node.appendChild(b) } }
@@ -105,7 +106,7 @@ function updateControls() {
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('copyTop').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0]; updateModeNotice(); drawMiniPlate();
   $('fileFormat').value = S.fileFormat; renderFilaChips(); renderPicker(); updatePrintBar();
 }
@@ -168,7 +169,7 @@ function bindControls() {
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   $('topDownload').onclick = () => $('quickPrint').click();
-  $('quickPrint').onclick = () => S.fileFormat === '3mf' ? export3MF() : exportMeshes(S.fileFormat === 'stl' ? 'combined' : 'separate');
+  $('quickPrint').onclick = () => S.fileFormat === 'stl' ? exportSTL() : export3MF();
   $('fileFormat').onchange = () => { S.fileFormat = $('fileFormat').value; updatePrintBar() };
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
@@ -176,9 +177,10 @@ function bindControls() {
   $('autoRing').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
   $('printer').onchange = () => { S.printer = $('printer').value; matchFilamentsToBrand(); refreshMeshColors(); pickerPart = null; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
   $('quality').onchange = () => { S.quality = $('quality').value; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge(); scheduleRebuild(true) };
-  $('copyCount').oninput = () => { S.copies = +$('copyCount').value; drawMiniPlate(); if (S.plateView) fitCamera(); requestRender() };
+  const setCopies = n => { S.copies = Math.max(1, Math.min(40, Math.round(n) || 1)); $('copyCount').value = S.copies; if (document.activeElement !== $('copyTop')) $('copyTop').value = S.copies; drawMiniPlate(); updatePrintBar(); if (S.plateView) fitCamera(); requestRender() };
+  $('copyCount').oninput = () => setCopies(+$('copyCount').value); $('copyTop').oninput = () => setCopies(+$('copyTop').value); $('copyTop').onchange = () => { $('copyTop').value = S.copies };
+  bindRingMenu();
   $('autoArrange').onclick = () => { S.positionX = 0; S.positionY = 0; drawMiniPlate(); requestRender(); selectTab('print') };
-  $('export3MF').onclick = () => export3MF(); $('exportSTL').onclick = () => exportMeshes('combined'); $('exportParts').onclick = () => exportMeshes('separate');
   $('importFont').onclick = () => $('fontFile').click();
   $('nozzle').onchange = () => { S.nozzle = +$('nozzle').value; S.layer = (LAYERS[S.nozzle].find(l => l[1]) || LAYERS[S.nozzle][0])[0]; fillLayers(); scheduleRebuild(true); scheduleScan(); updatePrintBar() };
   $('layer').onchange = () => { S.layer = +$('layer').value; if (model) updatePrintCheck() };
@@ -376,7 +378,28 @@ function updateRingCheck() {
 }
 // Etiqueta junto à argola no ecrã: ensina a arrastar e mostra o aviso de fragilidade.
 let ringTagUntil = Date.now() + 15000, ringDragged = false;
+// Menu da argola no próprio ecrã (toca na argola): tamanho e repor posição — essencial no telemóvel, onde o painel fica fora de vista.
+let ringMenuClosed = false;
+function updateRingMenu() {
+  const m = $('ringMenu'); if (!m) return;
+  const on = S.selected === 'ring' && S.hasRing && !ringGhost && !ringMenuClosed && !S.plateView;
+  m.classList.toggle('hidden', !on); $('viewport').classList.toggle('ringMenuOn', on);
+  if (on) { if (document.activeElement !== $('rmSize')) $('rmSize').value = S.ringOuter; $('rmVal').textContent = fmt(S.ringOuter) + ' mm' }
+}
+function setRingSize(v) {
+  const ratio = S.ringInner / S.ringOuter; S.ringOuter = Math.max(6, Math.min(13, Math.round(v * 2) / 2));
+  S.ringInner = Math.max(2.4, Math.min(5.5, S.ringOuter - 2, Math.round(S.ringOuter * ratio * 5) / 5));
+  $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; updateRangeLabels(); updateRingMenu(); scheduleRebuild();
+}
+function bindRingMenu() {
+  const m = $('ringMenu'); for (const t of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'click', 'touchstart']) m.addEventListener(t, e => e.stopPropagation());
+  $('rmSize').oninput = () => setRingSize(+$('rmSize').value);
+  $('rmMinus').onclick = () => setRingSize(S.ringOuter - .5); $('rmPlus').onclick = () => setRingSize(S.ringOuter + .5);
+  $('rmReset').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
+  $('rmClose').onclick = () => { ringMenuClosed = true; updateRingMenu() };
+}
 function updateRingTag() {
+  updateRingMenu();
   const tag = $('ringTag'), ri = model && model.regions.ring;
   if (!tag || !S.hasRing || !ri || !gl && !fallbackCtx) { tag && tag.classList.add('hidden'); return }
   if (ringGhost) { const pos = objectPositions()[0], p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
@@ -737,11 +760,12 @@ function clampToPlate() {
 function layoutPlan() {
   const b = modelBounds(), gap = S.printMode === 'sequential' ? 32 : 6, innerW = plateW() - PLATE_MARGIN * 2, innerH = plateH() - PLATE_MARGIN * 2;
   const cols = Math.max(0, Math.floor((innerW + gap) / (b.width + gap))), rows = Math.max(0, Math.floor((innerH + gap) / (b.height + gap)));
-  const capacity = cols * rows, count = Math.min(S.copies, capacity);
-  if (S.copies === 1) return { positions: [{ x: S.positionX, y: S.positionY }], capacity: capacity >= 1 ? capacity : 0, gap, b };
-  const useCols = Math.min(cols, Math.max(1, Math.ceil(count / Math.max(1, rows)))), useRows = Math.ceil(count / useCols), positions = [];
-  for (let i = 0; i < count; i++) { const c = i % useCols, r = Math.floor(i / useCols), rowCount = Math.min(useCols, count - r * useCols); positions.push({ x: (c - (rowCount - 1) / 2) * (b.width + gap) - (b.minX + b.maxX) / 2, y: ((useRows - 1) / 2 - r) * (b.height + gap) - (b.minY + b.maxY) / 2 }) }
-  return { positions, capacity, gap, b };
+  const capacity = cols * rows;
+  if (S.copies === 1) { const positions = [{ x: S.positionX, y: S.positionY, plate: 0 }]; return { positions, plates: [positions], capacity: capacity >= 1 ? capacity : 0, gap, b } }
+  // As cópias que não cabem passam para tabuleiros seguintes (o Bambu Studio aceita até 36).
+  const grid = (count, plate) => { const useCols = Math.min(cols, Math.max(1, Math.ceil(count / Math.max(1, rows)))), useRows = Math.ceil(count / useCols), out = []; for (let i = 0; i < count; i++) { const c = i % useCols, r = Math.floor(i / useCols), rowCount = Math.min(useCols, count - r * useCols); out.push({ x: (c - (rowCount - 1) / 2) * (b.width + gap) - (b.minX + b.maxX) / 2, y: ((useRows - 1) / 2 - r) * (b.height + gap) - (b.minY + b.maxY) / 2, plate }) } return out };
+  const plates = []; for (let left = capacity ? S.copies : 0; left > 0 && plates.length < 36; left -= capacity) plates.push(grid(Math.min(left, capacity), plates.length));
+  return { positions: plates[0] || [], plates, capacity, gap, b };
 }
 function objectPositions() { return layoutPlan().positions }
 function drawMiniPlate() {
@@ -753,7 +777,7 @@ function drawMiniPlate() {
   el.classList.toggle('multi', S.copies > 1);
   const tooBig = b.width > W - PLATE_MARGIN * 2 || b.height > H - PLATE_MARGIN * 2;
   let msg = `Área útil estimada: ${W - 2 * PLATE_MARGIN} × ${H - 2 * PLATE_MARGIN} mm · margem de ${PLATE_MARGIN} mm. `;
-  if (tooBig) msg += '⚠ A peça é demasiado grande para este tabuleiro.'; else if (data.positions.length < S.copies) msg += `⚠ Só cabem ${data.positions.length} das ${S.copies} cópias com este espaçamento estimado.`; else msg += `Cabem ${data.positions.length} peça(s) no planeamento atual.`;
+  if (tooBig) msg += '⚠ A peça é demasiado grande para este tabuleiro.'; else if (data.plates.length > 1) msg += `Cabem ${data.capacity} por tabuleiro: as ${S.copies} cópias vão em ${data.plates.length} tabuleiros (aqui vês o 1.º).`; else msg += `Cabem ${data.positions.length} peça(s) no planeamento atual.`;
   if (S.printMode === 'sequential') msg += ' ⚠ Os 32 mm de separação são apenas uma estimativa: verifica as colisões da cabeça e o pórtico no slicer.';
   $('plateWarnings').textContent = msg;
 }
@@ -776,8 +800,8 @@ function bindViewCube() {
 // ---------------------------------------------------------------- exportação
 function download(data, filename, type) { const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })), a = document.createElement('a'); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000) }
 function safeName(n) { return (n || 'nome').normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 28) }
-function stlBytes(meshes) {
-  const positions = objectPositions(), count = meshes.reduce((s, m) => s + m.indices.length / 3, 0) * positions.length; if (!count) return null;
+function stlBytes(meshes, positions = objectPositions()) {
+  const count = meshes.reduce((s, m) => s + m.indices.length / 3, 0) * positions.length; if (!count) return null;
   const ab = new ArrayBuffer(84 + count * 50), view = new DataView(ab), hdr = new TextEncoder().encode('SparrowTech 3D Studio v5 / malha vetorial fechada, milimetros');
   new Uint8Array(ab, 0, Math.min(80, hdr.length)).set(hdr.slice(0, 80)); view.setUint32(80, count, true); let off = 84;
   for (const pos of positions) for (const m of meshes) {
@@ -792,31 +816,31 @@ function stlBytes(meshes) {
   return new Blob([ab], { type: 'model/stl' });
 }
 async function withBusy(button, label, fn) { const old = button.textContent; button.disabled = true; button.textContent = label; try { await fn() } catch (e) { console.error(e); alert('Erro na exportação: ' + e.message.split('\n')[0]) } finally { button.disabled = false; button.textContent = old } }
-async function exportMeshes(mode) {
+// STL: um único sólido por cópia (sem cores). Um ficheiro por tabuleiro quando as cópias não cabem num só.
+async function exportSTL() {
   if (!components.length) { alert('Ainda não existe modelo.'); return }
-  if (mode === 'combined') return withBusy($('exportSTL'), '⏳ A unir…', async () => {
+  const plan = layoutPlan(); if (!plan.plates.length) { alert('A peça é demasiado grande para este tabuleiro.'); return }
+  return withBusy($('quickPrint'), '⏳ A criar STL…', async () => {
     const r = await geometryCall({ type: 'build', S: geometryState(), quality: S.quality, union: true });
-    const b = stlBytes([r.union]); if (b) download(b, `SparrowTech_${safeName(S.name)}_modelo.stl`);
-    $('qualityNotice').textContent = 'STL completo exportado: um único sólido fechado (sem cores).';
+    plan.plates.forEach((pos, i) => { const b = stlBytes([r.union], pos); if (b) download(b, `SparrowTech_${safeName(S.name)}${plan.plates.length > 1 ? '_tabuleiro' + (i + 1) : ''}.stl`) });
+    $('qualityNotice').textContent = `STL exportado: ${S.copies} peça(s)${plan.plates.length > 1 ? ' em ' + plan.plates.length + ' ficheiros (um por tabuleiro)' : ''}, sem cores.`;
   });
-  const fresh = await finalComponents();
-  for (const c of fresh) { const b = stlBytes([c.mesh]); if (b) download(b, `SparrowTech_${safeName(S.name)}_${c.id}.stl`) }
-  $('qualityNotice').textContent = 'Exportados STLs separados. No slicer, importa-os juntos como partes do mesmo objeto («Sim» quando perguntar se é um objeto com várias partes) para manter a posição e atribuir cores.';
 }
 // Garante que a exportação usa a qualidade escolhida (não a pré-visualização rápida do arrasto).
 async function finalComponents() { if (building || interactiveBuild || (!worker && S.quality === 'ultra')) { interactiveBuild = false; const r = await geometryCall({ type: 'build', S: geometryState(), quality: S.quality }); applyModel(r, S.quality) } return components }
 async function export3MF() {
   if (!components.length || !model) { alert('Não existe malha para exportar.'); return }
   const plan = layoutPlan(), b = plan.b;
-  if (plan.positions.length < S.copies || b.width > plateW() - PLATE_MARGIN * 2 || b.height > plateH() - PLATE_MARGIN * 2) { alert('Há peças fora do espaço disponível. Diminui o número de cópias ou o nome.'); return }
-  await withBusy($('export3MF'), '⏳ A criar 3MF…', async () => {
+  if (!plan.plates.length || b.width > plateW() - PLATE_MARGIN * 2 || b.height > plateH() - PLATE_MARGIN * 2) { alert('A peça é demasiado grande para este tabuleiro. Diminui o nome ou escolhe uma impressora maior.'); return }
+  const all = [].concat(...plan.plates);
+  await withBusy($('quickPrint'), '⏳ A criar 3MF…', async () => {
     await new Promise(r => setTimeout(r, 30));
     const parts = (await finalComponents()).map(c => ({ id: c.id, label: `${c.label} — ${filamentLabel(c.id)} ${c.color.toUpperCase()}`, color: c.color, mesh: c.mesh }));
-    const res = Sparrow3MF.build(parts, plan.positions, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });
+    const res = Sparrow3MF.build(parts, all, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });
     const bytes = await Sparrow3MF.zip(res.entries);
     download(bytes, `SparrowTech_${safeName(S.name)}_${PRINTERS[S.printer][0].replace(/[^A-Za-z0-9]/g, '')}.3mf`, 'model/3mf');
     const list = parts.map(p => `${p.label.split(' — ')[0]} → filamento ${res.extruders[p.id]} (${filamentLabel(p.id)})`).join(' · ');
-    $('qualityNotice').textContent = `3MF exportado (${plan.positions.length} cópia(s)). ${list}. Abre no ${PRINTERS[S.printer][4]} e carrega esses filamentos.`;
+    $('qualityNotice').textContent = `3MF exportado (${all.length} cópia(s)${res.plates > 1 ? ' em ' + res.plates + ' tabuleiros' : ''}). ${list}. Abre no ${PRINTERS[S.printer][4]} e carrega esses filamentos.`;
   });
 }
 

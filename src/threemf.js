@@ -59,7 +59,10 @@
     const title = meta.name || 'SparrowTech';
     let nextSub = 1; const totalSub = objects.reduce((s, o) => s + o.parts.length, 0);
     const sub = [`<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" ${NS}>`, '<metadata name="BambuStudio:3mfVersion">1</metadata><resources>'];
-    const resources = [], items = [], cfg = ['<?xml version="1.0" encoding="UTF-8"?>\n<config>'], plate = [];
+    const resources = [], items = [], cfg = ['<?xml version="1.0" encoding="UTF-8"?>\n<config>'];
+    // Tabuleiros: o Bambu Studio dispõe-nos numa grelha (PartPlate.cpp): colunas = teto(raiz(n)), passo = tamanho × 1,2, linhas para −Y.
+    const nPlates = Math.min(36, 1 + Math.max(0, ...[].concat(...objects.map(o => o.placements.map(p => p.plate | 0)))));
+    const sq = Math.sqrt(nPlates), cols = sq > Math.round(sq) ? Math.round(sq) + 1 : Math.round(sq), plates = Array.from({ length: nPlates }, () => []);
     let itemN = 0, identify = 100;
     objects.forEach((o, oi) => {
       const objectId = totalSub + 1 + oi, comps = [];
@@ -76,8 +79,9 @@
       cfg.push('  </object>');
       resources.push(`<object id="${objectId}" p:UUID="${hex8(objectId)}-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>${comps.join('')}</components></object>`);
       o.placements.forEach((pos, i) => {
-        items.push(`<item objectid="${objectId}" p:UUID="${hex8(++itemN + 1)}-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 ${num(pos.x + halfW)} ${num(pos.y + halfH)} 0" printable="1"/>`);
-        plate.push('    <model_instance>', `      <metadata key="object_id" value="${objectId}"/>`, `      <metadata key="instance_id" value="${i}"/>`, `      <metadata key="identify_id" value="${identify++}"/>`, '    </model_instance>');
+        const pl = Math.min(nPlates - 1, pos.plate | 0), ox = (pl % cols) * halfW * 2.4, oy = -Math.floor(pl / cols) * halfH * 2.4;
+        items.push(`<item objectid="${objectId}" p:UUID="${hex8(++itemN + 1)}-b1ec-4553-aec9-835e5b724bb4" transform="1 0 0 0 1 0 0 0 1 ${num(pos.x + halfW + ox)} ${num(pos.y + halfH + oy)} 0" printable="1"/>`);
+        plates[pl].push('    <model_instance>', `      <metadata key="object_id" value="${objectId}"/>`, `      <metadata key="instance_id" value="${i}"/>`, `      <metadata key="identify_id" value="${identify++}"/>`, '    </model_instance>');
       });
     });
     sub.push('</resources><build/></model>');
@@ -91,13 +95,14 @@
       `<metadata name="CreationDate">${date}</metadata><metadata name="ModificationDate">${date}</metadata>` +
       `<resources>${resources.join('')}</resources>` +
       `<build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">${items.join('')}</build></model>`;
-    cfg.push('  <plate>', '    <metadata key="plater_id" value="1"/>', '    <metadata key="plater_name" value=""/>', '    <metadata key="locked" value="false"/>', ...plate, '  </plate>', '  <assemble>', '  </assemble>', '</config>');
+    plates.forEach((plate, i) => cfg.push('  <plate>', `    <metadata key="plater_id" value="${i + 1}"/>`, '    <metadata key="plater_name" value=""/>', '    <metadata key="locked" value="false"/>', ...plate, '  </plate>'));
+    cfg.push('  <assemble>', '  </assemble>', '</config>');
     const types = '<?xml version="1.0" encoding="UTF-8"?>\n<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/><Default Extension="png" ContentType="image/png"/><Default Extension="gcode" ContentType="text/x.gcode"/></Types>';
     const rels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>';
     const modelRels = '<?xml version="1.0" encoding="UTF-8"?>\n<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/Objects/object_1.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>';
     return {
       entries: [['[Content_Types].xml', types], ['_rels/.rels', rels], ['3D/3dmodel.model', main], ['3D/_rels/3dmodel.model.rels', modelRels], ['3D/Objects/object_1.model', sub.join('')], ['Metadata/model_settings.config', cfg.join('\n')]],
-      extruders: map, colors
+      extruders: map, colors, plates: nPlates
     };
   }
 

@@ -133,3 +133,10 @@ Ao levantar o dedo, a ponta rola e os últimos eventos de movimento deslocam a a
 * **Imprimibilidade mais exigente:** um traço só conta como imprimível se couberem 2 perímetros (abertura morfológica com raio = bico).
 * **Camadas por bico:** a lista de alturas depende do bico (0,2: 0,06–0,12; 0,4: 0,08–0,24; 0,6: 0,18–0,30; 0,8: 0,24–0,40), com uma recomendada; mudar de bico escolhe a recomendada.
 * **Camada no 3MF:** a altura de camada vai como definição do objeto (`<metadata key="layer_height">` em `model_settings.config`). **O bico não pode ir no ficheiro** — pertence à predefinição da impressora, que não exportamos (ver 3MF-CORES.md); a app diz qual escolher no Bambu Studio. Falta confirmar no Bambu Studio real que a camada do objeto é aplicada ao abrir.
+
+## Só 3MF ou STL, vários tabuleiros e menu da argola no ecrã (v5.7)
+
+* **Descarregar só no topo:** o ficheiro é 3MF (cores) ou STL. Saíram «STL por cor» e os botões de exportação repetidos no separador Pro.
+* **Cópias (1–40) no topo.** As que não cabem num tabuleiro passam para os seguintes (até 36). No 3MF cada tabuleiro é um `<plate>` em `model_settings.config` e as peças ficam na grelha que o Bambu Studio usa (`PartPlate.cpp`: colunas = teto(√n), passo = tamanho do tabuleiro × 1,2, linhas para −Y). Em STL sai um ficheiro por tabuleiro. **Por confirmar no Bambu Studio real**; a grelha só coincide se a impressora escolhida no slicer tiver o mesmo tabuleiro da escolhida na app.
+* **Menu da argola no ecrã:** tocar/clicar na argola abre, dentro da vista do modelo, um menu com tamanho (− / cursor / ＋; o furo acompanha a proporção) e «Repor posição». No telemóvel deixa de ser preciso descer ao painel.
+* Testes: `threemf.test.cjs` (118), `ui_all_controls.py` (40 cópias → 2 tabuleiros), `mobile_check.py` (menu da argola).

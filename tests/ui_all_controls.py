@@ -48,7 +48,7 @@ with sync_playwright() as p:
         page.locator(f'#{group} button').first.click()
     page.click('#tabLetters')
     # Deslizadores: mínimo, máximo e volta ao valor inicial
-    for rid in page.evaluate("[...document.querySelectorAll('input[type=range]')].map(e => e.id)"):
+    for rid in page.evaluate("[...document.querySelectorAll('input[type=range]:not(#rmSize)')].map(e => e.id)"):
         tab = page.evaluate(f"document.getElementById('{rid}').closest('#lettersPanel,#basePanel,#ringPanel,#printPanel').id.replace('Panel','')")
         page.click('#tab' + tab[0].upper() + tab[1:])
         orig = page.evaluate(f"document.getElementById('{rid}').value")
@@ -129,20 +129,27 @@ with sync_playwright() as p:
         page.select_option('#fileFormat', fmt_)
         with page.expect_download(timeout=90000) as dl: page.click('#quickPrint')
         ok = dl.value.suggested_filename.endswith(expect); print(('  ✓ ' if ok else '  ✗ ') + f'Imprimir em {fmt_} → {dl.value.suggested_filename}'); fails.extend([] if ok else ['formato ' + fmt_])
-    page.select_option('#fileFormat', 'stlparts'); got = []
-    page.on('download', lambda d: got.append(d.suggested_filename)); page.click('#quickPrint'); page.wait_for_timeout(2500)
-    ok = len(got) >= 3; print(('  ✓ ' if ok else '  ✗ ') + f'Imprimir em STLs por cor → {got}'); fails.extend([] if ok else ['stlparts'])
-    page.select_option('#fileFormat', '3mf')
+    ok = page.evaluate("[...document.querySelectorAll('#fileFormat option')].map(o => o.value).join() === '3mf,stl' && !document.getElementById('export3MF') && !document.getElementById('exportSTL') && !document.getElementById('exportParts')")
+    print(('  ✓ ' if ok else '  ✗ ') + 'só 3MF e STL no topo; sem botões de exportação repetidos em baixo'); fails.extend([] if ok else ['formatos'])
+    # Cópias a mais → mais tabuleiros (3MF) / um STL por tabuleiro
+    page.fill('#copyTop', '40'); page.wait_for_timeout(300)
+    npl = page.evaluate("layoutPlan().plates.length"); cap = page.evaluate("layoutPlan().capacity")
+    with page.expect_download(timeout=120000) as dl: page.click('#quickPrint')
+    pth = os.path.join(OUT, 'ui_40copias.3mf'); dl.value.save_as(pth)
+    import zipfile as _z
+    zz = _z.ZipFile(pth); c40 = zz.read('Metadata/model_settings.config').decode(); m40 = zz.read('3D/3dmodel.model').decode()
+    ok = npl > 1 and c40.count('<plate>') == npl and m40.count('<item ') == 40
+    print(('  ✓ ' if ok else '  ✗ ') + f'40 cópias → {npl} tabuleiros ({cap} por tabuleiro), {m40.count("<item ")} peças no 3MF'); fails.extend([] if ok else ['tabuleiros'])
+    page.select_option('#fileFormat', 'stl'); got = []
+    h = lambda d: got.append(d.suggested_filename)
+    page.on('download', h); page.click('#quickPrint'); page.wait_for_timeout(6000); page.remove_listener('download', h)
+    ok = len(got) == npl; print(('  ✓ ' if ok else '  ✗ ') + f'STL com 40 cópias → {got}'); fails.extend([] if ok else ['stl tabuleiros'])
+    page.fill('#copyTop', '1'); page.select_option('#fileFormat', '3mf'); page.wait_for_timeout(300)
     # Exportações: Imprimir (topo), 3MF, STL completo, STLs por cor, placa de teste
-    for bid, n in [('quickPrint', 1), ('export3MF', 1), ('exportSTL', 1)]:
-        if bid != 'quickPrint': page.click('#tabPrint')
+    for bid, n in [('quickPrint', 1), ('topDownload', 1)]:
         with page.expect_download(timeout=90000) as dl: page.click('#' + bid)
         d = dl.value; path = os.path.join(OUT, 'ui_' + d.suggested_filename); d.save_as(path)
         ok = os.path.getsize(path) > 1000; print(('  ✓ ' if ok else '  ✗ ') + f'{bid} → {d.suggested_filename} ({os.path.getsize(path) // 1024} KB)'); fails.extend([] if ok else [bid])
-    downloads = []
-    page.on('download', lambda d: downloads.append(d.suggested_filename))
-    page.click('#exportParts'); page.wait_for_timeout(2500)
-    ok = len(downloads) >= 3; print(('  ✓ ' if ok else '  ✗ ') + f'STLs por cor: {downloads}'); fails.extend([] if ok else ['exportParts'])
     page.click('#tabLetters'); page.evaluate("S.favorites = ['Pacifico', 'Lilita One']; renderGallery()")
     with page.expect_download(timeout=90000) as dl: page.click('#testPlate')
     print('  ✓ placa de teste → ' + dl.value.suggested_filename)
