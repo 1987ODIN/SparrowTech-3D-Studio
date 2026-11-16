@@ -1,0 +1,401 @@
+[
+ {
+  "name": "Pacifico",
+  "file": "Pacifico.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/pacifico"
+ },
+ {
+  "name": "Lobster",
+  "file": "Lobster.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/lobster"
+ },
+ {
+  "name": "Lobster Two",
+  "file": "LobsterTwo.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/lobstertwo"
+ },
+ {
+  "name": "Leckerli One",
+  "file": "LeckerliOne.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/leckerlione"
+ },
+ {
+  "name": "Lily Script One",
+  "file": "LilyScriptOne.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/lilyscriptone"
+ },
+ {
+  "name": "Shrikhand",
+  "file": "Shrikhand.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/shrikhand"
+ },
+ {
+  "name": "Oleo Script",
+  "file": "OleoScript.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/oleoscript"
+ },
+ {
+  "name": "Euphoria Script",
+  "file": "EuphoriaScript.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/euphoriascript"
+ },
+ {
+  "name": "Cookie",
+  "file": "Cookie.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/cookie"
+ },
+ {
+  "name": "Damion",
+  "file": "Damion.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/damion"
+ },
+ {
+  "name": "Yellowtail",
+  "file": "Yellowtail.ttf",
+  "group": "nomes",
+  "license": "Apache-2.0",
+  "source": "https://github.com/google/fonts/tree/main/apache/yellowtail"
+ },
+ {
+  "name": "Kaushan Script",
+  "file": "KaushanScript.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/kaushanscript"
+ },
+ {
+  "name": "Courgette",
+  "file": "Courgette.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/courgette"
+ },
+ {
+  "name": "Grand Hotel",
+  "file": "GrandHotel.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/grandhotel"
+ },
+ {
+  "name": "Norican",
+  "file": "Norican.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/norican"
+ },
+ {
+  "name": "Dancing Script",
+  "file": "DancingScript.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/dancingscript"
+ },
+ {
+  "name": "Satisfy",
+  "file": "Satisfy.ttf",
+  "group": "nomes",
+  "license": "Apache-2.0",
+  "source": "https://github.com/google/fonts/tree/main/apache/satisfy"
+ },
+ {
+  "name": "Playball",
+  "file": "Playball.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/playball"
+ },
+ {
+  "name": "Berkshire Swash",
+  "file": "BerkshireSwash.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/berkshireswash"
+ },
+ {
+  "name": "Niconne",
+  "file": "Niconne.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/niconne"
+ },
+ {
+  "name": "Yesteryear",
+  "file": "Yesteryear.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/yesteryear"
+ },
+ {
+  "name": "Rochester",
+  "file": "Rochester.ttf",
+  "group": "nomes",
+  "license": "Apache-2.0",
+  "source": "https://github.com/google/fonts/tree/main/apache/rochester"
+ },
+ {
+  "name": "Marck Script",
+  "file": "MarckScript.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/marckscript"
+ },
+ {
+  "name": "Mr Dafoe",
+  "file": "MrDafoe.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/mrdafoe"
+ },
+ {
+  "name": "Festive",
+  "file": "Festive.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/festive"
+ },
+ {
+  "name": "Sofia",
+  "file": "Sofia.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/sofia"
+ },
+ {
+  "name": "Bad Script",
+  "file": "BadScript.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/badscript"
+ },
+ {
+  "name": "Merienda",
+  "file": "Merienda.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/merienda"
+ },
+ {
+  "name": "Caveat",
+  "file": "Caveat.ttf",
+  "group": "nomes",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/caveat"
+ },
+ {
+  "name": "Kalam",
+  "file": "Kalam.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/kalam"
+ },
+ {
+  "name": "Sriracha",
+  "file": "Sriracha.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/sriracha"
+ },
+ {
+  "name": "Gochi Hand",
+  "file": "GochiHand.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/gochihand"
+ },
+ {
+  "name": "Chewy",
+  "file": "Chewy.ttf",
+  "group": "imprensa",
+  "license": "Apache-2.0",
+  "source": "https://github.com/google/fonts/tree/main/apache/chewy"
+ },
+ {
+  "name": "Borel",
+  "file": "Borel.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/borel"
+ },
+ {
+  "name": "Fredoka",
+  "file": "Fredoka.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/fredoka"
+ },
+ {
+  "name": "Sniglet",
+  "file": "Sniglet.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/sniglet"
+ },
+ {
+  "name": "Cherry Bomb One",
+  "file": "CherryBombOne.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/cherrybombone"
+ },
+ {
+  "name": "Calistoga",
+  "file": "Calistoga.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/calistoga"
+ },
+ {
+  "name": "Lilita One",
+  "file": "LilitaOne.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/lilitaone"
+ },
+ {
+  "name": "Titan One",
+  "file": "TitanOne.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/titanone"
+ },
+ {
+  "name": "Luckiest Guy",
+  "file": "LuckiestGuy.ttf",
+  "group": "imprensa",
+  "license": "Apache-2.0",
+  "source": "https://github.com/google/fonts/tree/main/apache/luckiestguy"
+ },
+ {
+  "name": "Baloo 2",
+  "file": "Baloo2.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/baloo2"
+ },
+ {
+  "name": "Nunito",
+  "file": "Nunito.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/nunito"
+ },
+ {
+  "name": "Bowlby One",
+  "file": "BowlbyOne.ttf",
+  "group": "imprensa",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/bowlbyone"
+ },
+ {
+  "name": "Special Elite",
+  "file": "SpecialElite.ttf",
+  "group": "imprensa",
+  "license": "Apache-2.0",
+  "source": "https://github.com/google/fonts/tree/main/apache/specialelite"
+ },
+ {
+  "name": "Great Vibes",
+  "file": "GreatVibes.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/greatvibes"
+ },
+ {
+  "name": "Allura",
+  "file": "Allura.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/allura"
+ },
+ {
+  "name": "Alex Brush",
+  "file": "AlexBrush.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/alexbrush"
+ },
+ {
+  "name": "Parisienne",
+  "file": "Parisienne.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/parisienne"
+ },
+ {
+  "name": "Sacramento",
+  "file": "Sacramento.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/sacramento"
+ },
+ {
+  "name": "Pinyon Script",
+  "file": "PinyonScript.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/pinyonscript"
+ },
+ {
+  "name": "Arizonia",
+  "file": "Arizonia.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/arizonia"
+ },
+ {
+  "name": "Tangerine",
+  "file": "Tangerine.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/tangerine"
+ },
+ {
+  "name": "Carattere",
+  "file": "Carattere.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/carattere"
+ },
+ {
+  "name": "Style Script",
+  "file": "StyleScript.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/stylescript"
+ },
+ {
+  "name": "Imperial Script",
+  "file": "ImperialScript.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/imperialscript"
+ },
+ {
+  "name": "Bonheur Royale",
+  "file": "BonheurRoyale.ttf",
+  "group": "fina",
+  "license": "OFL-1.1",
+  "source": "https://github.com/google/fonts/tree/main/ofl/bonheurroyale"
+ }
+]
