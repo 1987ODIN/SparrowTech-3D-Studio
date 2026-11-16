@@ -22,6 +22,9 @@ npm run test:browser   # app no Chrome headless (requer: pip install playwright 
 3. **Partes sem sobreposição**: soma dos volumes das partes = volume da união (16 combinações).
 4. **Nomes longos e acentos**: «Maria João» e «Sebastião» em muito fina (2–3 s, 76–97 mil triângulos), «Constança Margarida» em fina (~3,3 s, 101 mil triângulos), «Ana» em rascunho (<0,1 s).
 
+### v5.2 — todos os controlos (`tests/ui_all_controls.py`) — 92 passos OK
+Clica em todas as abas, em todos os botões de forma/acabamento/modo, leva cada deslizador ao mínimo e ao máximo, liga/desliga todas as caixas, muda as cores, percorre todas as opções de impressora/qualidade/bico/camada, cópias, organizar, vistas, cubo de vistas, seletor de fonte, modo fonte, importação de fonte e todas as exportações (Imprimir, 3MF, STL, STLs por cor, placa de teste). Depois de cada passo: sem erros na consola e todas as malhas fechadas. Inclui argola arrastada para fora (aviso «solta» + etiqueta no modelo) e reposição automática (segura, ~47 % da bola na peça).
+
 ### v5.1 — catálogo de fontes
 * `geometry.test.cjs`: **3484/3484**. Inclui as 57 fontes × 3 variantes (normal; espessura +0,3 mm e espaçamento −5 %; espessura −0,1 mm, espaçamento +12 % e verso embutido) — todas estanques e sem degenerados; e testes de espaçamento, espessura e imprimibilidade (Great Vibes com bico 0,8 → aviso; Pacifico com 0,4 → OK).
 * Correções encontradas por estes testes: polígonos que se tocam num ponto (separados com erosão de 0,5 µm), triângulos de área nula após soldadura, e tampas agora trianguladas exatamente com os anéis das paredes.

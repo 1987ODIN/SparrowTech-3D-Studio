@@ -12,18 +12,58 @@
   const OUTLINE_HEIGHT = 0.2;  // espessura do contorno saliente / embutido
   const MIN_FLOOR = 0.6;       // chão mínimo que fica por baixo de uma gravação
 
-  // Escolhe a zona da base para a argola: canto superior esquerdo, tocando na peça.
-  function autoRing(base, S) {
-    const b = G.bounds(base); if (!b) return { x: 0, y: 0 };
-    let best = Infinity, bx = b.minX, by = b.maxY;
-    const step = Math.max(0.2, Math.min(b.width, b.height) / 120);
-    for (let y = b.maxY; y >= b.maxY - b.height * 0.5; y -= step)
-      for (let x = b.minX; x <= b.minX + b.width * 0.36; x += step) {
-        if (!G.contains(base, x, y)) continue;
-        const dx = (x - b.minX) / b.width, dy = (b.maxY - y) / b.height, v = dx * 0.8 + dy * 1.4 + Math.abs(dx - 0.14) * 0.2;
-        if (v < best) { best = v; bx = x; by = y; }
-      }
-    return { x: bx + S.ringOuter * 0.05, y: by - S.ringOuter * 0.05 };
+  /**
+   * Argola automática num sítio SEGURO: perto do canto superior esquerdo, mas com 30–50 % do disco
+   * da argola dentro da peça (bem agarrada), sem o furo cortar letras e, de preferência, sem a
+   * argola tapar letras. Pesquisa grossa + refinamento.
+   */
+  function autoRing(shape, text, S) {
+    const b = G.bounds(shape); if (!b) return { x: 0, y: 0 };
+    const ro = S.ringOuter / 2, ri = S.ringInner / 2, disc = Math.PI * ro * ro, coarse = 0.3, ang = 20 * Math.PI / 180;
+    // Versões simplificadas (±0,1 mm) só para a pesquisa: muito mais rápidas.
+    shape = G.simplify(shape, 0.1); text = G.simplify(text, 0.1);
+    const tb = G.bounds(text);
+    const cost = (x, y) => {
+      const outer = G.circle(x, y, ro, coarse, ang), f = Math.abs(G.regionArea(G.intersection(outer, shape))) / disc;
+      if (f < 0.12 || f > 0.85) return Infinity;
+      const nearText = tb && x + ro > tb.minX && x - ro < tb.maxX && y + ro > tb.minY && y - ro < tb.maxY;
+      if (nearText && Math.abs(G.regionArea(G.intersection(G.circle(x, y, ri + 0.6, coarse, ang), text))) > 0.05) return Infinity; // o furo não pode cortar letras
+      const cover = nearText ? Math.abs(G.regionArea(G.intersection(outer, text))) / disc : 0;                                    // argola por cima das letras
+      const dx = (x - b.minX) / b.width, dy = (b.maxY - y) / b.height;
+      return Math.abs(f - 0.42) * 5 + cover * 6 + dx * 0.8 + dy * 1.4;
+    };
+    let best = { c: Infinity, x: b.minX + ro * 0.4, y: b.maxY - ro * 0.4 };
+    const scan = (x0, x1, y0, y1, step) => { for (let y = y1; y >= y0; y -= step) for (let x = x0; x <= x1; x += step) { const c = cost(x, y); if (c < best.c) best = { c, x, y }; } };
+    scan(b.minX - ro, b.minX + b.width * 0.4, b.maxY - b.height * 0.6, b.maxY + ro, 1.2);
+    if (best.c === Infinity) scan(b.minX - ro, b.maxX + ro, b.minY - ro, b.maxY + ro, 1.5);   // qualquer sítio seguro
+    if (best.c < Infinity) scan(best.x - 1.2, best.x + 1.2, best.y - 1.2, best.y + 1.2, 0.3);
+    return { x: best.x, y: best.y };
+  }
+  /**
+   * Avalia e reforça a ligação da argola. O reforço é um «filete» (fecho morfológico local) que
+   * enche o pescoço estreito entre a argola e a peça, como uma solda arredondada.
+   */
+  function ringJoin(shape, text, S, pos, tol, ang) {
+    const ro = S.ringOuter / 2, ri = S.ringInner / 2, disc = Math.PI * ro * ro;
+    const outer = G.circle(pos.x, pos.y, ro, tol, ang), inner = G.circle(pos.x, pos.y, ri, tol, ang);
+    const overlap = Math.abs(G.regionArea(G.intersection(outer, shape))), frac = overlap / disc;
+    let joined = G.union(shape, outer), web = 0;
+    if (S.ringReinforce !== false && overlap > 0.05) {
+      const R = Math.max(1.5, ro * 0.6);
+      const closed = G.offset(G.offset(joined, R, tol, ang), -R, tol, ang);
+      let extra = G.intersection(G.difference(closed, joined), G.circle(pos.x, pos.y, ro + R * 1.6, tol, ang));
+      // O fecho também deixa lascas finíssimas ao longo de todo o contorno (aproximação dos arcos):
+      // ficam só os «filetes» reais do pescoço (área > 0,05 mm² e espessura média > 0,08 mm).
+      extra = extra.filter(p => { const a = Math.abs(G.regionArea([p])); let per = 0; for (let i = 0; i < p.length; i++) { const q = p[i], r = p[(i + 1) % p.length]; per += Math.hypot(r.X - q.X, r.Y - q.Y) / G.SCALE; } return a > 0.05 && a / per > 0.04; });
+      web = Math.abs(G.regionArea(extra));
+      // Cresce 0,05 mm para sobrepor bem a peça (sem arestas tangentes) antes de unir.
+      if (web > 0.05) joined = G.union(joined, G.offset(extra, 0.05, tol, ang));
+    }
+    const wall = ro - ri, holeCuts = Math.abs(G.regionArea(G.intersection(inner, text))) > 0.05;
+    let status = 'ok';
+    if (overlap < 0.3) status = 'solta';
+    else if (frac < 0.2 || wall < 1.2) status = 'fraca';
+    return { base: G.difference(joined, inner), info: { frac, overlap, web, wall, holeCuts, status } };
   }
 
   // Garante que a forma envolve as letras (ovais/nuvens podiam cortar os cantos do texto).
@@ -87,11 +127,10 @@
     // Argola
     let ring = null, base = shape, ringOverlap = 0;
     if (S.hasRing) {
-      const pos = S.ringManual ? { x: S.ringX, y: S.ringY } : autoRing(shape, S);
-      const outer = G.circle(pos.x, pos.y, S.ringOuter / 2, tol, ang), inner = G.circle(pos.x, pos.y, S.ringInner / 2, tol, ang);
-      ringOverlap = Math.abs(G.regionArea(G.intersection(G.difference(outer, inner), shape)));
-      base = G.difference(G.union(shape, outer), inner);
-      ring = { x: pos.x, y: pos.y };
+      const pos = S.ringManual ? { x: S.ringX, y: S.ringY } : autoRing(shape, text, S);
+      const J = ringJoin(shape, text, S, pos, tol, ang);
+      base = J.base; ringOverlap = J.info.overlap;
+      ring = Object.assign({ x: pos.x, y: pos.y }, J.info);
     }
     base = G.depinch(base);
     const letters = G.depinch(G.intersection(text, base));

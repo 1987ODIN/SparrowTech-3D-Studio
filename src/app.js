@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: false, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .2, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, printer: 'A1', plateSize: 256, positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -32,18 +32,18 @@ function selectTab(tab) {
   ['letters', 'base', 'ring', 'print'].forEach(t => { $(t + 'Panel').classList.toggle('hidden', t !== tab); $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab) });
   $('selectionLabel').textContent = selectionText(tab);
 }
-function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '▦ Selecionado: tabuleiro de impressão' }[tab] }
+function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Pro (beta): impressora, cópias, bico e formatos' }[tab] }
 function optionButtons(id, items, current, callback) { const node = $(id); node.textContent = ''; for (const [value, label] of items) { const b = document.createElement('button'); b.textContent = label; b.classList.toggle('on', value === current); b.addEventListener('click', () => { callback(value); updateControls(); scheduleRebuild() }); node.appendChild(b) } }
 function explanation(kind) { let title = '', msg = ''; if (kind === 'raised') { title = 'Relevo'; msg = 'As letras ficam salientes sobre a base. A face com relevo deve ficar virada para cima na impressão.' } if (kind === 'flush') { title = 'Ao nível'; msg = 'As letras ficam encaixadas na superfície da base, sem degrau. Ideal para impressões multicolor.' } if (kind === 'engraved') { title = 'Gravado'; msg = 'As letras são cavadas na base e mostram profundidade real.' } if (kind === 'cutout') { title = 'Vazado'; msg = 'As letras atravessam a base como recortes vazios.' } if (kind === 'smooth') { title = 'Liso'; msg = 'O verso fica totalmente liso, sem letras.' } if (kind === 'inlay') { title = 'Ao nível'; msg = 'O texto do verso é embutido na base.' } if (kind === 'through') { title = 'Passante'; msg = 'As letras atravessam toda a base. Visto por trás, o nome original aparece espelhado, como acontece numa peça real.' } return `<svg viewBox="0 0 96 56" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="24" width="84" height="26" rx="5" fill="#378ff3"/><rect x="28" y="${kind === 'raised' ? 13 : kind === 'cutout' ? 24 : kind === 'engraved' ? 30 : 23}" width="41" height="${kind === 'raised' ? 17 : kind === 'cutout' ? 26 : kind === 'engraved' ? 12 : 20}" rx="4" fill="${kind === 'cutout' ? '#121a28' : '#fff'}" stroke="${kind === 'engraved' ? '#1e507b' : '#e9eef8'}" stroke-width="1"/><text x="48" y="${kind === 'raised' ? 26 : 38}" text-anchor="middle" font-size="12" fill="${kind === 'cutout' ? '#89beff' : '#122438'}">Aa</text></svg><span><b>${title}</b><br>${msg}</span>` }
 function updateControls() {
-  document.body.classList.toggle('pro', S.pro); $('modeEasy').classList.toggle('on', !S.pro); $('modePro').classList.toggle('on', S.pro);
+  document.body.classList.add('pro');
   $('inputName').value = S.name; $('backText').value = S.backText;
   renderGallery();
   optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) }); optionButtons('printModeButtons', [['layers', 'Por camadas'], ['sequential', 'Um objeto de cada vez']], S.printMode, v => { S.printMode = v; updateModeNotice() });
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); $('layer').value = String(S.layer); $('quality').value = S.quality; $('copyCount').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0] + ' · ' + S.plateSize + ' × ' + S.plateSize + ' mm'; updateModeNotice(); drawMiniPlate();
 }
 function renderGallery() {
@@ -92,10 +92,10 @@ function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±'
 function bindControls() {
   [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
   [['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize') scheduleScan() }));
-  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild() }));
+  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild() }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; refreshMeshColors(); requestRender() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
-  $('modeEasy').onclick = () => { S.pro = false; updateControls() }; $('modePro').onclick = () => { S.pro = true; updateControls() };
+  $('quickPrint').onclick = () => export3MF();
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { S.plateView = false; fitCamera(); requestRender() }; $('btnPlate').onclick = () => { S.plateView = true; fitCamera(); requestRender() };
@@ -210,7 +210,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState() {
-  const k = ['name', 'font', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'fillHoles', 'holeArea'];
+  const k = ['name', 'font', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = S[key]; return o;
 }
 
@@ -251,11 +251,14 @@ function applyModel(r, quality) {
   if (quality !== S.quality) msg = interactiveBuild ? 'Pré-visualização rápida durante o arrasto…' : `Pré-visualização em «Fina»; a exportação usa «${QUALITY_LABEL[S.quality]}».`;
   if (S.front === 'raised' && S.back === 'raised') msg = '⚠ Relevo nas duas faces: a orientação pode exigir suportes ou impressão em partes.';
   if (S.back === 'through') msg = '⚠ Letras passantes: exige troca de filamento em muitas camadas.';
-  if (S.hasRing && r.regions.ringOverlap < 2) msg = '⚠ Argola com pouca união à base. Arrasta-a ou usa reposicionamento automático.';
+  const ri = S.hasRing && r.regions.ring;
+  if (ri && ri.status === 'solta') msg = '⚠ A argola está solta da peça! Arrasta a bola para cima da base ou carrega em «◎ Reposicionar automaticamente».';
+  else if (ri && ri.status === 'fraca') msg = `⚠ Argola frágil: só ${Math.round(ri.frac * 100)}% da bola está em cima da peça — vai partir com o peso das chaves. Arrasta-a mais para dentro (≥ 30%) ou usa «◎ Reposicionar».`;
+  else if (ri && ri.holeCuts) msg = '⚠ O furo da argola corta letras. Arrasta a argola para outra zona.';
   if (Math.abs(S.positionX) + b.width / 2 > S.plateSize / 2 || Math.abs(S.positionY) + b.height / 2 > S.plateSize / 2) msg = '⚠ A peça está parcialmente fora dos limites do tabuleiro.';
   $('qualityNotice').textContent = msg; $('qualityNotice').classList.toggle('warn', msg.startsWith('⚠'));
   $('overlayStatus').textContent = msg.startsWith('⚠') ? msg : `Modelo 3D · ${fmt(S.bodyThickness)} mm de base`;
-  updatePrintCheck();
+  updatePrintCheck(); updateRingCheck();
   clampToPlate(); drawMiniPlate();
   if (autoFitAfterRebuild) { fitCamera(); autoFitAfterRebuild = false }
   requestRender();
@@ -278,8 +281,31 @@ function updatePrintCheck() {
   }
   html += `<br>Altura das letras ${fmt(S.letterHeight)} mm = ${exact ? Math.round(layers) : layers.toFixed(1).replace('.', ',')} camada(s) de ${String(S.layer).replace('.', ',')} mm${exact ? '' : ' ⚠ não é múltiplo da camada: o slicer arredonda'}. Contorno ${fmt(S.outlineWidth)} mm${S.outline && S.outlineWidth < S.nozzle * 1.1 ? ' ⚠ mais estreito que o bico' : ''}.`;
   if (FONT_GROUP[S.font] === 'fina') html += '<br>Fonte fina: imprime melhor com letra grande, bico 0,2–0,4 e espessura +0,2 mm ou mais.';
-  for (const id of ['printCheck', 'printCheck2']) { const el = $(id); el.className = 'printcheck ' + cls; el.innerHTML = html }
+  for (const id of ['printCheck', 'printCheck2']) { const el = $(id); el.className = 'printcheck ' + cls + (id === 'printCheck' && cls === 'ok' ? ' hidden' : ''); el.innerHTML = html }
 }
+function updateRingCheck() {
+  const el = $('ringCheck'), ri = model && model.regions.ring;
+  if (!S.hasRing || !ri) { el.className = 'printcheck hidden'; return }
+  const pct = Math.round(ri.frac * 100), cls = ri.status === 'ok' && !ri.holeCuts ? 'ok' : ri.status === 'ok' ? 'aviso' : 'mau';
+  let html = ri.status === 'solta' ? '✗ <b>Argola solta</b>: não está ligada à peça.' : ri.status === 'fraca' ? `⚠ <b>Ligação frágil</b>: só ${pct}% da bola assenta na peça.` : `✓ <b>Ligação segura</b>: ${pct}% da bola assenta na peça${S.ringReinforce && ri.web > 0.05 ? ', com reforço' : ''}.`;
+  if (ri.status !== 'ok') html += ' Arrasta a bola mais para dentro da base (ideal 30–50%) ou carrega em «◎ Reposicionar automaticamente».';
+  if (ri.holeCuts) html += ' ⚠ O furo corta letras.';
+  if (ri.wall < 1.6) html += ` ⚠ Parede da argola fina (${fmt(ri.wall)} mm): aumenta o diâmetro exterior ou diminui o furo.`;
+  el.className = 'printcheck ' + cls; el.innerHTML = html;
+}
+// Etiqueta junto à argola no ecrã: ensina a arrastar e mostra o aviso de fragilidade.
+let ringTagUntil = Date.now() + 15000, ringDragged = false;
+function updateRingTag() {
+  const tag = $('ringTag'), ri = model && model.regions.ring;
+  if (!tag || !S.hasRing || !ri || !gl && !fallbackCtx) { tag && tag.classList.add('hidden'); return }
+  const weak = ri.status !== 'ok', show = weak || (!ringDragged && Date.now() < ringTagUntil) || S.selected === 'ring';
+  if (!show || Math.cos(camera.yaw) < 0) { tag.classList.add('hidden'); return }
+  const pos = objectPositions()[0], p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
+  tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
+  tag.className = 'ringtag ' + (weak ? ri.status : '');
+  tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
+}
+setInterval(() => { if (!ringDragged && Date.now() > ringTagUntil) updateRingTag() }, 1000);
 function partColor(id) { return { base: S.baseColor, letters: S.letterColor, outline: S.outlineColor, back: S.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
 
@@ -338,6 +364,7 @@ function render3D() {
   gl.uniform1f(uniform.distance, PERSPECTIVE); gl.uniform2f(uniform.viewport, c.width, c.height); gl.uniform2f(uniform.pan, camera.panX * ratio, camera.panY * ratio); gl.uniform3f(uniform.center, camera.cx, camera.cy, camera.cz);
   if (Math.cos(camera.yaw) > -.18) { bindBufferAndDraw(plateBuffer && plateBuffer.buf, plateBuffer && plateBuffer.n, gl.TRIANGLES, [0, 0]); bindBufferAndDraw(gridBuffer && gridBuffer.buf, gridBuffer && gridBuffer.n, gl.LINES, [0, 0]) }
   for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]);
+  updateRingTag();
 }
 
 // ---------------------------------------------------------------- câmara: projeção igual à do shader
@@ -415,12 +442,16 @@ function bindViewerEvents() {
   });
   // Um segundo botão premido durante um arrasto chega como pointermove (eventos «chorded») e como mousedown.
   canvas.addEventListener('mousedown', e => { if (dragAction && (e.buttons & 3) === 3 && dragAction.kind !== 'pan') startPan(dragAction) });
+  let hoverT = 0;
+  canvas.addEventListener('pointermove', e => {
+    if (!dragAction && e.buttons === 0 && performance.now() - hoverT > 60) { hoverT = performance.now(); canvas.style.cursor = selectAt(e) === 'ring' ? 'move' : fontMode ? 'ns-resize' : '' }
+  });
   canvas.addEventListener('pointermove', e => {
     const d = dragAction; if (!d || e.pointerId !== d.id) return;
     if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(); return }
     if ((e.buttons & 3) === 3 && d.kind !== 'pan') startPan(d);
     const dx = e.clientX - d.lastX, dy = e.clientY - d.lastY; d.lastX = e.clientX; d.lastY = e.clientY;
-    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'ring') selectTab('ring') }
+    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
     if (!d.moved) return;
     if (d.kind === 'pan') { camera.panX += dx; camera.panY += dy; requestRender() }
     else if (d.kind === 'ring') { const p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness); if (p) { S.ringX = p.x; S.ringY = p.y; S.ringManual = true; interactiveBuild = true; scheduleRebuild(false) } }

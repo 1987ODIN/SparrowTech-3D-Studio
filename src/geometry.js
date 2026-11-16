@@ -103,6 +103,8 @@
     const d = Math.max(4, tol * SCALE * 0.2);
     return union(C.Clipper.CleanPolygons(paths, d).filter(p => p.length >= 3));
   }
+  // Simplificação grosseira (remove vértices a < d mm da linha dos vizinhos): só para pesquisas rápidas.
+  function simplify(paths, dMm) { return union(C.Clipper.CleanPolygons(paths, dMm * SCALE).filter(p => p.length >= 3)); }
   function offset(paths, deltaMm, tol, maxAngle) {
     if (!paths.length) return [];
     if (Math.abs(deltaMm) < 1e-9) return paths;
@@ -497,5 +499,5 @@
   }
 
   return { SCALE, QUALITY, union, difference, intersection, offset, finalize, mirrorX, translate, scalePaths, contains, toPolygons, fillSmallHoles,
-    regionArea, bounds, flattenCommands, textRegion, circle, ellipse, rect, roundRect, cloud, buildSolid, buildPart, meshStats, isClosed, depinch };
+    regionArea, bounds, flattenCommands, textRegion, circle, ellipse, rect, roundRect, cloud, buildSolid, buildPart, meshStats, isClosed, depinch, simplify };
 });

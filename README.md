@@ -8,6 +8,8 @@ Editor visual open source para criar nomes, porta-chaves, placas e outros modelo
 
 Descarrega [`dist/sparrowtech_3d_studio_v5.html`](dist/sparrowtech_3d_studio_v5.html) e abre-o no Chrome, Edge ou Firefox. Funciona sem internet: bibliotecas e fontes estão embutidas.
 
+Escreve o nome, escolhe a fonte e carrega em **🖨 Imprimir**: sai um 3MF pronto para o Bambu Studio / Creality Print. A argola fica numa posição segura e reforçada; se a arrastares para um sítio frágil, a app avisa. Opções de impressora, bico, camadas e cópias estão em **⚙ Pro (beta)**.
+
 | Rato | Ação |
 |---|---|
 | Esquerdo + arrastar | rodar |
