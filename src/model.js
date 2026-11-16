@@ -185,9 +185,37 @@
     return out;
   }
 
+  /**
+   * Base «peluche»: arredonda a aresta de cima (rb, quarto de círculo) e, se pedido, um chanfro
+   * leve a 45° em baixo (cb) — em baixo não pode ser curva: junto ao tabuleiro ficaria no ar.
+   * O recuo negativo encolhe o contorno exterior e alarga os furos (entrada do furo da argola).
+   */
+  function roundedBase(paths, b, rb, cb, tol, ang) {
+    const out = [], inset = d => d < 0.012 ? paths : G.depinch(G.offset(paths, -d, tol, ang));
+    if (cb > 0) { const n = Math.max(2, Math.round(cb / 0.1)); for (let i = 0; i < n; i++) { const reg = inset(cb * (1 - (i + 0.5) / n)); if (reg.length) out.push({ paths: reg, z0: cb * i / n, z1: cb * (i + 1) / n }); } }
+    if (b - rb - cb > 1e-6) out.push({ paths, z0: cb, z1: b - rb });
+    if (rb > 0) { const n = Math.max(3, Math.min(8, Math.ceil(rb / 0.08))); for (let i = 0; i < n; i++) { const t = (i + 0.5) / n, reg = inset(rb * (1 - Math.sqrt(1 - t * t))); if (!reg.length) break; out.push({ paths: reg, z0: b - rb + rb * i / n, z1: b - rb + rb * (i + 1) / n }); } }
+    return out;
+  }
+  /** Quanto se pode arredondar a base sem enfraquecer: devolve {rb, cb, extra} (extra = espessura somada para compensar). */
+  function roundPlan(S, R) {
+    const b0 = S.bodyThickness; let rb = 0, cb = 0;
+    if (S.roundBase) {
+      rb = Math.min(Math.max(0.2, Math.min(1, S.roundAmount || 0.6)), b0 * 0.4);
+      // A parede da argola tem de ficar com ≥ 0,8 mm planos em cima.
+      if (S.hasRing) rb = Math.min(rb, Math.max(0, ((S.ringOuter - S.ringInner) / 2 - 0.8) / 2));
+      // O que assenta em cima da base (letras, contorno) não pode ficar sem chão.
+      if (R) { const foot = G.union([...(R.text || []), ...(R.outline || [])]); for (let k = 0; k < 4 && rb >= 0.15 && foot.length; k++) { const miss = G.difference(G.offset(foot, 0.15, 0.02), G.offset(R.base, -rb, 0.02)); if (!miss.length) break; rb *= 0.6; } }
+      if (rb < 0.15) rb = 0;
+    }
+    if (S.roundBack && !(S.back === 'raised' && R && R.back && R.back.length)) cb = Math.min(0.3, b0 * 0.15);
+    return { rb, cb, extra: Math.round((rb / 2 + cb / 3) * 20) / 20 };
+  }
+
   function solidsFor(S, R0) {
     let R = R0;
-    const b = S.bodyThickness, fh = S.letterHeight, d = INLAY_DEPTH, oh = Math.min(OUTLINE_HEIGHT, b / 4);
+    const plan = roundPlan(S, R0);
+    const b = S.bodyThickness + plan.extra, fh = S.letterHeight, d = INLAY_DEPTH, oh = Math.min(OUTLINE_HEIGHT, b / 4);
     let eh = Math.min(fh, b - MIN_FLOOR);
     if (S.front === 'engraved' && S.back === 'engraved') eh = Math.min(eh, (b - 0.4) / 2);
     eh = Math.max(0.2, eh);
@@ -227,7 +255,8 @@
     if (S.front === 'engraved' && !through) push(purePockets, T, b - eh, b);
     if (S.front === 'cutout' && !through) push(purePockets, T, 0, b);
     if (S.back === 'engraved') push(purePockets, backPocket, 0, eh);
-    return { base: [{ paths: R.base, z0: zShift, z1: b + zShift }], letters: shift(L), outline: shift(O), back: shift(K), pockets: shift(pockets), extra: shift(extra), purePockets: shift(purePockets), zShift, filled };
+    const baseSolids = plan.rb || plan.cb ? roundedBase(R.base, b, plan.rb, plan.cb, q.tol, q.angle) : [{ paths: R.base, z0: 0, z1: b }];
+    return { round: plan, base: shift(baseSolids), letters: shift(L), outline: shift(O), back: shift(K), pockets: shift(pockets), extra: shift(extra), purePockets: shift(purePockets), zShift, filled };
   }
 
   /**
@@ -255,7 +284,7 @@
     const t2 = Date.now();
     const top = Math.max(...parts.map(p => { let m = 0; const P = p.mesh.positions; for (let i = 2; i < P.length; i += 3) if (P[i] > m) m = P[i]; return m; }), 0);
     return {
-      regions: R, parts, zShift: Z.zShift, height: top, quality: q,
+      regions: R, parts, zShift: Z.zShift, height: top, quality: q, round: Z.round,
       timing: { regions: t1 - t0, meshes: t2 - t1 },
       // União de todas as partes num único sólido (STL «completo»).
       unionMesh: () => G.buildPart([...Z.base, ...Z.extra], Z.purePockets)

@@ -114,6 +114,27 @@ for (const fname of COMBO_FONTS) for (const extra of [{ roundTop: true }, { roun
   check(at(top) > 0 && G.meshStats(L).volume < G.meshStats(M.build({ ...BASE_STATE, letterHeight: 1.0 }, { front: fonts.Pacifico }, 'fine').parts.find(p => p.id === 'letters').mesh).volume * 0.97, 'topo arredondado não reduz o volume das letras');
 }
 
+console.log('2d) Tudo redondo (peluche): base e argola com borda redonda, chanfro leve no verso');
+{
+  const FR = ['raised', 'flush', 'engraved', 'cutout'], BK = ['smooth', 'inlay', 'raised', 'engraved', 'through'], SH = [...new Set(['contour', BASE_STATE.shape])];
+  let n = 0;
+  for (const fname of COMBO_FONTS) for (const front of FR) for (const back of BK) for (const extra of [{ roundBase: true }, { roundBase: true, roundBack: true, roundTop: true, roundAmount: 1 }, { roundBack: true, roundAmount: 0.3, roundBase: true, hasRing: false }]) {
+    if ((n++ % 3) && fname !== COMBO_FONTS[0]) continue;                       // amostra nas outras fontes
+    const st = { ...BASE_STATE, front, back, backText: back === 'smooth' ? '' : 'Ana', ...extra }, label = `${fname}/${front}/${back}/${JSON.stringify(extra)}`;
+    const model = M.build(st, { front: fonts[fname], back: fonts[fname] }, 'normal');
+    for (const p of model.parts) checkMesh(p.mesh, `${label}/${p.id}`);
+    checkMesh(model.unionMesh(), `${label}/união`);
+  }
+  const plain = M.build({ ...BASE_STATE }, { front: fonts.Pacifico }, 'fine'), round = M.build({ ...BASE_STATE, roundBase: true, roundAmount: 0.6 }, { front: fonts.Pacifico }, 'fine');
+  const vb = m => G.meshStats(m.parts.find(p => p.id === 'base').mesh).volume, zmax = m => { const P = m.parts.find(p => p.id === 'base').mesh.positions; let t = 0; for (let i = 2; i < P.length; i += 3) t = Math.max(t, P[i]); return t };
+  check(round.round.rb > 0.3 && round.round.rb <= 0.66, `raio da base limitado pela parede da argola (rb = ${round.round.rb})`);
+  check(Math.abs(zmax(round) - (BASE_STATE.bodyThickness + round.round.extra)) < 1e-6 && round.round.extra >= 0.15, 'a base engrossa para compensar');
+  check(vb(round) > vb(plain) * 0.98, `a base redonda não perde material (${vb(round).toFixed(0)} vs ${vb(plain).toFixed(0)} mm³)`);
+  const ch = M.build({ ...BASE_STATE, roundBack: true }, { front: fonts.Pacifico }, 'fine');
+  check(ch.round.cb > 0.2 && ch.round.cb <= 0.3 && ch.round.rb === 0, 'chanfro do verso limitado a 0,3 mm');
+  check(M.build({ ...BASE_STATE, roundBack: true, back: 'raised', backText: 'Ana' }, { front: fonts.Pacifico, back: fonts.Pacifico }, 'draft').round.cb === 0, 'sem chanfro quando o verso tem letras em relevo (a base não assenta no tabuleiro)');
+}
+
 console.log('3) Partes sem sobreposição (volume da união = soma das partes)');
 for (const front of FRONT) for (const back of ['smooth', 'inlay', 'raised', 'through']) {
   const S = { ...BASE_STATE, front, back, backText: 'Teste' };

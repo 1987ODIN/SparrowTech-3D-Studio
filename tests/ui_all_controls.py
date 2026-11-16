@@ -147,10 +147,13 @@ with sync_playwright() as p:
     ok = len(got) == npl; print(('  ✓ ' if ok else '  ✗ ') + f'STL com 40 cópias → {got}'); fails.extend([] if ok else ['stl tabuleiros'])
     page.fill('#copyTop', '1'); page.wait_for_timeout(300)
     # Exportações: Imprimir (topo), 3MF, STL completo, STLs por cor, placa de teste
+    # No Chrome de teste o pedido bambustudio:// abre um aviso do navegador que bloqueia os cliques seguintes: regista-se só que foi pedido.
+    page.evaluate("window.openStudioAfter = () => { window.__studio = true }")
     for bid, n in [('infoGo', 1), ('infoStudio', 1)]:
         with page.expect_download(timeout=90000) as dl: (page.click('#dl3MF'), page.click('#' + bid))
         d = dl.value; path = os.path.join(OUT, 'ui_' + d.suggested_filename); d.save_as(path)
         ok = os.path.getsize(path) > 1000; print(('  ✓ ' if ok else '  ✗ ') + f'{bid} → {d.suggested_filename} ({os.path.getsize(path) // 1024} KB)'); fails.extend([] if ok else [bid])
+    ok = page.evaluate('window.__studio === true'); print(('  ✓ ' if ok else '  ✗ ') + 'depois do 3MF é pedido o arranque do Bambu Studio'); fails.extend([] if ok else ['abrir studio'])
     page.click('#tabLetters'); page.evaluate("S.favorites = ['Pacifico', 'Lilita One']; renderGallery()")
     with page.expect_download(timeout=90000) as dl: page.click('#testPlate')
     print('  ✓ placa de teste → ' + dl.value.suggested_filename)

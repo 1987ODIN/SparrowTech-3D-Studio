@@ -147,3 +147,13 @@ Ao levantar o dedo, a ponta rola e os últimos eventos de movimento deslocam a a
 * **Cartão do 3MF:** ao carregar em `⬇ 3MF` aparece um cartão a explicar que as cores vão separadas, a camada gravada, o bico recomendado (0,2 mm; 0,4 mm aceitável com camada fina) e os filamentos a carregar. Tem «Não mostrar outra vez». No computador inclui «⬇ e abrir o Bambu Studio» (`bambustudio://open`; o ficheiro tem de ser aberto à mão a partir das transferências). O STL descarrega logo, sem cartão.
 * **Cartão inicial:** ao abrir a app pela primeira vez explica que a argola se arrasta com o dedo ou o rato e que um toque nela abre o menu. A etiqueta «arrasta a argola» só aparece agora quando a argola está frágil ou solta. Os testes abrem a página com `#semintro`.
 * **Câmara da argola** sempre do lado esquerdo no telemóvel.
+
+## Tudo redondo, estilo peluche (v5.9)
+
+Em «Letras → Arredondar» escolhe-se o que arredonda, em separado:
+
+* **Letras — topo redondo** (já existia: `roundTop`).
+* **Base e argola — borda redonda** (`roundBase`, `roundAmount` 0,2–1 mm): a aresta de cima da base segue um quarto de círculo em camadas finas (`roundedBase` em `model.js`). O recuo encolhe o contorno e alarga os furos, por isso a entrada do furo da argola também fica redonda.
+* **Verso — chanfro leve** (`roundBack`): 45°, no máximo 0,3 mm. Em baixo não se usa curva: junto ao tabuleiro ficaria no ar e não se aguentava. Não se aplica quando o verso tem letras em relevo.
+
+Resistência (`roundPlan`): o raio é limitado para a parede da argola ficar com ≥ 0,8 mm planos em cima e para as letras/contorno nunca ficarem sem chão; a base engrossa metade do raio (+ ⅓ do chanfro) para repor o material retirado — o volume da base redonda fica ≥ 98 % do original (teste 2d). **A resistência real só se confirma imprimindo.**
