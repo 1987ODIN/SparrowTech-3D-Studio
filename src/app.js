@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .16, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, fileFormat: '3mf', filaments: {}, printer: 'A1', positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .16, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: 'A1', positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -65,15 +65,33 @@ function renderPicker() {
   sel.onchange = () => fill(sel.value); fill(sel.value);
   box.append(sel, grid, name);
 }
-function updatePrintBar() {
-  const fmtName = S.fileFormat === 'stl' ? 'STL' : '3MF', slicer = PRINTERS[S.printer][4];
-  $('quickPrint').textContent = `🖨 Imprimir — descarregar ${fmtName}`; $('topDownload').textContent = `⬇ ${fmtName}`; $('topDownload').title = `Descarregar ${fmtName} para o ${slicer}`;
-  const fil = PARTS.filter(p => p[0] !== 'outline' || S.outline).map(([part, title]) => `${title}: ${filamentLabel(part)}`).join(' · ');
-  $('printHint').textContent = S.fileFormat === '3mf'
-    ? `Abre no ${slicer}: base, letras${S.outline ? ' e contorno' : ''} já vêm em partes separadas, cada uma no seu filamento, e com camada de ${String(S.layer).replace('.', ',')} mm. No ${slicer} escolhe a impressora com bico ${String(S.nozzle).replace('.', ',')} mm${S.nozzle <= .2 ? ' (premium)' : S.nozzle <= .4 ? ' (normal)' : ''} e carrega os filamentos escolhidos acima.`
-    : `STL não guarda cores nem partes: imprime numa cor, ou pinta as cores no ${slicer}.`;
-  if (S.copies > 1 && model) { const pl = layoutPlan().plates.length; $('printHint').textContent += pl > 1 ? ` ${S.copies} cópias em ${pl} tabuleiros${S.fileFormat === 'stl' ? ' (um ficheiro STL por tabuleiro)' : ''}.` : ` ${S.copies} cópias no tabuleiro.` }
+function updatePrintBar() { }
+// Cartão mostrado antes de descarregar o 3MF: o que vai no ficheiro e que bico usar.
+function infoText() {
+  const c = v => String(v).replace('.', ','), fil = PARTS.filter(p => p[0] !== 'outline' || S.outline).map(([part, title]) => `<li>${title}: <b>${filamentLabel(part)}</b></li>`).join('');
+  const pl = model && S.copies > 1 ? layoutPlan().plates.length : 1;
+  return `<ul><li>As <b>cores vão separadas</b> (base, letras${S.outline ? ' e contorno' : ''}), cada uma no seu filamento, com camada de <b>${c(S.layer)} mm</b>.</li>`
+    + `<li><b>Melhor qualidade:</b> bico de 0,2 mm.</li><li><b>Bico de 0,4 mm:</b> aceitável, com a camada mais fina que a impressora permitir.</li>`
+    + (S.copies > 1 ? `<li>${S.copies} cópias${pl > 1 ? ` em ${pl} tabuleiros` : ''}.</li>` : '') + `</ul>No Bambu Studio carrega estes filamentos:<ul>${fil}</ul>`;
 }
+let infoSkip = false; try { infoSkip = localStorage.getItem('st3d_info3mf') === '1' } catch (e) { }
+function openStudioAfter() {
+  const f = document.createElement('iframe'); f.style.display = 'none'; f.src = 'bambustudio://open'; document.body.appendChild(f); setTimeout(() => f.remove(), 4000);
+  $('qualityNotice').textContent = 'O 3MF foi descarregado e pedi ao computador para abrir o Bambu Studio. Arrasta o ficheiro das transferências para a janela do Bambu Studio (ou Ficheiro → Abrir projeto).';
+}
+function bindCards() {
+  const close = () => { $('infoCard').classList.add('hidden'); if ($('infoSkip').checked) { infoSkip = true; try { localStorage.setItem('st3d_info3mf', '1') } catch (e) { } } };
+  $('dlSTL').onclick = () => exportSTL();
+  $('dl3MF').onclick = () => { if (infoSkip) return export3MF(); $('infoBody').innerHTML = infoText(); $('infoCard').classList.remove('hidden') };
+  $('infoCancel').onclick = () => $('infoCard').classList.add('hidden');
+  $('infoGo').onclick = () => { close(); export3MF() };
+  // Uma página local não consegue entregar o ficheiro ao Bambu Studio: descarrega e pede ao sistema para o iniciar (bambustudio://).
+  $('infoStudio').onclick = async () => { close(); await export3MF(); openStudioAfter() };
+  let seen = /semintro/.test(location.hash); try { seen = seen || localStorage.getItem('st3d_intro') === '1' } catch (e) { }
+  if (!seen) $('introCard').classList.remove('hidden');
+  $('introGo').onclick = () => { $('introCard').classList.add('hidden'); try { localStorage.setItem('st3d_intro', '1') } catch (e) { } };
+}
+
 const QUALITY_LABEL = { draft: 'Rascunho', normal: 'Normal', fine: 'Fina', ultra: 'Muito fina' };
 const QUALITY_TOL = { draft: .05, normal: .02, fine: .01, ultra: .004 };
 const PERSPECTIVE = 320;
@@ -108,7 +126,7 @@ function updateControls() {
   updateRangeLabels();
   $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('roundTop').checked = S.roundTop; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('copyTop').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
   $('machineBadge').textContent = PRINTERS[S.printer][0]; updateModeNotice(); drawMiniPlate();
-  $('fileFormat').value = S.fileFormat; renderFilaChips(); renderPicker(); updatePrintBar();
+  renderFilaChips(); renderPicker(); updatePrintBar();
 }
 function renderGallery() {
   const box = $('fontCards'), keep = box.scrollTop; box.textContent = '';
@@ -168,17 +186,7 @@ function bindControls() {
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundTop', 'roundTop']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
-  $('topDownload').onclick = () => $('quickPrint').click();
-  $('quickPrint').onclick = () => S.fileFormat === 'stl' ? exportSTL() : export3MF();
-  // Computador: descarrega o 3MF e pede ao sistema para iniciar o Bambu Studio (protocolo bambustudio://).
-  // Uma página local não consegue entregar o ficheiro ao programa: abre-se lá a partir das transferências.
-  $('openStudio').onclick = async () => {
-    await export3MF();
-    const f = document.createElement('iframe'); f.style.display = 'none'; f.src = 'bambustudio://open'; document.body.appendChild(f); setTimeout(() => f.remove(), 4000);
-    $('qualityNotice').textContent = 'O 3MF foi descarregado e pedi ao computador para abrir o Bambu Studio. Arrasta o ficheiro das transferências para a janela do Bambu Studio (ou Ficheiro → Abrir projeto).';
-    $('printHint').textContent = '3MF descarregado. No Bambu Studio: arrasta o ficheiro das transferências para a janela (ou Ficheiro → Abrir projeto). Se o Bambu Studio não abriu sozinho, abre-o à mão.';
-  };
-  $('fileFormat').onchange = () => { S.fileFormat = $('fileFormat').value; updatePrintBar() };
+  bindCards();
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('frontView').onclick = () => setView('front'); $('backView').onclick = () => setView('back'); $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { S.plateView = false; fitCamera(); requestRender() }; $('btnPlate').onclick = () => { S.plateView = true; fitCamera(); requestRender() };
@@ -411,7 +419,7 @@ function updateRingTag() {
   const tag = $('ringTag'), ri = model && model.regions.ring;
   if (!tag || !S.hasRing || !ri || !gl && !fallbackCtx) { tag && tag.classList.add('hidden'); return }
   if (ringGhost) { const pos = objectPositions()[0], p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
-  const weak = ri.status !== 'ok', show = weak || (!ringDragged && Date.now() < ringTagUntil) || S.selected === 'ring';
+  const weak = ri.status !== 'ok', show = weak; // só avisa quando a argola está frágil/solta; o resto explica-se no cartão inicial
   if (!show || Math.cos(camera.yaw) < 0) { tag.classList.add('hidden'); return }
   const pos = objectPositions()[0], p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
   tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
@@ -829,7 +837,7 @@ async function withBusy(button, label, fn) { const old = button.textContent; but
 async function exportSTL() {
   if (!components.length) { alert('Ainda não existe modelo.'); return }
   const plan = layoutPlan(); if (!plan.plates.length) { alert('A peça é demasiado grande para este tabuleiro.'); return }
-  return withBusy($('quickPrint'), '⏳ A criar STL…', async () => {
+  return withBusy($('dlSTL'), '⏳ STL', async () => {
     const r = await geometryCall({ type: 'build', S: geometryState(), quality: S.quality, union: true });
     plan.plates.forEach((pos, i) => { const b = stlBytes([r.union], pos); if (b) download(b, `SparrowTech_${safeName(S.name)}${plan.plates.length > 1 ? '_tabuleiro' + (i + 1) : ''}.stl`) });
     $('qualityNotice').textContent = `STL exportado: ${S.copies} peça(s)${plan.plates.length > 1 ? ' em ' + plan.plates.length + ' ficheiros (um por tabuleiro)' : ''}, sem cores.`;
@@ -842,7 +850,7 @@ async function export3MF() {
   const plan = layoutPlan(), b = plan.b;
   if (!plan.plates.length || b.width > plateW() - PLATE_MARGIN * 2 || b.height > plateH() - PLATE_MARGIN * 2) { alert('A peça é demasiado grande para este tabuleiro. Diminui o nome ou escolhe uma impressora maior.'); return }
   const all = [].concat(...plan.plates);
-  await withBusy($('quickPrint'), '⏳ A criar 3MF…', async () => {
+  await withBusy($('dl3MF'), '⏳ 3MF', async () => {
     await new Promise(r => setTimeout(r, 30));
     const parts = (await finalComponents()).map(c => ({ id: c.id, label: `${c.label} — ${filamentLabel(c.id)} ${c.color.toUpperCase()}`, color: c.color, mesh: c.mesh }));
     const res = Sparrow3MF.build(parts, all, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });

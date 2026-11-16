@@ -18,7 +18,7 @@ with sync_playwright() as p:
     page = ctx.new_page(); errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
-    page.goto('file://' + HTML)
+    page.goto('file://' + HTML + '#semintro')
     page.wait_for_function('() => typeof model !== "undefined" && model && components.length && !building', timeout=60000)
 
     def verify(label):
@@ -57,7 +57,7 @@ with sync_playwright() as p:
             verify(f'deslizador {rid} = {v}')
         page.evaluate(f"(() => {{ const e = document.getElementById('{rid}'); e.value = '{orig}'; e.dispatchEvent(new Event('input', {{bubbles: true}})); }})()")
     # Caixas de seleção (liga/desliga)
-    for cid in page.evaluate("[...document.querySelectorAll('input[type=checkbox]')].map(e => e.id)"):
+    for cid in page.evaluate("[...document.querySelectorAll('input[type=checkbox]:not(#infoSkip)')].map(e => e.id)"):
         tab = page.evaluate(f"document.getElementById('{cid}').closest('#lettersPanel,#basePanel,#ringPanel,#printPanel').id.replace('Panel','')")
         page.click('#tab' + tab[0].upper() + tab[1:])
         for _ in range(2): page.click('#' + cid); verify(f'caixa {cid} → {page.evaluate(f"document.getElementById(\'{cid}\').checked")}')
@@ -109,7 +109,9 @@ with sync_playwright() as p:
     opts = page.evaluate("[...document.querySelectorAll('#printer option')].map(o => o.textContent)")
     ok = 'K1C' not in ' '.join(opts) and len(opts) >= 10; print(('  ✓ ' if ok else '  ✗ ') + f'só Bambu Lab ({len(opts)} impressoras)'); fails.extend([] if ok else ['lista impressoras'])
     page.select_option('#printer', 'H2D'); page.wait_for_timeout(200); verify('impressora H2D (tabuleiro retangular)')
-    with page.expect_download(timeout=90000) as dl: page.click('#topDownload')
+    page.click('#dl3MF'); info = page.inner_text('#infoBody')
+    ok = 'bico de 0,2' in info and '0,4' in info and 'cores' in info; print(('  ✓ ' if ok else '  ✗ ') + 'cartão do 3MF explica cores, bico e camada'); fails.extend([] if ok else ['cartão 3mf'])
+    with page.expect_download(timeout=90000) as dl: page.click('#infoGo')
     pth = os.path.join(OUT, 'ui_h2d.3mf'); dl.value.save_as(pth)
     import zipfile, re
     z = zipfile.ZipFile(pth); main = z.read('3D/3dmodel.model').decode(); cfg = z.read('Metadata/model_settings.config').decode()
@@ -120,34 +122,33 @@ with sync_playwright() as p:
     badges = page.evaluate("getComputedStyle(document.getElementById('sizeBadge').parentElement).display")
     ok = badges == 'none'; print(('  ✓ ' if ok else '  ✗ ') + 'medidas em mm escondidas na barra de baixo'); fails.extend([] if ok else ['badges'])
     page.select_option('#printer', 'A1'); page.wait_for_timeout(150)
-    with page.expect_download(timeout=90000) as dl: page.click('#quickPrint')
+    with page.expect_download(timeout=90000) as dl: (page.click('#dl3MF'), page.click('#infoGo'))
     pth = os.path.join(OUT, 'ui_a1.3mf'); dl.value.save_as(pth); cfg = zipfile.ZipFile(pth).read('Metadata/model_settings.config').decode()
     ok = 'Bambu Lab PLA' in cfg and 'Creality' not in cfg
     print(('  ✓ ' if ok else '  ✗ ') + '3MF A1 com filamentos Bambu Lab nas partes (sem Creality)'); fails.extend([] if ok else ['3mf a1'])
     # Formato no topo: 3MF / STL / STLs por cor
     for fmt_, expect in [('stl', '.stl'), ('3mf', '.3mf')]:
-        page.select_option('#fileFormat', fmt_)
-        with page.expect_download(timeout=90000) as dl: page.click('#quickPrint')
+        with page.expect_download(timeout=90000) as dl: page.click('#dlSTL') if fmt_ == 'stl' else (page.click('#dl3MF'), page.click('#infoGo'))
         ok = dl.value.suggested_filename.endswith(expect); print(('  ✓ ' if ok else '  ✗ ') + f'Imprimir em {fmt_} → {dl.value.suggested_filename}'); fails.extend([] if ok else ['formato ' + fmt_])
-    ok = page.evaluate("[...document.querySelectorAll('#fileFormat option')].map(o => o.value).join() === '3mf,stl' && !document.getElementById('export3MF') && !document.getElementById('exportSTL') && !document.getElementById('exportParts')")
+    ok = page.evaluate("!!document.getElementById('dlSTL') && !!document.getElementById('dl3MF') && !document.getElementById('fileFormat') && !document.getElementById('quickPrint') && !document.getElementById('printHint') && !document.getElementById('export3MF') && !document.getElementById('exportSTL') && !document.getElementById('exportParts')")
     print(('  ✓ ' if ok else '  ✗ ') + 'só 3MF e STL no topo; sem botões de exportação repetidos em baixo'); fails.extend([] if ok else ['formatos'])
     # Cópias a mais → mais tabuleiros (3MF) / um STL por tabuleiro
     page.fill('#copyTop', '40'); page.wait_for_timeout(300)
     npl = page.evaluate("layoutPlan().plates.length"); cap = page.evaluate("layoutPlan().capacity")
-    with page.expect_download(timeout=120000) as dl: page.click('#quickPrint')
+    with page.expect_download(timeout=120000) as dl: (page.click('#dl3MF'), page.click('#infoGo'))
     pth = os.path.join(OUT, 'ui_40copias.3mf'); dl.value.save_as(pth)
     import zipfile as _z
     zz = _z.ZipFile(pth); c40 = zz.read('Metadata/model_settings.config').decode(); m40 = zz.read('3D/3dmodel.model').decode()
     ok = npl > 1 and c40.count('<plate>') == npl and m40.count('<item ') == 40
     print(('  ✓ ' if ok else '  ✗ ') + f'40 cópias → {npl} tabuleiros ({cap} por tabuleiro), {m40.count("<item ")} peças no 3MF'); fails.extend([] if ok else ['tabuleiros'])
-    page.select_option('#fileFormat', 'stl'); got = []
+    got = []
     h = lambda d: got.append(d.suggested_filename)
-    page.on('download', h); page.click('#quickPrint'); page.wait_for_timeout(6000); page.remove_listener('download', h)
+    page.on('download', h); page.click('#dlSTL'); page.wait_for_timeout(6000); page.remove_listener('download', h)
     ok = len(got) == npl; print(('  ✓ ' if ok else '  ✗ ') + f'STL com 40 cópias → {got}'); fails.extend([] if ok else ['stl tabuleiros'])
-    page.fill('#copyTop', '1'); page.select_option('#fileFormat', '3mf'); page.wait_for_timeout(300)
+    page.fill('#copyTop', '1'); page.wait_for_timeout(300)
     # Exportações: Imprimir (topo), 3MF, STL completo, STLs por cor, placa de teste
-    for bid, n in [('quickPrint', 1), ('topDownload', 1), ('openStudio', 1)]:
-        with page.expect_download(timeout=90000) as dl: page.click('#' + bid)
+    for bid, n in [('infoGo', 1), ('infoStudio', 1)]:
+        with page.expect_download(timeout=90000) as dl: (page.click('#dl3MF'), page.click('#' + bid))
         d = dl.value; path = os.path.join(OUT, 'ui_' + d.suggested_filename); d.save_as(path)
         ok = os.path.getsize(path) > 1000; print(('  ✓ ' if ok else '  ✗ ') + f'{bid} → {d.suggested_filename} ({os.path.getsize(path) // 1024} KB)'); fails.extend([] if ok else [bid])
     page.click('#tabLetters'); page.evaluate("S.favorites = ['Pacifico', 'Lilita One']; renderGallery()")

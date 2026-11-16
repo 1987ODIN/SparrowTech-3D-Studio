@@ -15,6 +15,8 @@ with sync_playwright() as p:
     pg = ctx.new_page(); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
     pg.goto('file://' + HTML)
+    pg.wait_for_selector('#introGo', state='visible', timeout=60000); txt = pg.inner_text('#introCard')
+    intro_ok = 'argola' in txt and 'dedo' in txt; pg.screenshot(path=os.path.join(OUT, 'mobile_cartao_inicial.png')); pg.tap('#introGo')
     pg.wait_for_function('() => typeof model!=="undefined" && model && components.length && !building', timeout=90000); pg.wait_for_timeout(500)
     cdp = ctx.new_cdp_session(pg)
     def touch(kind, pts): cdp.send('Input.dispatchTouchEvent', {'type': kind, 'touchPoints': [{'x': x, 'y': y, 'id': i} for i, (x, y) in enumerate(pts)]})
@@ -58,7 +60,9 @@ with sync_playwright() as p:
     touch('touchEnd', []); pg.wait_for_timeout(700); pg.wait_for_function('() => !building', timeout=60000)
     check(pg.evaluate("document.getElementById('loupe').classList.contains('hidden') && !ringGhost && components.every(c=>SparrowGeo.isClosed(c.mesh))"), 'ao largar: câmara fecha e a peça é recalculada (fechada)')
     if lb: check(lb['x'] < 20, 'a câmara da argola fica sempre do lado esquerdo')
-    check(not pg.locator('#openStudio').is_visible(), 'o botão de abrir o Bambu Studio não aparece no telemóvel')
+    check(intro_ok and not pg.locator('#introCard').is_visible(), 'cartão inicial explica a argola e fecha em «Começar»')
+    hb = [pg.locator(i).bounding_box() for i in ('#dlSTL', '#dl3MF')]
+    check(all(b and b['y'] < 54 and b['x'] + b['width'] <= 390 for b in hb), 'STL e 3MF no topo, à direita, dentro do ecrã')
     # Menu da argola no ecrã: toca na argola → tamanho (＋/−) e repor posição, sem ir ao painel
     rq = pg.evaluate("(()=>{const r=model.regions.ring,pos=objectPositions()[0],c=document.getElementById('gl').getBoundingClientRect(),s=project(r.x+pos.x,r.y+pos.y,(model.zShift||0)+S.bodyThickness);return {x:s.x+c.left,y:s.y+c.top,vb:c.bottom,vt:c.top}})()")
     pg.touchscreen.tap(rq['x'], rq['y']); pg.wait_for_timeout(250)
@@ -90,8 +94,8 @@ with sync_playwright() as p:
     pg.evaluate("S.roundTop = true; S.letterRound = 0.3; updateControls(); scheduleRebuild(true)"); pg.wait_for_timeout(500); pg.wait_for_function('() => !building', timeout=90000)
     check(pg.evaluate("components.every(c=>SparrowGeo.isClosed(c.mesh)) && components.find(c=>c.id==='letters').mesh.triangleCount > 20000"), 'topo arredondado + pontas arredondadas (malhas fechadas)')
     # Imprimir no telemóvel
-    pg.locator('#quickPrint').scroll_into_view_if_needed()
-    with pg.expect_download(timeout=90000) as dl: pg.click('#quickPrint')
+    pg.tap('#dl3MF'); check(not pg.locator('#infoStudio').is_visible(), 'no telemóvel o cartão do 3MF só tem descarregar')
+    with pg.expect_download(timeout=90000) as dl: pg.tap('#infoGo')
     check(dl.value.suggested_filename.endswith('.3mf'), 'Imprimir no telemóvel descarrega o 3MF')
     pg.screenshot(path=os.path.join(OUT, 'mobile_final.png'), full_page=True)
     check(not errs, 'sem erros na consola' + (': ' + '; '.join(errs[:2]) if errs else ''))

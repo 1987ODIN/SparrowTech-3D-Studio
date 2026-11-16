@@ -9,7 +9,7 @@ with sync_playwright() as p:
     b = p.chromium.launch(executable_path='/usr/bin/google-chrome' if os.path.exists('/usr/bin/google-chrome') else None, args=['--use-gl=swiftshader', '--enable-unsafe-swiftshader'])
     pg = b.new_page(viewport={'width': 1400, 'height': 900}); errs = []
     pg.on('pageerror', lambda e: errs.append(str(e))); pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None)
-    pg.goto('file://' + HTML)
+    pg.goto('file://' + HTML + '#semintro')
     pg.wait_for_function('() => typeof model!=="undefined" && model && components.length && !building', timeout=60000); pg.wait_for_timeout(500)
     pg.evaluate("setView('front'); fitCamera(); requestRender(); window.__builds=0; const pm=worker.postMessage.bind(worker); worker.postMessage=(m,t)=>{ if(m && m.type==='build') window.__builds++; return pm(m,t) }")
     pt = pg.evaluate("(()=>{const r=model.regions.ring,pos=objectPositions()[0],c=document.getElementById('gl').getBoundingClientRect(),s=project(r.x+pos.x,r.y+pos.y,(model.zShift||0)+S.bodyThickness);return {x:s.x+c.left,y:s.y+c.top}})()")

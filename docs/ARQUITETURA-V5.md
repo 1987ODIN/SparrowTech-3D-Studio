@@ -140,3 +140,10 @@ Ao levantar o dedo, a ponta rola e os últimos eventos de movimento deslocam a a
 * **Cópias (1–40) no topo.** As que não cabem num tabuleiro passam para os seguintes (até 36). No 3MF cada tabuleiro é um `<plate>` em `model_settings.config` e as peças ficam na grelha que o Bambu Studio usa (`PartPlate.cpp`: colunas = teto(√n), passo = tamanho do tabuleiro × 1,2, linhas para −Y). Em STL sai um ficheiro por tabuleiro. **Por confirmar no Bambu Studio real**; a grelha só coincide se a impressora escolhida no slicer tiver o mesmo tabuleiro da escolhida na app.
 * **Menu da argola no ecrã:** tocar/clicar na argola abre, dentro da vista do modelo, um menu com tamanho (− / cursor / ＋; o furo acompanha a proporção) e «Repor posição». No telemóvel deixa de ser preciso descer ao painel.
 * Testes: `threemf.test.cjs` (118), `ui_all_controls.py` (40 cópias → 2 tabuleiros), `mobile_check.py` (menu da argola).
+
+## Topo com ⬇ STL e ⬇ 3MF, cartões de ajuda (v5.8)
+
+* **Descarregar:** dois botões no topo, à direita — `⬇ STL` e `⬇ 3MF`. Saíram o seletor «Ficheiro», o botão «Imprimir» e o texto de ajuda da barra (ficam só impressora, cópias e filamentos).
+* **Cartão do 3MF:** ao carregar em `⬇ 3MF` aparece um cartão a explicar que as cores vão separadas, a camada gravada, o bico recomendado (0,2 mm; 0,4 mm aceitável com camada fina) e os filamentos a carregar. Tem «Não mostrar outra vez». No computador inclui «⬇ e abrir o Bambu Studio» (`bambustudio://open`; o ficheiro tem de ser aberto à mão a partir das transferências). O STL descarrega logo, sem cartão.
+* **Cartão inicial:** ao abrir a app pela primeira vez explica que a argola se arrasta com o dedo ou o rato e que um toque nela abre o menu. A etiqueta «arrasta a argola» só aparece agora quando a argola está frágil ou solta. Os testes abrem a página com `#semintro`.
+* **Câmara da argola** sempre do lado esquerdo no telemóvel.
