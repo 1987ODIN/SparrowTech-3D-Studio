@@ -77,12 +77,11 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 .editor-brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 7px}
 .editor-version{color:var(--muted);font-size:.75rem;font-weight:600}
 </style></head>
-<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.8.2</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">▦ Tabuleiro</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
+<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.8.3</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
 <div class="viewport" id="viewport"><canvas id="gl"></canvas><section class="piece-tools hidden" id="pieceTools" aria-label="Ferramentas da peça">
 <strong id="pieceToolName"></strong>
 <button id="movePiece" type="button" aria-controls="movePanel" aria-expanded="false">✥ Mover</button>
 <div id="movePanel" class="hidden">
-<canvas id="moveMap" width="170" height="135" aria-label="Miniatura do tabuleiro para arrastar peças"></canvas>
 <label class="label" for="plateCorner">Mover para o canto</label>
 <select id="plateCorner">
 <option value="">Escolher canto</option>
@@ -98,7 +97,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 <p id="pieceFeedback" role="status" class="hidden"></p>
 </section><div class="help" id="viewerHelp"><span title="Botão esquerdo e arrastar">🖱 Esq.: rodar</span><span title="Esquerdo + direito ao mesmo tempo, só o direito, a roda premida ou Shift + esquerdo">Esq.+Dir.: mover vista</span><span>Roda: zoom no cursor</span></div><div class="fontswitch" id="fontSwitch" title="Roda do rato aqui (ou clica nas letras e roda) para trocar de fonte"><button id="fontPrev" class="tiny">◀</button><span class="fname" id="fontName">Pacifico</span><button id="fontNext" class="tiny">▶</button><span class="fcount" id="fontCount">1/50</span><span class="fhint">Roda: trocar fonte · Esc: sair</span></div><div class="loupe hidden" id="loupe"><canvas id="loupeCv"></canvas><span>📷 vista da argola</span><i></i></div><div class="ringtag hidden" id="ringTag">◉ arrasta a argola</div><div class="cardov hidden" id="introCard"><div class="card"><h2>Como funciona</h2><ul><li><b>Escreve o nome</b> e escolhe a letra e as cores.</li><li><b>A argola põe-se onde quiseres:</b> agarra-a com o dedo (ou com o rato) e arrasta-a para junto da peça.</li><li><b>Toca uma vez na argola</b> para mudar o tamanho ou repor a posição.</li><li>No fim, descarrega em <b>STL</b> ou <b>3MF</b> nos botões do topo.</li></ul><div class="cardrow"><button id="introGo" class="primary">Começar</button></div></div></div><div class="cardov hidden" id="infoCard"><div class="card"><h2>3MF com cores</h2><div id="infoBody"></div><label class="skip"><input type="checkbox" id="infoSkip"> Não mostrar outra vez</label><div class="cardrow"><button id="infoCancel">Cancelar</button><button id="infoStudio" class="deskonly" title="Descarrega o 3MF e inicia o Bambu Studio neste computador">⬇ e abrir o Bambu Studio</button><button id="infoGo" class="primary">⬇ Descarregar 3MF</button></div></div></div><div class="partmenu hidden" id="partMenu"><div class="pmtitle" id="pmTitle">Letras</div><div id="pmLetters"><button class="stylecard" data-style="flat" title="Topo plano"><svg viewBox="0 0 32 24"><path d="M4 20V8h24v12z"/></svg><span>Direitas</span></button><button class="stylecard" data-style="tips" title="Topo plano, pontas redondas"><svg viewBox="0 0 32 24"><path d="M4 20V8h24v12z"/><circle cx="16" cy="5" r="2.2"/></svg><span>Pontas</span></button><button class="stylecard" data-style="soft" title="Aresta de cima arredondada"><svg viewBox="0 0 32 24"><path d="M4 20v-8q0-4 4-4h16q4 0 4 4v8z"/></svg><span>Suaves</span></button><button class="stylecard" data-style="puffy" title="Letra alta e toda abaulada"><svg viewBox="0 0 32 24"><path d="M4 20q0-14 12-14t12 14z"/></svg><span>Almofada</span></button></div><div id="pmBase"><button class="stylecard" data-base="0" title="Borda direita"><svg viewBox="0 0 32 24"><path d="M3 21V9h26v12z"/></svg><span>Direita</span></button><button class="stylecard" data-base="1" title="Borda de cima redonda (a base engrossa para compensar)"><svg viewBox="0 0 32 24"><path d="M3 21v-8q0-4 4-4h18q4 0 4 4v8z"/></svg><span>Redonda</span></button></div><button id="pmClose" class="tiny" title="Fechar">✕</button></div><div class="ringmenu hidden" id="ringMenu" title="Argola: tamanho e posição"><b>◉</b><span id="rmVal">7,2 mm</span><button id="rmPlus" title="Argola maior">＋</button><input id="rmSize" type="range" min="6" max="13" step="0.5" value="7.2" aria-label="Tamanho da argola"><button id="rmMinus" title="Argola mais pequena">−</button><button id="rmReset" class="primary" title="Repor a posição da argola">↺</button><button id="rmClose" class="tiny" title="Fechar">✕</button></div><div class="overlaystatus" id="overlayStatus">A preparar o modelo...</div><div class="viewCube" aria-label="Vistas do modelo"><button data-view="front" title="Frente">F</button><button data-view="back" title="Verso">V</button><button data-view="top" title="Vista superior">▲</button><button data-view="iso" title="Vista 3D">3D</button><button data-view="zoomIn" title="Aproximar">＋</button><button data-view="zoomOut" title="Afastar">−</button></div><div class="selectionlabel" id="selectionLabel">✎ Selecionado: letras · clique para editar</div></div>
 <div class="bottom"><div class="grp hidden"><span class="pill" id="machineBadge">256 × 256 mm</span><span class="pill" id="sizeBadge">— mm</span><span class="pill" id="triangleBadge">— triângulos</span><span class="pill" id="qualityBadge">Malha fina</span></div></div><div class="statusbar" id="status">Protótipo experimental: antes de imprimir, confirma o 3MF e a configuração no slicer.</div></section>
-<aside class="side"><nav class="section" aria-label="Navegação do editor"><button id="editorHome" type="button">⌂ Início</button> <span id="viewContext" class="muted" aria-live="polite"></span></nav><section class="section" id="nameSection">
+<aside class="side"><div class="contextnav"><button class="on" id="tabLetters"><svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" style="vertical-align:middle"><path d="M3 10.5 12 3l9 7.5M5 9v12h5v-7h4v7h5V9"/></svg> Início</button><button id="tabBase">▱ Base</button><button id="tabRing">◉ Argola</button><button id="tabPrint" title="Qualidade da malha exportada">⚙ Pro</button></div><section class="section" id="nameSection">
 <label class="label" for="inputName" id="nameLabel">Nome</label>
 <form id="nameEntry">
 <div class="nameActions">
@@ -110,7 +109,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 </form>
 </section>
 <div class="section" id="fontsPanel"><h2 class="label">Fontes</h2><div class="muted">Dica: clica nas letras do modelo e roda o rato para ir trocando de fonte. ★ marca fontes para a placa de teste. ✓/⚠ = estimativa com bico de 0,4 mm.</div><div class="fontgallery" id="fontCards"></div><div class="actionrow" style="margin-top:8px"><button id="importFont" class="tiny">＋ Importar fonte (TTF / OTF / WOFF)</button><button id="testPlate" class="tiny">⬇ Placa de teste (★ 0)</button></div><input type="file" id="fontFile" accept=".ttf,.otf,.woff,font/ttf,font/otf,font/woff" hidden></div>
-<div class="contextnav"><button class="on" id="tabLetters">✎ Letras</button><button id="tabBase">▱ Base</button><button id="tabRing">◉ Argola</button><button id="tabPrint" title="Qualidade da malha exportada">⚙ Pro</button></div>
+
 <div class="filachips" id="filaChips"></div><div class="filapicker hidden" id="filaPicker"></div>
 <div id="lettersPanel">
 <div class="section"><div class="sectiontitle"><h2>Acabamento das letras</h2><span class="pill">Frente</span></div><div class="options" id="finishFront"></div><div class="explain" id="frontExplain"></div><div class="fieldrow"><label class="label">Altura / profundidade</label><span class="right" id="heightVal">0,6 mm</span></div><input id="letterHeight" type="range" min="0.2" max="2.4" step="0.2" value="0.6"><div class="fieldrow"><label class="label">Espessura das letras</label><span class="right" id="weightVal">0,00 mm</span></div><input id="textWeight" type="range" min="-0.2" max="0.8" step="0.05" value="0"><div class="fieldrow"><label class="label">Espaçamento entre letras</label><span class="right" id="spacingVal">0%</span></div><input id="letterSpacing" type="range" min="-10" max="20" step="1" value="0"><div class="label" style="margin-top:10px">Estilo das letras</div><div class="stylecards" id="styleCards"><button class="stylecard" data-style="flat" title="Topo plano"><svg viewBox="0 0 32 24"><path d="M4 20V8h24v12z"/></svg><span>Direitas</span></button><button class="stylecard" data-style="tips" title="Topo plano, pontas redondas"><svg viewBox="0 0 32 24"><path d="M4 20V8h24v12z"/><circle cx="16" cy="5" r="2.2"/></svg><span>Pontas</span></button><button class="stylecard" data-style="soft" title="Aresta de cima arredondada"><svg viewBox="0 0 32 24"><path d="M4 20v-8q0-4 4-4h16q4 0 4 4v8z"/></svg><span>Suaves</span></button><button class="stylecard" data-style="puffy" title="Letra alta e toda abaulada"><svg viewBox="0 0 32 24"><path d="M4 20q0-14 12-14t12 14z"/></svg><span>Almofada</span></button></div><div class="label" style="margin-top:10px">Base</div><div class="switch"><span>Base e argola — borda redonda</span><input type="checkbox" id="roundBase"></div><div id="roundBaseBox" class="hidden"><div class="fieldrow"><label class="label">Quanto arredonda a base</label><span class="right" id="roundAmountVal">0,6 mm</span></div><input id="roundAmount" type="range" min="0.2" max="1" step="0.05" value="0.6"><div class="muted" style="font-size:11px">A base engrossa metade deste valor para compensar o material retirado; na argola a curva é limitada para a parede não enfraquecer.</div></div><div class="switch"><span>Verso — chanfro leve (0,3 mm)</span><input type="checkbox" id="roundBack"></div><div class="fieldrow"><label class="label">Pontas arredondadas</label><span class="right" id="tipVal">0,0 mm</span></div><input id="letterRound" type="range" min="0" max="0.8" step="0.05" value="0"><div class="printcheck hidden" id="printCheck">—</div><div class="switch"><span>Contorno preto à volta das letras</span><input type="checkbox" id="hasOutline" checked></div><div id="outlineControls"><div class="fieldrow"><label class="label">Largura do contorno preto</label><span class="right" id="outlineVal">0,8 mm</span></div><input type="range" id="outlineWidth" min="0.3" max="2.2" step="0.1" value="0.8"></div><div class="colors"><label class="color">Letras<input type="color" id="letterColor" value="#ffffff"></label><label class="color">Contorno<input type="color" id="outlineColor" value="#090c13"></label></div>
@@ -8879,9 +8878,10 @@ function rgb(hex) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) 
 // ---------------------------------------------------------------- painéis
 let addingName = false, showExampleName = true;
 function selectTab(tab) {
-  if (!activePiece && tab !== 'print') tab = 'plate';
-  const viewChanged = S.plateView !== (tab === 'plate');
-  S.plateView = tab === 'plate';
+  if (!activePiece && tab !== 'print' && tab !== 'plate') tab = 'letters';
+  const layout = tab === 'plate' || tab === 'letters';
+  const viewChanged = S.plateView !== layout;
+  S.plateView = layout;
   S.selected = tab;
   if (viewChanged) {
     $('viewport').classList.toggle('plate-view', S.plateView);
@@ -8892,8 +8892,7 @@ function selectTab(tab) {
   }
   for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', t !== tab);
   for (const t of ['letters', 'base', 'ring', 'print']) $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
-  $('btnPlate').classList.toggle('on', S.plateView);
-  $('viewContext').textContent = S.plateView ? 'Tabuleiro · todas as peças' : 'A editar uma peça';
+  $('btnPlate').classList.toggle('on', tab === 'plate');
   $('fontsPanel').classList.toggle('hidden', tab !== 'letters');
   $('selectionLabel').textContent = selectionText(tab);
   ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
@@ -9227,10 +9226,10 @@ function updateRingTag() {
   updateRingMenu();
   const tag = $('ringTag'), ri = model && model.regions.ring;
   if (!tag || !S.hasRing || !ri || !gl && !fallbackCtx) { tag && tag.classList.add('hidden'); return }
-  if (ringGhost) { const pos = objectPositions()[0], p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
+  if (ringGhost) { const pos = activePosition(), p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
   const weak = ri.status !== 'ok', show = weak; // só avisa quando a argola está frágil/solta; o resto explica-se no cartão inicial
   if (!show || Math.cos(camera.yaw) < 0) { tag.classList.add('hidden'); return }
-  const pos = objectPositions()[0];
+  const pos = activePosition();
   if (!pos || S.plateView) { tag.classList.add('hidden'); return }
   const p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
   tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
@@ -9319,7 +9318,7 @@ function render3D() {
       gl.uniform4f(uniform.tint, 0, 0, 0, 0);
     }
   }
-  if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
+  if (ringGhost && ringGhostBuf) { const pos = activePosition(), st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
   // Câmara da argola: desenha-se num canto, copia-se para o quadro fixo no topo e volta a desenhar-se a cena por cima.
   if (ringGhost && loupeOn) { if (!loupePass) { renderLoupe(c, ratio); loupePass = true; try { render3D() } finally { loupePass = false } return } } else $('loupe').classList.add('hidden');
   $('viewport').classList.toggle('loupeActive', !!(ringGhost && loupeOn));
@@ -9330,7 +9329,7 @@ function render3D() {
 let loupeOn = false, loupePass = false, loupeFinger = { x: 0, y: 0 };
 function renderLoupe(c, ratio) {
   // Lugar fixo: canto superior esquerdo do ecrã, por cima do título — nunca fica debaixo do dedo nem da palma.
-  const size = Math.round(Math.min(150, innerWidth * 0.4, c.clientWidth, c.clientHeight)), ds = Math.round(size * ratio), dx = 0, dy = 0, pos = objectPositions()[0];
+  const size = Math.round(Math.min(150, innerWidth * 0.4, c.clientWidth, c.clientHeight)), ds = Math.round(size * ratio), dx = 0, dy = 0, pos = activePosition();
   const el = $('loupe'), cv = $('loupeCv'); el.classList.remove('hidden'); el.style.width = el.style.height = size + 'px';
   if (cv.width !== ds || cv.height !== ds) { cv.width = ds; cv.height = ds }
   gl.enable(gl.SCISSOR_TEST); gl.scissor(dx, dy, ds, ds); gl.viewport(dx, dy, ds, ds); gl.clearColor(.03, .06, .1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -9387,7 +9386,7 @@ function unproject(sx, sy, zPlane) {
 }
 function pieceCenter() {
   const b = model && model.regions.bounds;
-  return b ? { x: S.positionX + (b.minX + b.maxX) / 2, y: S.positionY + (b.minY + b.maxY) / 2, z: (model.height || 3) / 2 } : { x: S.positionX, y: S.positionY, z: 1.5 };
+  return b ? { x: activePosition().x + (b.minX + b.maxX) / 2, y: activePosition().y + (b.minY + b.maxY) / 2, z: (model.height || 3) / 2 } : { x: activePosition().x, y: activePosition().y, z: 1.5 };
 }
 function fitCamera() {
   const r = $('viewport').getBoundingClientRect(); if (!r.width || !r.height) return;
@@ -9435,7 +9434,7 @@ function startRingGhost(d) {
   }).catch(e => console.warn(e));
 }
 function endRingGhost() { loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
-function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - S.positionX, y: p.y - S.positionY } : null }
+function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - activePosition().x, y: p.y - activePosition().y } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
 function selectAt(evt, extra = 0) {
   if (!model) return '';
@@ -9721,8 +9720,10 @@ function currentPlan() {
   );
 }
 function objectPositions() {
-  if (S.plateView) return currentPlan().plates[platePage] || [];
-  return activePiece?.model ? [{ piece: activePiece, x: S.positionX, y: S.positionY }] : [];
+  return currentPlan().plates[platePage] || [];
+}
+function activePosition() {
+  return selectedPlacement() || objectPositions().find(p => p.piece === activePiece) || { x: 0, y: 0 };
 }
 function updatePlatePanel() {
   const { plates, oversized } = currentPlan();
@@ -9760,7 +9761,7 @@ function changePlateSize() {
 }
 function setPlateSelection(selection) {
   plateSelection = selection;
-  if (selection && selection.piece !== activePiece) activatePiece(selection.piece, 'plate');
+  if (selection && selection.piece !== activePiece) activatePiece(selection.piece, S.selected);
   if (!selection) moveToolsOpen = false;
   $('pieceFeedback').classList.add('hidden');
   $('plateCorner').value = '';
@@ -9808,7 +9809,8 @@ async function addName(name) {
     piece.previewKey = previewKey(state, quality);
     activatePiece(piece);
     plateChanged();
-    revealOnPlate(piece);
+    selectTab('letters');
+    selectPieceOnBoard(piece);
     return true;
   } catch (error) {
     console.error(error);
@@ -9863,7 +9865,7 @@ function bindPlateControls() {
     options.classList.add('hidden');
     syncNameEntry();
   }
-  $('editorHome').onclick = () => {
+  $('tabLetters').onclick = () => {
     if ($('addName').disabled) return;
     cancelNewName();
     pickerPart = null;
@@ -9873,7 +9875,7 @@ function bindPlateControls() {
     setFontMode(false);
     const piece = selectedPlacement()?.piece || activePiece;
     if (piece) activatePiece(piece, 'letters');
-    else selectTab('plate');
+    else selectTab('letters');
     setView('front');
     fitCamera();
     requestRender();
@@ -9967,69 +9969,12 @@ function updatePieceTools() {
   $('pieceColor').value = base ? state.baseColor : state.letterColor;
   $('pieceFillHoles').classList.toggle('on', Boolean(state.fillLetterHoles));
   $('pieceFillHoles').setAttribute('aria-pressed', String(Boolean(state.fillLetterHoles)));
-  if (moveToolsOpen) drawMoveMap();
-}
-function drawMoveMap() {
-  const canvas = $('moveMap'), ctx = canvas.getContext('2d');
-  const width = canvas.width, height = canvas.height;
-  const { x, y, scale } = mapFrame();
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = '#213447';
-  ctx.fillRect(x, y, plateW() * scale, plateH() * scale);
-  ctx.strokeStyle = '#496178';
-  ctx.beginPath();
-  for (let col = 0; col <= 10; col++) {
-    const gx = x + col * plateW() * scale / 10, gy = y + col * plateH() * scale / 10;
-    ctx.moveTo(gx, y); ctx.lineTo(gx, y + plateH() * scale);
-    ctx.moveTo(x, gy); ctx.lineTo(x + plateW() * scale, gy);
-  }
-  ctx.stroke();
-  const selected = selectedPlacement();
-  for (const pos of currentPlan().plates[platePage]) {
-    const left = width / 2 + pos.left * scale, top = height / 2 - pos.top * scale;
-    const w = (pos.right - pos.left) * scale, h = (pos.top - pos.bottom) * scale;
-    ctx.fillStyle = pieceState(pos.piece).baseColor;
-    ctx.fillRect(left, top, w, h);
-    if (pos === selected) {
-      ctx.strokeStyle = '#fff';
-      ctx.strokeRect(left, top, w, h);
-    }
-  }
-}
-function mapFrame() {
-  const { width, height } = $('moveMap');
-  const scale = Math.min((width - 2) / plateW(), (height - 2) / plateH());
-  return { scale, x: (width - plateW() * scale) / 2, y: (height - plateH() * scale) / 2 };
-}
-function mapPoint(event) {
-  const canvas = $('moveMap'), r = canvas.getBoundingClientRect(), { scale } = mapFrame();
-  return {
-    x: ((event.clientX - r.left) / r.width - .5) * canvas.width / scale,
-    y: (.5 - (event.clientY - r.top) / r.height) * canvas.height / scale
-  };
-}
-function bindMoveMap() {
-  const canvas = $('moveMap');
-  let drag = null;
-  canvas.onlostpointercapture = () => { drag = null };
-  canvas.onpointerdown = event => {
-    if (event.button !== 0 || drag) return;
-    const start = mapPoint(event), hit = plateHit(start);
-    setPlateSelection(hit);
-    if (!hit) return;
-    drag = { id: event.pointerId, hit, start, savedPlacements: pieces.map(piece => [piece, new Map(piece.placements)]) };
-    canvas.setPointerCapture(event.pointerId);
-  };
-  canvas.onpointermove = event => {
-    if (drag?.id !== event.pointerId) return;
-    const point = mapPoint(event);
-    movePlatePiece(drag.hit, drag.hit.x + point.x - drag.start.x, drag.hit.y + point.y - drag.start.y);
-  };
-  canvas.onpointerup = () => { drag = null };
-  canvas.onpointercancel = () => { if (drag) restorePlatePosition(drag); drag = null };
 }
 function revealOnPlate(piece) {
   selectTab('plate');
+  selectPieceOnBoard(piece);
+}
+function selectPieceOnBoard(piece) {
   const { plates } = currentPlan();
   const page = plates.findIndex(positions => positions.some(p => p.piece === piece));
   if (page < 0) return;
@@ -10054,7 +9999,6 @@ function updateSelectedColor(color) {
       uploadOneMesh(part);
     }
   }
-  if (moveToolsOpen) drawMoveMap();
   requestRender();
 }
 function deleteSelectedPiece() {
@@ -10081,7 +10025,7 @@ function deleteSelectedPiece() {
   partMenuFor = null;
   setPlateSelection(null);
   if (!activePiece) $('inputName').value = '';
-  selectTab('plate');
+  selectTab('letters');
   plateChanged();
 }
 function undoPieceRemoval() {
@@ -10096,11 +10040,18 @@ function undoPieceRemoval() {
   piece.placements = placements;
   if (!activePiece) activatePiece(piece);
   plateChanged();
-  revealOnPlate(piece);
+  selectTab('letters');
+  selectPieceOnBoard(piece);
 }
 function bindPieceTools() {
   $('movePiece').onclick = () => {
-    if (!S.plateView) revealOnPlate(activePiece);
+    if (!S.plateView) {
+      S.plateView = true;
+      $('viewport').classList.add('plate-view');
+      $('viewerHelp').classList.add('hidden');
+      setView('front');
+      selectPieceOnBoard(activePiece);
+    }
     if (!selectedPlacement()) return;
     moveToolsOpen = !moveToolsOpen;
     updatePieceTools();
@@ -10141,7 +10092,6 @@ function bindPieceTools() {
     if (event.key === 'Delete' && selectedPiece()) { event.preventDefault(); deleteSelectedPiece() }
     if (event.key === 'Escape' && S.plateView && plateSelection) setPlateSelection(null);
   });
-  bindMoveMap();
 }
 
 function bindViewCube() {
@@ -10265,7 +10215,7 @@ async function boot() {
   await Promise.all(data.map(f => registerFont(f.name, b64ToBuffer(f.data), f.group)));
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
   matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
-  autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
+  autoFitAfterRebuild = true; await rebuildModel(); selectTab('letters'); fitCamera(); requestRender();
   $('addName').disabled = $('inputName').disabled = false;
 }
 boot();

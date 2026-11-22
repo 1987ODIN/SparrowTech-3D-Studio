@@ -98,9 +98,10 @@ function rgb(hex) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) 
 // ---------------------------------------------------------------- painéis
 let addingName = false, showExampleName = true;
 function selectTab(tab) {
-  if (!activePiece && tab !== 'print') tab = 'plate';
-  const viewChanged = S.plateView !== (tab === 'plate');
-  S.plateView = tab === 'plate';
+  if (!activePiece && tab !== 'print' && tab !== 'plate') tab = 'letters';
+  const layout = tab === 'plate' || tab === 'letters';
+  const viewChanged = S.plateView !== layout;
+  S.plateView = layout;
   S.selected = tab;
   if (viewChanged) {
     $('viewport').classList.toggle('plate-view', S.plateView);
@@ -111,8 +112,7 @@ function selectTab(tab) {
   }
   for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', t !== tab);
   for (const t of ['letters', 'base', 'ring', 'print']) $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
-  $('btnPlate').classList.toggle('on', S.plateView);
-  $('viewContext').textContent = S.plateView ? 'Tabuleiro · todas as peças' : 'A editar uma peça';
+  $('btnPlate').classList.toggle('on', tab === 'plate');
   $('fontsPanel').classList.toggle('hidden', tab !== 'letters');
   $('selectionLabel').textContent = selectionText(tab);
   ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
@@ -446,10 +446,10 @@ function updateRingTag() {
   updateRingMenu();
   const tag = $('ringTag'), ri = model && model.regions.ring;
   if (!tag || !S.hasRing || !ri || !gl && !fallbackCtx) { tag && tag.classList.add('hidden'); return }
-  if (ringGhost) { const pos = objectPositions()[0], p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
+  if (ringGhost) { const pos = activePosition(), p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
   const weak = ri.status !== 'ok', show = weak; // só avisa quando a argola está frágil/solta; o resto explica-se no cartão inicial
   if (!show || Math.cos(camera.yaw) < 0) { tag.classList.add('hidden'); return }
-  const pos = objectPositions()[0];
+  const pos = activePosition();
   if (!pos || S.plateView) { tag.classList.add('hidden'); return }
   const p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
   tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
@@ -538,7 +538,7 @@ function render3D() {
       gl.uniform4f(uniform.tint, 0, 0, 0, 0);
     }
   }
-  if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
+  if (ringGhost && ringGhostBuf) { const pos = activePosition(), st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
   // Câmara da argola: desenha-se num canto, copia-se para o quadro fixo no topo e volta a desenhar-se a cena por cima.
   if (ringGhost && loupeOn) { if (!loupePass) { renderLoupe(c, ratio); loupePass = true; try { render3D() } finally { loupePass = false } return } } else $('loupe').classList.add('hidden');
   $('viewport').classList.toggle('loupeActive', !!(ringGhost && loupeOn));
@@ -549,7 +549,7 @@ function render3D() {
 let loupeOn = false, loupePass = false, loupeFinger = { x: 0, y: 0 };
 function renderLoupe(c, ratio) {
   // Lugar fixo: canto superior esquerdo do ecrã, por cima do título — nunca fica debaixo do dedo nem da palma.
-  const size = Math.round(Math.min(150, innerWidth * 0.4, c.clientWidth, c.clientHeight)), ds = Math.round(size * ratio), dx = 0, dy = 0, pos = objectPositions()[0];
+  const size = Math.round(Math.min(150, innerWidth * 0.4, c.clientWidth, c.clientHeight)), ds = Math.round(size * ratio), dx = 0, dy = 0, pos = activePosition();
   const el = $('loupe'), cv = $('loupeCv'); el.classList.remove('hidden'); el.style.width = el.style.height = size + 'px';
   if (cv.width !== ds || cv.height !== ds) { cv.width = ds; cv.height = ds }
   gl.enable(gl.SCISSOR_TEST); gl.scissor(dx, dy, ds, ds); gl.viewport(dx, dy, ds, ds); gl.clearColor(.03, .06, .1, 1); gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -606,7 +606,7 @@ function unproject(sx, sy, zPlane) {
 }
 function pieceCenter() {
   const b = model && model.regions.bounds;
-  return b ? { x: S.positionX + (b.minX + b.maxX) / 2, y: S.positionY + (b.minY + b.maxY) / 2, z: (model.height || 3) / 2 } : { x: S.positionX, y: S.positionY, z: 1.5 };
+  return b ? { x: activePosition().x + (b.minX + b.maxX) / 2, y: activePosition().y + (b.minY + b.maxY) / 2, z: (model.height || 3) / 2 } : { x: activePosition().x, y: activePosition().y, z: 1.5 };
 }
 function fitCamera() {
   const r = $('viewport').getBoundingClientRect(); if (!r.width || !r.height) return;
@@ -654,7 +654,7 @@ function startRingGhost(d) {
   }).catch(e => console.warn(e));
 }
 function endRingGhost() { loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
-function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - S.positionX, y: p.y - S.positionY } : null }
+function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - activePosition().x, y: p.y - activePosition().y } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
 function selectAt(evt, extra = 0) {
   if (!model) return '';
@@ -940,8 +940,10 @@ function currentPlan() {
   );
 }
 function objectPositions() {
-  if (S.plateView) return currentPlan().plates[platePage] || [];
-  return activePiece?.model ? [{ piece: activePiece, x: S.positionX, y: S.positionY }] : [];
+  return currentPlan().plates[platePage] || [];
+}
+function activePosition() {
+  return selectedPlacement() || objectPositions().find(p => p.piece === activePiece) || { x: 0, y: 0 };
 }
 function updatePlatePanel() {
   const { plates, oversized } = currentPlan();
@@ -979,7 +981,7 @@ function changePlateSize() {
 }
 function setPlateSelection(selection) {
   plateSelection = selection;
-  if (selection && selection.piece !== activePiece) activatePiece(selection.piece, 'plate');
+  if (selection && selection.piece !== activePiece) activatePiece(selection.piece, S.selected);
   if (!selection) moveToolsOpen = false;
   $('pieceFeedback').classList.add('hidden');
   $('plateCorner').value = '';
@@ -1027,7 +1029,8 @@ async function addName(name) {
     piece.previewKey = previewKey(state, quality);
     activatePiece(piece);
     plateChanged();
-    revealOnPlate(piece);
+    selectTab('letters');
+    selectPieceOnBoard(piece);
     return true;
   } catch (error) {
     console.error(error);
@@ -1082,7 +1085,7 @@ function bindPlateControls() {
     options.classList.add('hidden');
     syncNameEntry();
   }
-  $('editorHome').onclick = () => {
+  $('tabLetters').onclick = () => {
     if ($('addName').disabled) return;
     cancelNewName();
     pickerPart = null;
@@ -1092,7 +1095,7 @@ function bindPlateControls() {
     setFontMode(false);
     const piece = selectedPlacement()?.piece || activePiece;
     if (piece) activatePiece(piece, 'letters');
-    else selectTab('plate');
+    else selectTab('letters');
     setView('front');
     fitCamera();
     requestRender();
@@ -1186,69 +1189,12 @@ function updatePieceTools() {
   $('pieceColor').value = base ? state.baseColor : state.letterColor;
   $('pieceFillHoles').classList.toggle('on', Boolean(state.fillLetterHoles));
   $('pieceFillHoles').setAttribute('aria-pressed', String(Boolean(state.fillLetterHoles)));
-  if (moveToolsOpen) drawMoveMap();
-}
-function drawMoveMap() {
-  const canvas = $('moveMap'), ctx = canvas.getContext('2d');
-  const width = canvas.width, height = canvas.height;
-  const { x, y, scale } = mapFrame();
-  ctx.clearRect(0, 0, width, height);
-  ctx.fillStyle = '#213447';
-  ctx.fillRect(x, y, plateW() * scale, plateH() * scale);
-  ctx.strokeStyle = '#496178';
-  ctx.beginPath();
-  for (let col = 0; col <= 10; col++) {
-    const gx = x + col * plateW() * scale / 10, gy = y + col * plateH() * scale / 10;
-    ctx.moveTo(gx, y); ctx.lineTo(gx, y + plateH() * scale);
-    ctx.moveTo(x, gy); ctx.lineTo(x + plateW() * scale, gy);
-  }
-  ctx.stroke();
-  const selected = selectedPlacement();
-  for (const pos of currentPlan().plates[platePage]) {
-    const left = width / 2 + pos.left * scale, top = height / 2 - pos.top * scale;
-    const w = (pos.right - pos.left) * scale, h = (pos.top - pos.bottom) * scale;
-    ctx.fillStyle = pieceState(pos.piece).baseColor;
-    ctx.fillRect(left, top, w, h);
-    if (pos === selected) {
-      ctx.strokeStyle = '#fff';
-      ctx.strokeRect(left, top, w, h);
-    }
-  }
-}
-function mapFrame() {
-  const { width, height } = $('moveMap');
-  const scale = Math.min((width - 2) / plateW(), (height - 2) / plateH());
-  return { scale, x: (width - plateW() * scale) / 2, y: (height - plateH() * scale) / 2 };
-}
-function mapPoint(event) {
-  const canvas = $('moveMap'), r = canvas.getBoundingClientRect(), { scale } = mapFrame();
-  return {
-    x: ((event.clientX - r.left) / r.width - .5) * canvas.width / scale,
-    y: (.5 - (event.clientY - r.top) / r.height) * canvas.height / scale
-  };
-}
-function bindMoveMap() {
-  const canvas = $('moveMap');
-  let drag = null;
-  canvas.onlostpointercapture = () => { drag = null };
-  canvas.onpointerdown = event => {
-    if (event.button !== 0 || drag) return;
-    const start = mapPoint(event), hit = plateHit(start);
-    setPlateSelection(hit);
-    if (!hit) return;
-    drag = { id: event.pointerId, hit, start, savedPlacements: pieces.map(piece => [piece, new Map(piece.placements)]) };
-    canvas.setPointerCapture(event.pointerId);
-  };
-  canvas.onpointermove = event => {
-    if (drag?.id !== event.pointerId) return;
-    const point = mapPoint(event);
-    movePlatePiece(drag.hit, drag.hit.x + point.x - drag.start.x, drag.hit.y + point.y - drag.start.y);
-  };
-  canvas.onpointerup = () => { drag = null };
-  canvas.onpointercancel = () => { if (drag) restorePlatePosition(drag); drag = null };
 }
 function revealOnPlate(piece) {
   selectTab('plate');
+  selectPieceOnBoard(piece);
+}
+function selectPieceOnBoard(piece) {
   const { plates } = currentPlan();
   const page = plates.findIndex(positions => positions.some(p => p.piece === piece));
   if (page < 0) return;
@@ -1273,7 +1219,6 @@ function updateSelectedColor(color) {
       uploadOneMesh(part);
     }
   }
-  if (moveToolsOpen) drawMoveMap();
   requestRender();
 }
 function deleteSelectedPiece() {
@@ -1300,7 +1245,7 @@ function deleteSelectedPiece() {
   partMenuFor = null;
   setPlateSelection(null);
   if (!activePiece) $('inputName').value = '';
-  selectTab('plate');
+  selectTab('letters');
   plateChanged();
 }
 function undoPieceRemoval() {
@@ -1315,11 +1260,18 @@ function undoPieceRemoval() {
   piece.placements = placements;
   if (!activePiece) activatePiece(piece);
   plateChanged();
-  revealOnPlate(piece);
+  selectTab('letters');
+  selectPieceOnBoard(piece);
 }
 function bindPieceTools() {
   $('movePiece').onclick = () => {
-    if (!S.plateView) revealOnPlate(activePiece);
+    if (!S.plateView) {
+      S.plateView = true;
+      $('viewport').classList.add('plate-view');
+      $('viewerHelp').classList.add('hidden');
+      setView('front');
+      selectPieceOnBoard(activePiece);
+    }
     if (!selectedPlacement()) return;
     moveToolsOpen = !moveToolsOpen;
     updatePieceTools();
@@ -1360,7 +1312,6 @@ function bindPieceTools() {
     if (event.key === 'Delete' && selectedPiece()) { event.preventDefault(); deleteSelectedPiece() }
     if (event.key === 'Escape' && S.plateView && plateSelection) setPlateSelection(null);
   });
-  bindMoveMap();
 }
 
 function bindViewCube() {
@@ -1484,7 +1435,7 @@ async function boot() {
   await Promise.all(data.map(f => registerFont(f.name, b64ToBuffer(f.data), f.group)));
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
   matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
-  autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
+  autoFitAfterRebuild = true; await rebuildModel(); selectTab('letters'); fitCamera(); requestRender();
   $('addName').disabled = $('inputName').disabled = false;
 }
 boot();
