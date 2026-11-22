@@ -844,6 +844,8 @@ async function refreshInactivePiece(piece, state, quality) {
 }
 function activatePiece(piece, tab = 'letters') {
   if (piece !== activePiece) {
+    pendingNamePiece = null;
+    $('nameNotice').textContent = '';
     const previous = activePiece;
     if (previous) previous.state = editableState();
     activePiece = piece;
@@ -1040,16 +1042,29 @@ async function addName(name) {
     submit.disabled = $('cancelName').disabled = false;
   }
 }
+let pendingNamePiece = null;
+function unavailableName(name) {
+  return name.normalize('NFKC').toLowerCase().includes('goveia');
+}
+function rejectUnavailableName(input) {
+  if (!unavailableName(input.value)) return false;
+  $('nameNotice').textContent = 'Não é possível criar uma tag com este nome.';
+  $('printbarSuggestions').classList.add('hidden');
+  return true;
+}
 function syncNameEntry() {
   const input = $('inputName'), newName = addingName || !activePiece;
   $('nameLabel').textContent = addingName ? 'Novo nome' : 'Nome';
   $('addName').textContent = newName ? 'Adicionar' : '+ Adicionar nome';
   $('cancelName').classList.toggle('hidden', !addingName);
   const currentName = showExampleName ? '' : S.name;
-  if (!newName && input.value !== currentName) input.value = currentName;
+  if (!newName && pendingNamePiece !== activePiece && input.value !== currentName) input.value = currentName;
 }
 function renameFromInput(input) {
+  $('nameNotice').textContent = '';
   if (!activePiece || addingName) return;
+  pendingNamePiece = unavailableName(input.value) ? activePiece : null;
+  if (pendingNamePiece) return;
   showExampleName = false;
   S.name = input.value;
   S.ringManual = false;
@@ -1081,6 +1096,8 @@ function bindPlateControls() {
   function cancelNewName() {
     if ($('addName').disabled) return;
     addingName = false;
+    pendingNamePiece = null;
+    $('nameNotice').textContent = '';
     input.value = activePiece && !showExampleName ? S.name : '';
     options.classList.add('hidden');
     syncNameEntry();
@@ -1110,6 +1127,7 @@ function bindPlateControls() {
     }
     if (event.key === 'Enter' && activePiece && !addingName) {
       event.preventDefault();
+      rejectUnavailableName(input);
       options.classList.add('hidden');
     }
   };
@@ -1124,6 +1142,7 @@ function bindPlateControls() {
   form.onfocusout = event => { if (!form.contains(event.relatedTarget)) options.classList.add('hidden') };
   form.onsubmit = async event => {
     event.preventDefault();
+    if (rejectUnavailableName(input)) return;
     if (activePiece && !addingName) {
       addingName = true;
       input.value = '';
