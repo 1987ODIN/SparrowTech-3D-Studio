@@ -2,6 +2,8 @@
 
 Editor visual open source para criar nomes, porta-chaves, placas e outros modelos 3D personalizáveis, com foco em edição direta e impressão 3D multicolor.
 
+[Abrir o editor CrowMakes para criar tags em STL e 3MF](https://crowmakes.com/tags/)
+
 > **Estado:** protótipo em desenvolvimento. Ainda não é uma aplicação validada para produção ou impressão sequencial segura.
 
 ## Visão
