@@ -77,7 +77,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 .editor-brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 7px}
 .editor-version{color:var(--muted);font-size:.75rem;font-weight:600}
 </style></head>
-<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.8.3</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
+<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.8.4</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
 <div class="viewport" id="viewport"><canvas id="gl"></canvas><section class="piece-tools hidden" id="pieceTools" aria-label="Ferramentas da peça">
 <strong id="pieceToolName"></strong>
 <button id="movePiece" type="button" aria-controls="movePanel" aria-expanded="false">✥ Mover</button>
@@ -105,6 +105,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 <button id="addName" disabled type="submit">+ Adicionar nome</button>
 <button id="cancelName" class="hidden" type="button" aria-label="Cancelar novo nome" title="Cancelar">Cancelar</button>
 </div>
+<div id="nameNotice" class="muted" role="status" aria-live="polite"></div>
 <div id="printbarSuggestions" class="hidden" role="group" aria-label="Nomes sugeridos"></div>
 </form>
 </section>
@@ -9624,6 +9625,8 @@ async function refreshInactivePiece(piece, state, quality) {
 }
 function activatePiece(piece, tab = 'letters') {
   if (piece !== activePiece) {
+    pendingNamePiece = null;
+    $('nameNotice').textContent = '';
     const previous = activePiece;
     if (previous) previous.state = editableState();
     activePiece = piece;
@@ -9820,16 +9823,29 @@ async function addName(name) {
     submit.disabled = $('cancelName').disabled = false;
   }
 }
+let pendingNamePiece = null;
+function unavailableName(name) {
+  return name.normalize('NFKC').toLowerCase().includes('goveia');
+}
+function rejectUnavailableName(input) {
+  if (!unavailableName(input.value)) return false;
+  $('nameNotice').textContent = 'Não é possível criar uma tag com este nome.';
+  $('printbarSuggestions').classList.add('hidden');
+  return true;
+}
 function syncNameEntry() {
   const input = $('inputName'), newName = addingName || !activePiece;
   $('nameLabel').textContent = addingName ? 'Novo nome' : 'Nome';
   $('addName').textContent = newName ? 'Adicionar' : '+ Adicionar nome';
   $('cancelName').classList.toggle('hidden', !addingName);
   const currentName = showExampleName ? '' : S.name;
-  if (!newName && input.value !== currentName) input.value = currentName;
+  if (!newName && pendingNamePiece !== activePiece && input.value !== currentName) input.value = currentName;
 }
 function renameFromInput(input) {
+  $('nameNotice').textContent = '';
   if (!activePiece || addingName) return;
+  pendingNamePiece = unavailableName(input.value) ? activePiece : null;
+  if (pendingNamePiece) return;
   showExampleName = false;
   S.name = input.value;
   S.ringManual = false;
@@ -9861,6 +9877,8 @@ function bindPlateControls() {
   function cancelNewName() {
     if ($('addName').disabled) return;
     addingName = false;
+    pendingNamePiece = null;
+    $('nameNotice').textContent = '';
     input.value = activePiece && !showExampleName ? S.name : '';
     options.classList.add('hidden');
     syncNameEntry();
@@ -9890,6 +9908,7 @@ function bindPlateControls() {
     }
     if (event.key === 'Enter' && activePiece && !addingName) {
       event.preventDefault();
+      rejectUnavailableName(input);
       options.classList.add('hidden');
     }
   };
@@ -9904,6 +9923,7 @@ function bindPlateControls() {
   form.onfocusout = event => { if (!form.contains(event.relatedTarget)) options.classList.add('hidden') };
   form.onsubmit = async event => {
     event.preventDefault();
+    if (rejectUnavailableName(input)) return;
     if (activePiece && !addingName) {
       addingName = true;
       input.value = '';
