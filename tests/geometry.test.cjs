@@ -148,6 +148,20 @@ console.log('2d) Tudo redondo (peluche): base e argola com borda redonda, chanfr
   check(M.build({ ...BASE_STATE, roundBack: true, back: 'raised', backText: 'Ana' }, { front: fonts.Pacifico, back: fonts.Pacifico }, 'draft').round.cb === 0, 'sem chanfro quando o verso tem letras em relevo (a base não assenta no tabuleiro)');
 }
 
+{
+  const state = { ...BASE_STATE, name: 'André', border: 1.5, fillHoles: false };
+  const fontsForName = { front: fonts.Pacifico };
+  const before = M.build(state, fontsForName, 'fine');
+  const after = M.build({ ...state, fillLetterHoles: true }, fontsForName, 'fine');
+  const countHoles = paths => G.toPolygons(paths).reduce((sum, poly) => sum + poly.holes.length, 0);
+  check(countHoles(before.regions.shape) > 0, 'André precisa de ter aberturas na base no teste');
+  check(countHoles(after.regions.shape) === 0, 'fechar aberturas por dentro das letras');
+  check(countHoles(after.regions.base) === 1, 'preservar o furo da argola');
+  check(countHoles(after.regions.letters) === countHoles(before.regions.letters), 'preservar o desenho das letras');
+  for (const part of after.parts) checkMesh(part.mesh, 'André/base sem aberturas/' + part.id);
+  checkMesh(after.unionMesh(), 'André/base sem aberturas/STL');
+}
+
 console.log('3) Partes sem sobreposição (volume da união = soma das partes)');
 for (const front of FRONT) for (const back of ['smooth', 'inlay', 'raised', 'through']) {
   const S = { ...BASE_STATE, front, back, backText: 'Teste' };

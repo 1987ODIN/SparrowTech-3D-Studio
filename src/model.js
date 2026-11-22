@@ -127,7 +127,8 @@
       else if (S.shape === 'cloud') shape = growToContain(k => G.cloud(cx, cy, bw / 2 * k, bh / 2 * k, tol, ang), text);
       else shape = G.offset(text, S.border, tol, ang);
     }
-    if (S.fillHoles) shape = G.fillSmallHoles(shape, S.holeArea);
+    if (S.fillLetterHoles) shape = G.fillSmallHoles(shape, Infinity);
+    else if (S.fillHoles) shape = G.fillSmallHoles(shape, S.holeArea);
     // Argola
     let ring = null, base = shape, ringOverlap = 0;
     if (S.hasRing) {
