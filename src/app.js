@@ -1044,7 +1044,7 @@ async function addName(name) {
 }
 let pendingNamePiece = null;
 function unavailableName(name) {
-  return name.normalize('NFKC').toLowerCase().includes('goveia');
+  return /gou?veia/i.test(name.normalize('NFKC'));
 }
 function rejectUnavailableName(input) {
   if (!unavailableName(input.value)) return false;
