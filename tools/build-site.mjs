@@ -5,6 +5,7 @@ const root = new URL('../', import.meta.url);
 const file = path => new URL(path, root);
 await mkdir(file('site/tags/'), { recursive: true });
 await copyFile(file('portal/index.html'), file('site/index.html'));
+await copyFile(file('portal/ads.txt'), file('site/ads.txt'));
 const editor = await readFile(file('dist/sparrowtech_3d_studio_v5.html'), 'utf8');
 const brand = '<div class="brand">';
 if (!editor.includes(brand)) throw new Error('Cabeçalho do editor em falta');
