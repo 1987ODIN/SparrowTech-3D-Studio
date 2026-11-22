@@ -21,5 +21,12 @@ const metadata = [
   '<link rel="canonical" href="https://crowmakes.com/tags/">',
 ].join('\n');
 if (!/<title>[^<]+<\/title>/.test(editor)) throw new Error('Título do editor em falta');
-const page = editor.replace(/<title>[^<]+<\/title>/, metadata).replace(brand, brand + home);
+const portal = await readFile(file('portal/index.html'), 'utf8');
+const loader = portal.match(/<script async src="https:\/\/pagead2\.googlesyndication\.com[^"]+"[^>]*><\/script>/)?.[0];
+const ad = portal.match(/<aside id="publicidade"[\s\S]*?<\/aside>/)?.[0];
+if (!loader || !ad) throw new Error('Configuração AdSense em falta no portal');
+const adFooter = '<footer style="margin-top:2rem;padding-top:1rem;border-top:1px solid #334357">' +
+  '<small>Publicidade</small>' + ad + '</footer>';
+const page = editor.replace('</head>', loader + '</head>')
+  .replace('</aside></div>', adFooter + '</aside></div>').replace(/<title>[^<]+<\/title>/, metadata).replace(brand, brand + home);
 await writeFile(file('site/tags/index.html'), page);
