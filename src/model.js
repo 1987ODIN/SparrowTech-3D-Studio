@@ -144,7 +144,7 @@
     let outline = [], outlineFoot = [];
     if (S.outline) { outlineFoot = G.offset(text, S.outlineWidth, tol, ang); outline = G.depinch(G.intersection(G.difference(outlineFoot, text), base)); }
     // Verso (espelhado em X para ler corretamente depois de virar a peça)
-    let back = [];
+    let back = [], backX = 0, backY = 0;
     if (S.back !== 'smooth' && S.back !== 'through') {
       const backName = (S.backText || '').trim() || name;
       const fontFor = fonts.back || fonts.front;
@@ -161,9 +161,23 @@
         if (Math.abs(G.regionArea(G.difference(K, inset))) <= area * 0.002) break;
         backEm *= 0.92;
       }
-      back = G.depinch(G.intersection(K, margin));   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
+      const centered = G.depinch(G.intersection(K, margin));
+      const dx = S.backX || 0, dy = S.backY || 0;
+      back = centered;
+      if (dx || dy) {
+        let low = 0, high = 1;
+        for (let i = 0; i < 13; i++) {
+          const t = i === 0 ? 1 : (low + high) / 2;
+          const shifted = G.translate(centered, dx * t, dy * t);
+          if (!G.difference(shifted, margin).length) {
+            low = t; back = shifted;
+            if (t === 1) break;
+          } else high = t;
+        }
+        backX = dx * low; backY = dy * low;
+      }   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
     }
-    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
+    return { name, text, letters, shape, base, outline, outlineFoot, back, backX, backY, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
   }
 
   /**

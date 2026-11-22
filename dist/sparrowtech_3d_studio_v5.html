@@ -77,7 +77,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 .editor-brand{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 7px}
 .editor-version{color:var(--muted);font-size:.75rem;font-weight:600}
 </style></head>
-<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.8.5</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
+<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.9.0</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
 <div class="viewport" id="viewport"><canvas id="gl"></canvas><section class="piece-tools hidden" id="pieceTools" aria-label="Ferramentas da peça">
 <strong id="pieceToolName"></strong>
 <button id="movePiece" type="button" aria-controls="movePanel" aria-expanded="false">✥ Mover</button>
@@ -115,7 +115,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 <div id="lettersPanel">
 <div class="section"><div class="sectiontitle"><h2>Acabamento das letras</h2><span class="pill">Frente</span></div><div class="options" id="finishFront"></div><div class="explain" id="frontExplain"></div><div class="fieldrow"><label class="label">Altura / profundidade</label><span class="right" id="heightVal">0,6 mm</span></div><input id="letterHeight" type="range" min="0.2" max="2.4" step="0.2" value="0.6"><div class="fieldrow"><label class="label">Espessura das letras</label><span class="right" id="weightVal">0,00 mm</span></div><input id="textWeight" type="range" min="-0.2" max="0.8" step="0.05" value="0"><div class="fieldrow"><label class="label">Espaçamento entre letras</label><span class="right" id="spacingVal">0%</span></div><input id="letterSpacing" type="range" min="-10" max="20" step="1" value="0"><div class="label" style="margin-top:10px">Estilo das letras</div><div class="stylecards" id="styleCards"><button class="stylecard" data-style="flat" title="Topo plano"><svg viewBox="0 0 32 24"><path d="M4 20V8h24v12z"/></svg><span>Direitas</span></button><button class="stylecard" data-style="tips" title="Topo plano, pontas redondas"><svg viewBox="0 0 32 24"><path d="M4 20V8h24v12z"/><circle cx="16" cy="5" r="2.2"/></svg><span>Pontas</span></button><button class="stylecard" data-style="soft" title="Aresta de cima arredondada"><svg viewBox="0 0 32 24"><path d="M4 20v-8q0-4 4-4h16q4 0 4 4v8z"/></svg><span>Suaves</span></button><button class="stylecard" data-style="puffy" title="Letra alta e toda abaulada"><svg viewBox="0 0 32 24"><path d="M4 20q0-14 12-14t12 14z"/></svg><span>Almofada</span></button></div><div class="label" style="margin-top:10px">Base</div><div class="switch"><span>Base e argola — borda redonda</span><input type="checkbox" id="roundBase"></div><div id="roundBaseBox" class="hidden"><div class="fieldrow"><label class="label">Quanto arredonda a base</label><span class="right" id="roundAmountVal">0,6 mm</span></div><input id="roundAmount" type="range" min="0.2" max="1" step="0.05" value="0.6"><div class="muted" style="font-size:11px">A base engrossa metade deste valor para compensar o material retirado; na argola a curva é limitada para a parede não enfraquecer.</div></div><div class="switch"><span>Verso — chanfro leve (0,3 mm)</span><input type="checkbox" id="roundBack"></div><div class="fieldrow"><label class="label">Pontas arredondadas</label><span class="right" id="tipVal">0,0 mm</span></div><input id="letterRound" type="range" min="0" max="0.8" step="0.05" value="0"><div class="printcheck hidden" id="printCheck">—</div><div class="switch"><span>Contorno preto à volta das letras</span><input type="checkbox" id="hasOutline" checked></div><div id="outlineControls"><div class="fieldrow"><label class="label">Largura do contorno preto</label><span class="right" id="outlineVal">0,8 mm</span></div><input type="range" id="outlineWidth" min="0.3" max="2.2" step="0.1" value="0.8"></div><div class="colors"><label class="color">Letras<input type="color" id="letterColor" value="#ffffff"></label><label class="color">Contorno<input type="color" id="outlineColor" value="#090c13"></label></div>
 <div class="pro-only"><div class="fieldrow"><label class="label">Tamanho do nome</label><span class="right" id="nameSizeVal">100%</span></div><input id="nameSize" type="range" min="55" max="155" step="5" value="100"></div></div>
-<div class="section"><div class="sectiontitle"><h2>O outro lado do nome</h2><button id="editBack" class="tiny">↻ Ver verso</button></div><label class="label" for="backText">Nome / telefone no verso</label><input type="text" id="backText" placeholder="Opcional: contacto ou texto" maxlength="28"><div class="options" id="finishBack" style="margin-top:10px"></div><div class="explain" id="backExplain"></div><div class="muted" style="margin-top:10px">O verso aparece mesmo do lado oposto, sem espelhar as letras na leitura.</div></div></div>
+<div class="section"><div class="sectiontitle"><h2>O outro lado do nome</h2><button id="editBack" class="tiny">↻ Ver verso</button></div><label class="label" for="backText">Nome / telefone no verso</label><input type="text" id="backText" placeholder="Opcional: contacto ou texto" maxlength="28"><div class="actionrow"><button id="moveBack">✥ Mover texto no verso</button><button id="centerBack">Centrar texto</button></div><div class="muted">Arrasta a inscrição no verso para a posicionar.</div><div class="options" id="finishBack" style="margin-top:10px"></div><div class="explain" id="backExplain"></div><div class="muted" style="margin-top:10px">O verso aparece mesmo do lado oposto, sem espelhar as letras na leitura.</div></div></div>
 <div id="basePanel" class="hidden"><div class="section"><div class="sectiontitle"><h2>▱ Formato da base</h2><span class="pill">Área azul</span></div><div class="options" id="shapeButtons"></div><div class="fieldrow"><label class="label">Rebordo à volta das letras</label><span class="right" id="borderVal">3,5 mm</span></div><input id="borderWidth" type="range" min="1.0" max="9" step="0.5" value="3.5"><div class="fieldrow"><label class="label">Espessura da base</label><span class="right" id="bodyVal">2,4 mm</span></div><input id="bodyThickness" type="range" min="1.2" max="5" step="0.2" value="2.4"><label class="switch"><span>Tapar furos por dentro das letras</span><input type="checkbox" id="fillLetterHoles"></label><p class="muted">Preenche as aberturas com a cor da base. O furo da argola fica livre.</p><div class="switch"><span>Fechar buracos muito pequenos</span><input id="fillHoles" type="checkbox" checked></div><div class="pro-only"><div class="fieldrow"><label class="label">Fechar até esta área</label><span class="right" id="holeVal">1,5 mm²</span></div><input id="smallHole" type="range" min="0.5" max="7" step="0.5" value="1.5"></div><label class="color">Cor da base<input id="baseColor" type="color" value="#348cf0"></label><div class="explain">A base segue realmente a silhueta das letras no modo «Contorno». As outras formas criam uma placa à volta do nome.</div></div></div>
 <div id="ringPanel" class="hidden"><div class="section"><div class="sectiontitle"><h2>◉ Argola do porta-chaves</h2><span class="pill">Arrasta a bola</span></div><div class="ringhowto">👆 <b>Agarra a argola (a bola com o furo) no modelo e arrasta-a</b> para onde quiseres. Deve ficar bem agarrada à peça: pelo menos um terço da bola em cima da base.</div><div class="printcheck" id="ringCheck">—</div><div class="switch"><span>Adicionar argola</span><input type="checkbox" id="hasRing" checked></div><div class="switch"><span>Reforçar a ligação (recomendado)</span><input type="checkbox" id="ringReinforce" checked></div><div class="fieldrow"><label class="label">Diâmetro exterior</label><span class="right" id="outerVal">8,0 mm</span></div><input id="ringOuter" type="range" min="6" max="13" value="8" step="0.5"><div class="fieldrow"><label class="label">Diâmetro do furo</label><span class="right" id="innerVal">3,2 mm</span></div><input id="ringInner" type="range" min="2.4" max="5.5" value="3.2" step="0.2"><button id="autoRing" class="primary" style="width:100%;margin:8px 0">◎ Reposicionar automaticamente</button><div class="notice">A posição automática procura um sítio seguro no canto superior esquerdo, sem o furo cortar letras. O reforço acrescenta uma «solda» arredondada entre a argola e a peça: é onde o porta-chaves mais força faz.</div></div></div>
 <div id="platePanel" class="hidden"><div class="section">
@@ -8030,9 +8030,11 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
     return finalize([p], tol);
   }
   function cloud(cx, cy, rx, ry, tol, maxAngle) {
-    const n = Math.max(360, arcSegments(Math.max(rx, ry), tol, 2 * Math.PI, maxAngle) * 4), p = [];
-    for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI, k = 1 + 0.065 * Math.sin(a * 11); p.push({ X: toInt(cx + Math.cos(a) * rx * k), Y: toInt(cy + Math.sin(a) * ry * k) }); }
-    return finalize([p], tol);
+    let body = ellipse(cx, cy - ry * .12, rx, ry * .78, tol, maxAngle);
+    for (const [x, y, w, h] of [[-.62,.15,.36,.56],[-.25,.36,.40,.65],[.19,.39,.39,.72],[.58,.22,.38,.55]]) {
+      body = union(body, ellipse(cx + rx*x, cy + ry*y, rx*w, ry*h, tol, maxAngle));
+    }
+    return body;
   }
 
   // ---------------------------------------------------------------- extrusão em camadas
@@ -8451,7 +8453,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
     let outline = [], outlineFoot = [];
     if (S.outline) { outlineFoot = G.offset(text, S.outlineWidth, tol, ang); outline = G.depinch(G.intersection(G.difference(outlineFoot, text), base)); }
     // Verso (espelhado em X para ler corretamente depois de virar a peça)
-    let back = [];
+    let back = [], backX = 0, backY = 0;
     if (S.back !== 'smooth' && S.back !== 'through') {
       const backName = (S.backText || '').trim() || name;
       const fontFor = fonts.back || fonts.front;
@@ -8468,9 +8470,23 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
         if (Math.abs(G.regionArea(G.difference(K, inset))) <= area * 0.002) break;
         backEm *= 0.92;
       }
-      back = G.depinch(G.intersection(K, margin));   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
+      const centered = G.depinch(G.intersection(K, margin));
+      const dx = S.backX || 0, dy = S.backY || 0;
+      back = centered;
+      if (dx || dy) {
+        let low = 0, high = 1;
+        for (let i = 0; i < 13; i++) {
+          const t = i === 0 ? 1 : (low + high) / 2;
+          const shifted = G.translate(centered, dx * t, dy * t);
+          if (!G.difference(shifted, margin).length) {
+            low = t; back = shifted;
+            if (t === 1) break;
+          } else high = t;
+        }
+        backX = dx * low; backY = dy * low;
+      }   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
     }
-    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
+    return { name, text, letters, shape, base, outline, outlineFoot, back, backX, backY, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
   }
 
   /**
@@ -8784,7 +8800,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
+const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -8960,6 +8976,19 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  $('moveBack').onclick = () => {
+    if (['smooth','through'].includes(S.back)) { S.back = 'inlay'; updateControls(); scheduleRebuild(true) }
+    setView('back');
+    const center = pieceCenter(), r = $('viewport').getBoundingClientRect();
+    if (model) {
+      camera.cx = center.x; camera.cy = center.y; camera.panX = camera.panY = 0;
+      const b = model.regions.bounds;
+      camera.scale = Math.min(r.width / (b.width * 1.4), r.height / (b.height * 2), 20);
+    }
+    $('viewport').scrollIntoView({block:'nearest'});
+    requestRender();
+  };
+  $('centerBack').onclick = () => { S.backX = S.backY = 0; scheduleRebuild(true) };
   $('backText').oninput = () => { S.backText = $('backText').value; scheduleRebuild() };
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['fillLetterHoles', 'fillLetterHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
@@ -9073,7 +9102,7 @@ self.onmessage = e => {
       if (m.union) { union = res.unionMesh(); transfer.push(union.positions.buffer, union.indices.buffer, union.cornerNormals.buffer); }
       const R = res.regions;
       self.postMessage({ id: m.id, ok: true, result: { parts, union, height: res.height, zShift: res.zShift, timing: res.timing,
-        regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } } }, transfer);
+        regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, backX: R.backX, backY: R.backY, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } } }, transfer);
     }
   } catch (err) { self.postMessage({ id: m.id, ok: false, error: String(err && err.stack || err) }); }
 };`;
@@ -9121,12 +9150,12 @@ function geometryCall(msg) {
       if (msg.type === 'minScale') { resolve(SparrowModel.minScaleFor(msg.S, getF(msg.S.font))); return }
       if (msg.type === 'scan') { const out = {}; for (const n of msg.names) out[n] = SparrowModel.scanFont(msg.S, getF(n)); resolve(out); return }
       const res = SparrowModel.build(msg.S, { front: getF(msg.S.font) }, msg.quality), R = res.regions;
-      resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } });
+      resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, backX: R.backX, backY: R.backY, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } });
     } catch (e) { reject(e) }
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -9437,6 +9466,11 @@ function startRingGhost(d) {
 function endRingGhost() { loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
 function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - activePosition().x, y: p.y - activePosition().y } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
+function hitsBackText(point) {
+  if (!point) return false;
+  const b = SparrowGeo.bounds(model.regions.back), pad = 3 / camera.scale;
+  return point.x >= b.minX-pad && point.x <= b.maxX+pad && point.y >= b.minY-pad && point.y <= b.maxY+pad;
+}
 function selectAt(evt, extra = 0) {
   if (!model) return '';
   const back = Math.cos(camera.yaw) < 0, z = back ? 0 : (model.zShift || 0) + S.bodyThickness, p = screenLocal(evt, z); if (!p) return '';
@@ -9484,12 +9518,14 @@ function bindViewerEvents() {
     const clicked = left && !S.plateView ? selectAt(e, e.pointerType === 'touch' ? 26 / camera.scale : 0) : '';
     let kind = 'rotate';
     if (!left || e.shiftKey) kind = 'pan';
+    else if (Math.cos(camera.yaw) < 0 && model?.regions.back.length &&
+      (!hit || hit.piece === activePiece) && hitsBackText(screenLocal(e, 0))) kind = 'back';
     else if (S.plateView) {
       setPlateSelection(hit);
       kind = hit ? 'move' : 'pan';
     }
     else if (clicked === 'ring') kind = 'ring';
-    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
+    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, backStart: kind === 'back' ? screenLocal(e,0) : null, backX: model?.regions.backX || 0, backY: model?.regions.backY || 0, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
     canvas.setPointerCapture(e.pointerId);
     if (kind === 'pan') canvas.parentElement.classList.add('dragging');
   });
@@ -9531,6 +9567,14 @@ function bindViewerEvents() {
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
       }
     }
+    else if (d.kind === 'back') {
+      const p = screenLocal(e,0);
+      if (p && d.backStart) {
+        S.backX = d.backX + p.x - d.backStart.x;
+        S.backY = d.backY + p.y - d.backStart.y;
+        if (!building) scheduleRebuild(true);
+      }
+    }
     else if (d.kind === 'move') {
       const point = platePoint(e);
       if (point) movePlatePiece(d.hit, d.hit.x + point.x - d.point.x, d.hit.y + point.y - d.point.y);
@@ -9539,6 +9583,7 @@ function bindViewerEvents() {
   });
   const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
+    if (d.kind === 'back') { if (d.moved) scheduleRebuild(true); return }
     if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }

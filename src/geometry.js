@@ -233,9 +233,11 @@
     return finalize([p], tol);
   }
   function cloud(cx, cy, rx, ry, tol, maxAngle) {
-    const n = Math.max(360, arcSegments(Math.max(rx, ry), tol, 2 * Math.PI, maxAngle) * 4), p = [];
-    for (let i = 0; i < n; i++) { const a = i / n * 2 * Math.PI, k = 1 + 0.065 * Math.sin(a * 11); p.push({ X: toInt(cx + Math.cos(a) * rx * k), Y: toInt(cy + Math.sin(a) * ry * k) }); }
-    return finalize([p], tol);
+    let body = ellipse(cx, cy - ry * .12, rx, ry * .78, tol, maxAngle);
+    for (const [x, y, w, h] of [[-.62,.15,.36,.56],[-.25,.36,.40,.65],[.19,.39,.39,.72],[.58,.22,.38,.55]]) {
+      body = union(body, ellipse(cx + rx*x, cy + ry*y, rx*w, ry*h, tol, maxAngle));
+    }
+    return body;
   }
 
   // ---------------------------------------------------------------- extrusão em camadas

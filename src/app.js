@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
+const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -179,6 +179,19 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  $('moveBack').onclick = () => {
+    if (['smooth','through'].includes(S.back)) { S.back = 'inlay'; updateControls(); scheduleRebuild(true) }
+    setView('back');
+    const center = pieceCenter(), r = $('viewport').getBoundingClientRect();
+    if (model) {
+      camera.cx = center.x; camera.cy = center.y; camera.panX = camera.panY = 0;
+      const b = model.regions.bounds;
+      camera.scale = Math.min(r.width / (b.width * 1.4), r.height / (b.height * 2), 20);
+    }
+    $('viewport').scrollIntoView({block:'nearest'});
+    requestRender();
+  };
+  $('centerBack').onclick = () => { S.backX = S.backY = 0; scheduleRebuild(true) };
   $('backText').oninput = () => { S.backText = $('backText').value; scheduleRebuild() };
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['fillLetterHoles', 'fillLetterHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
@@ -292,7 +305,7 @@ self.onmessage = e => {
       if (m.union) { union = res.unionMesh(); transfer.push(union.positions.buffer, union.indices.buffer, union.cornerNormals.buffer); }
       const R = res.regions;
       self.postMessage({ id: m.id, ok: true, result: { parts, union, height: res.height, zShift: res.zShift, timing: res.timing,
-        regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } } }, transfer);
+        regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, backX: R.backX, backY: R.backY, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } } }, transfer);
     }
   } catch (err) { self.postMessage({ id: m.id, ok: false, error: String(err && err.stack || err) }); }
 };`;
@@ -340,12 +353,12 @@ function geometryCall(msg) {
       if (msg.type === 'minScale') { resolve(SparrowModel.minScaleFor(msg.S, getF(msg.S.font))); return }
       if (msg.type === 'scan') { const out = {}; for (const n of msg.names) out[n] = SparrowModel.scanFont(msg.S, getF(n)); resolve(out); return }
       const res = SparrowModel.build(msg.S, { front: getF(msg.S.font) }, msg.quality), R = res.regions;
-      resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } });
+      resolve({ parts: res.parts, union: msg.union ? res.unionMesh() : null, height: res.height, zShift: res.zShift, timing: res.timing, regions: { text: R.letters, base: R.base, outline: R.outline, back: R.back, backX: R.backX, backY: R.backY, ring: R.ring, ringOverlap: R.ringOverlap, print: R.print, bounds: R.bounds } });
     } catch (e) { reject(e) }
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -656,6 +669,11 @@ function startRingGhost(d) {
 function endRingGhost() { loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
 function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - activePosition().x, y: p.y - activePosition().y } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
+function hitsBackText(point) {
+  if (!point) return false;
+  const b = SparrowGeo.bounds(model.regions.back), pad = 3 / camera.scale;
+  return point.x >= b.minX-pad && point.x <= b.maxX+pad && point.y >= b.minY-pad && point.y <= b.maxY+pad;
+}
 function selectAt(evt, extra = 0) {
   if (!model) return '';
   const back = Math.cos(camera.yaw) < 0, z = back ? 0 : (model.zShift || 0) + S.bodyThickness, p = screenLocal(evt, z); if (!p) return '';
@@ -703,12 +721,14 @@ function bindViewerEvents() {
     const clicked = left && !S.plateView ? selectAt(e, e.pointerType === 'touch' ? 26 / camera.scale : 0) : '';
     let kind = 'rotate';
     if (!left || e.shiftKey) kind = 'pan';
+    else if (Math.cos(camera.yaw) < 0 && model?.regions.back.length &&
+      (!hit || hit.piece === activePiece) && hitsBackText(screenLocal(e, 0))) kind = 'back';
     else if (S.plateView) {
       setPlateSelection(hit);
       kind = hit ? 'move' : 'pan';
     }
     else if (clicked === 'ring') kind = 'ring';
-    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
+    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, backStart: kind === 'back' ? screenLocal(e,0) : null, backX: model?.regions.backX || 0, backY: model?.regions.backY || 0, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
     canvas.setPointerCapture(e.pointerId);
     if (kind === 'pan') canvas.parentElement.classList.add('dragging');
   });
@@ -750,6 +770,14 @@ function bindViewerEvents() {
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
       }
     }
+    else if (d.kind === 'back') {
+      const p = screenLocal(e,0);
+      if (p && d.backStart) {
+        S.backX = d.backX + p.x - d.backStart.x;
+        S.backY = d.backY + p.y - d.backStart.y;
+        if (!building) scheduleRebuild(true);
+      }
+    }
     else if (d.kind === 'move') {
       const point = platePoint(e);
       if (point) movePlatePiece(d.hit, d.hit.x + point.x - d.point.x, d.hit.y + point.y - d.point.y);
@@ -758,6 +786,7 @@ function bindViewerEvents() {
   });
   const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
+    if (d.kind === 'back') { if (d.moved) scheduleRebuild(true); return }
     if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
