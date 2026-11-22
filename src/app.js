@@ -96,6 +96,7 @@ function fmtTol(n) { return String(n).replace('.', ',') }
 function rgb(hex) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255) }
 
 // ---------------------------------------------------------------- painéis
+let addingName = false, showExampleName = true;
 function selectTab(tab) {
   if (!activePiece && tab !== 'print') tab = 'plate';
   const viewChanged = S.plateView !== (tab === 'plate');
@@ -111,6 +112,7 @@ function selectTab(tab) {
   for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', t !== tab);
   for (const t of ['letters', 'base', 'ring', 'print']) $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
   $('btnPlate').classList.toggle('on', S.plateView);
+  $('fontsPanel').classList.toggle('hidden', tab !== 'letters');
   $('selectionLabel').textContent = selectionText(tab);
   ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
   updatePlatePanel();
@@ -120,7 +122,8 @@ function optionButtons(id, items, current, callback) { const node = $(id); node.
 function explanation(kind) { let title = '', msg = ''; if (kind === 'raised') { title = 'Relevo'; msg = 'As letras ficam salientes sobre a base. A face com relevo deve ficar virada para cima na impressão.' } if (kind === 'flush') { title = 'Ao nível'; msg = 'As letras ficam encaixadas na superfície da base, sem degrau. Ideal para impressões multicolor.' } if (kind === 'engraved') { title = 'Gravado'; msg = 'As letras são cavadas na base e mostram profundidade real.' } if (kind === 'cutout') { title = 'Vazado'; msg = 'As letras atravessam a base como recortes vazios.' } if (kind === 'smooth') { title = 'Liso'; msg = 'O verso fica totalmente liso, sem letras.' } if (kind === 'inlay') { title = 'Ao nível'; msg = 'O texto do verso é embutido na base.' } if (kind === 'through') { title = 'Passante'; msg = 'As letras atravessam toda a base. Visto por trás, o nome original aparece espelhado, como acontece numa peça real.' } return `<svg viewBox="0 0 96 56" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="24" width="84" height="26" rx="5" fill="#378ff3"/><rect x="28" y="${kind === 'raised' ? 13 : kind === 'cutout' ? 24 : kind === 'engraved' ? 30 : 23}" width="41" height="${kind === 'raised' ? 17 : kind === 'cutout' ? 26 : kind === 'engraved' ? 12 : 20}" rx="4" fill="${kind === 'cutout' ? '#121a28' : '#fff'}" stroke="${kind === 'engraved' ? '#1e507b' : '#e9eef8'}" stroke-width="1"/><text x="48" y="${kind === 'raised' ? 26 : 38}" text-anchor="middle" font-size="12" fill="${kind === 'cutout' ? '#89beff' : '#122438'}">Aa</text></svg><span><b>${title}</b><br>${msg}</span>` }
 function updateControls() {
   document.body.classList.add('pro');
-  $('inputName').value = S.name; $('backText').value = S.backText;
+  syncNameEntry();
+  $('backText').value = S.backText;
   renderGallery();
   optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) });
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
@@ -175,7 +178,7 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
-  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
+  $('backText').oninput = () => { S.backText = $('backText').value; scheduleRebuild() };
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['fillLetterHoles', 'fillLetterHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
@@ -843,6 +846,7 @@ function activatePiece(piece, tab = 'letters') {
     const previous = activePiece;
     if (previous) previous.state = editableState();
     activePiece = piece;
+    showExampleName = false;
     if (previous) refreshInactivePiece(previous, previous.state, S.quality);
     Object.assign(S, piece.state);
     model = piece.model;
@@ -942,7 +946,6 @@ function updatePlatePanel() {
   const { plates, oversized } = currentPlan();
   platePage = Math.min(platePage, plates.length - 1);
   const positions = plates[platePage];
-  $('plateXY').textContent = plateLabel();
   $('platePage').textContent = `${platePage + 1} / ${plates.length}`;
   $('prevPlate').disabled = platePage === 0;
   $('nextPlate').disabled = platePage >= plates.length - 1;
@@ -955,6 +958,7 @@ function updatePlatePanel() {
   if (document.activeElement !== $('copyTop')) $('copyTop').value = piece ? pieceState(piece).copies : '';
   $('undoRemoval').classList.toggle('hidden', !removedPiece);
   updatePieceTools();
+  syncNameEntry();
 }
 function plateChanged() {
   cachedPlan = null;
@@ -1010,9 +1014,9 @@ function restorePlatePosition(drag) {
 }
 async function addName(name) {
   const state = { ...editableState(), name, ringManual: false, copies: 1 }, quality = S.quality;
-  const submit = $('addNameForm').querySelector('button[type="submit"]');
+  const submit = $('addName');
   if (submit.disabled) return false;
-  $('addName').disabled = submit.disabled = true;
+  submit.disabled = $('cancelName').disabled = true;
   try {
     const result = await geometryCall({ type: 'build', S: state, quality });
     const piece = makePiece(state);
@@ -1029,53 +1033,93 @@ async function addName(name) {
     $('qualityNotice').textContent = 'Erro ao adicionar nome: ' + error.message;
     return false;
   } finally {
-    $('addName').disabled = submit.disabled = false;
+    submit.disabled = $('cancelName').disabled = false;
   }
 }
+function syncNameEntry() {
+  const input = $('inputName'), newName = addingName || !activePiece;
+  $('nameLabel').textContent = addingName ? 'Novo nome' : 'Nome';
+  $('addName').textContent = newName ? 'Adicionar' : '+ Adicionar nome';
+  $('cancelName').classList.toggle('hidden', !addingName);
+  const currentName = showExampleName ? '' : S.name;
+  if (!newName && input.value !== currentName) input.value = currentName;
+}
+function renameFromInput(input) {
+  if (!activePiece || addingName) return;
+  showExampleName = false;
+  S.name = input.value;
+  S.ringManual = false;
+  document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome');
+  scheduleScan();
+  scheduleRebuild();
+}
 function bindPlateControls() {
-  const form = $('addNameForm'), input = $('newName'), options = $('printbarSuggestions');
+  const form = $('nameEntry'), input = $('inputName'), options = $('printbarSuggestions');
   const fold = text => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   function updateSuggestions() {
-    const search = fold(input.value.trim());
-    const matches = EXAMPLE_NAMES.filter(name => fold(name).startsWith(search));
+    const query = fold(input.value.trim());
+    const matches = EXAMPLE_NAMES.filter(name => fold(name).startsWith(query));
     options.replaceChildren();
     for (const name of matches) {
       const option = document.createElement('button');
       option.type = 'button';
       option.textContent = name;
       option.onclick = () => {
-        input.focus();
         input.value = name;
+        input.focus();
+        renameFromInput(input);
         options.classList.add('hidden');
       };
       options.append(option);
     }
     options.classList.toggle('hidden', !matches.length);
   }
-  function showForm(show) {
-    form.classList.toggle('hidden', !show);
-    $('addName').setAttribute('aria-expanded', String(show));
-    if (show) { input.focus(); updateSuggestions() }
-    else options.classList.add('hidden');
+  function cancelNewName() {
+    if ($('addName').disabled) return;
+    addingName = false;
+    input.value = activePiece && !showExampleName ? S.name : '';
+    options.classList.add('hidden');
+    syncNameEntry();
   }
-  $('addName').onclick = () => showForm(form.classList.contains('hidden'));
-  input.onfocus = input.oninput = updateSuggestions;
+  $('cancelName').onclick = cancelNewName;
+  input.onfocus = updateSuggestions;
+  input.oninput = () => { renameFromInput(input); updateSuggestions() };
   input.onkeydown = event => {
-    if (event.key === 'ArrowDown' && !options.classList.contains('hidden')) { event.preventDefault(); options.firstElementChild?.focus() }
+    if (event.key === 'ArrowDown' && !options.classList.contains('hidden')) {
+      event.preventDefault();
+      options.firstElementChild?.focus();
+    }
+    if (event.key === 'Enter' && activePiece && !addingName) {
+      event.preventDefault();
+      options.classList.add('hidden');
+    }
   };
   form.onkeydown = event => {
     if (event.key !== 'Escape') return;
     event.stopPropagation();
-    showForm(false);
-    $('addName').focus();
+    if (addingName) {
+      cancelNewName();
+      $('addName').focus();
+    } else options.classList.add('hidden');
   };
   form.onfocusout = event => { if (!form.contains(event.relatedTarget)) options.classList.add('hidden') };
   form.onsubmit = async event => {
     event.preventDefault();
+    if (activePiece && !addingName) {
+      addingName = true;
+      input.value = '';
+      syncNameEntry();
+      input.focus();
+      updateSuggestions();
+      return;
+    }
     const name = input.value.trim();
-    if (!name || !await addName(name)) return;
-    input.value = '';
-    showForm(false);
+    if (!name) { input.focus(); return }
+    if (!await addName(name)) return;
+    addingName = false;
+    input.value = name;
+    options.classList.add('hidden');
+    syncNameEntry();
     $('addName').focus();
   };
   $('prevPlate').onclick = () => { platePage--; setPlateSelection(null) };
@@ -1239,6 +1283,7 @@ function deleteSelectedPiece() {
   }
   partMenuFor = null;
   setPlateSelection(null);
+  if (!activePiece) $('inputName').value = '';
   selectTab('plate');
   plateChanged();
 }
@@ -1424,6 +1469,6 @@ async function boot() {
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
   matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
-  $('addName').disabled = false;
+  $('addName').disabled = $('inputName').disabled = false;
 }
 boot();
