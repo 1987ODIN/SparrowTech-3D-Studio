@@ -66,13 +66,16 @@ with sync_playwright() as p:
         page.evaluate(f"(() => {{ const e = document.getElementById('{cid}'); e.value = '#ff8800'; e.dispatchEvent(new Event('input', {{bubbles: true}})); }})()"); verify(f'cor {cid}')
     # Formato do tabuleiro, detalhe da malha, cópias e organização
     page.click('#tabPrint')
-    for sid in ['printer', 'quality']:
+    for sid, trigger in [('printer', 'btnPlate'), ('quality', 'tabPrint')]:
+        page.click('#' + trigger)
         for v in page.evaluate(f"[...document.getElementById('{sid}').options].map(o => o.value)"):
             page.select_option('#' + sid, v); verify(f'menu {sid} = {v}')
+    page.select_option('#quality', 'fine')
+    page.click('#btnPlate')
     page.fill('#plateWidth', '237'); page.locator('#plateWidth').press('Tab')
     page.fill('#plateDepth', '198'); page.locator('#plateDepth').press('Tab')
     assert page.evaluate('[plateW(), plateH()]') == [237, 198]
-    page.select_option('#quality', 'fine'); page.select_option('#printer', '256')
+    page.select_option('#printer', '256')
     page.fill('#copyTop', '4'); verify('4 cópias')
     page.click('#btnPlate')
     page.click('#autoArrange'); verify('organizar automaticamente')
@@ -101,7 +104,6 @@ with sync_playwright() as p:
     page.click('#tabLetters')
     page.set_input_files('#fontFile', os.path.join(ROOT, 'fonts', 'Cookie.ttf')); page.wait_for_timeout(600); verify('importar fonte TTF')
     # Filamentos: abrir a paleta oficial depois de usar cor livre
-    page.select_option('#printer', '256'); page.wait_for_timeout(100)
     page.locator('.filachip').first.click()
     page.select_option('#filaSeries', 'PLA Basic')
     sw = page.locator('#filaPicker .swatch'); n = sw.count()
@@ -112,6 +114,7 @@ with sync_playwright() as p:
     # Tabuleiro exclusivamente por dimensões
     opts = page.evaluate("[...document.querySelectorAll('#printer option')].map(o => o.textContent)")
     assert all('mm' in option or option == 'Personalizado' for option in opts)
+    page.click('#btnPlate')
     page.select_option('#printer', '325x320'); verify('tabuleiro retangular')
     page.click('#dl3MF'); info = page.inner_text('#infoBody')
     assert '0,16 mm' in info and 'cores' in info
@@ -163,9 +166,9 @@ with sync_playwright() as p:
     print('  ✓ placa de teste → ' + dl.value.suggested_filename)
     # Seleção da peça, movimento, sugestões de nomes, cor e remoção reversível
     page.click('#addName')
-    page.fill('#newName', 'Andre')
+    page.fill('#inputName', 'Andre')
     page.get_by_role('button', name='André', exact=True).click()
-    page.locator('#newName').press('Enter')
+    page.locator('#inputName').press('Enter')
     page.wait_for_function("() => S.plateView && S.name === 'André' && !building && !$('addName').disabled")
     page.click('#movePiece')
     page.select_option('#plateCorner', 'right,bottom')
