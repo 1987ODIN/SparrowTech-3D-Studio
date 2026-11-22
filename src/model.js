@@ -63,6 +63,7 @@
     let status = 'ok';
     if (overlap < 0.3) status = 'solta';
     else if (frac < 0.2 || wall < 1.2) status = 'fraca';
+    if (S.fillLetterHoles) joined = G.fillSmallHoles(joined, Infinity);
     return { base: G.difference(joined, inner), info: { frac, overlap, web, wall, holeCuts, cover, status } };
   }
 
