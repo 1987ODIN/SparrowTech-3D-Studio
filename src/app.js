@@ -112,6 +112,7 @@ function selectTab(tab) {
   for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', t !== tab);
   for (const t of ['letters', 'base', 'ring', 'print']) $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
   $('btnPlate').classList.toggle('on', S.plateView);
+  $('viewContext').textContent = S.plateView ? 'Tabuleiro · todas as peças' : 'A editar uma peça';
   $('fontsPanel').classList.toggle('hidden', tab !== 'letters');
   $('selectionLabel').textContent = selectionText(tab);
   ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
@@ -1081,6 +1082,21 @@ function bindPlateControls() {
     options.classList.add('hidden');
     syncNameEntry();
   }
+  $('editorHome').onclick = () => {
+    if ($('addName').disabled) return;
+    cancelNewName();
+    pickerPart = null;
+    renderPicker();
+    partMenuFor = null;
+    moveToolsOpen = false;
+    setFontMode(false);
+    const piece = selectedPlacement()?.piece || activePiece;
+    if (piece) activatePiece(piece, 'letters');
+    else selectTab('plate');
+    setView('front');
+    fitCamera();
+    requestRender();
+  };
   $('cancelName').onclick = cancelNewName;
   input.onfocus = updateSuggestions;
   input.oninput = () => { renameFromInput(input); updateSuggestions() };
