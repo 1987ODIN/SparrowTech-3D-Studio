@@ -72,13 +72,13 @@ with sync_playwright() as p:
         check(page.evaluate("getComputedStyle(document.querySelector('#gl')).cursor") in ('grab', 'auto', 'default'), 'cursor normal depois do arrasto')
 
         # 5) Peça num canto do tabuleiro: ⌖ Peça centra-a; zoom continua sob o cursor
-        page.evaluate("S.positionX = 90; S.positionY = 95; clampToPlate(); drawMiniPlate(); fitCamera(); setView('front'); requestRender()")
+        page.evaluate("S.positionX = 90; S.positionY = 95; fitCamera(); setView('front'); requestRender()")
         page.wait_for_timeout(100)
         pc = page.evaluate('(() => { const c = pieceCenter(); return project(c.x, c.y, c.z); })()')
         check(abs(pc['x'] - box['width'] / 2) < 2 and abs(pc['y'] - box['height'] / 2) < 2, 'peça no canto fica centrada com «⌖ Peça»')
         page.screenshot(path=os.path.join(OUT, f'v5_canto_dpr{dpr}.png'))
         # 5b) Clicar nas letras + rodar o rato = trocar de fonte (sem zoom); Esc sai
-        page.evaluate("S.positionX=0; S.positionY=0; clampToPlate(); fitCamera(); setView('front'); requestRender()"); page.wait_for_timeout(80)
+        page.evaluate("S.positionX=0; S.positionY=0; fitCamera(); setView('front'); requestRender()"); page.wait_for_timeout(80)
         pt = page.evaluate('''(() => { const R = model.regions, b = SparrowGeo.bounds(R.text); for (let i = 0; i < 2000; i++) { const x = b.minX + Math.random() * b.width, y = b.minY + Math.random() * b.height; if (SparrowGeo.contains(R.text, x, y)) { const r = document.getElementById('gl').getBoundingClientRect(), s = project(x + S.positionX, y + S.positionY, (model.zShift || 0) + S.bodyThickness); return { x: s.x + r.left, y: s.y + r.top }; } } })()''')
         f0, sc0 = page.evaluate('S.font'), page.evaluate('camera.scale')
         page.mouse.click(pt['x'], pt['y']); page.wait_for_timeout(50)
