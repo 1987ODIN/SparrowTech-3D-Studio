@@ -1,6 +1,6 @@
 {
   "name": "sparrowtech-3d-studio",
-  "version": "5.8.5",
+  "version": "5.9.0",
   "private": true,
   "description": "Editor offline de nomes e porta-chaves 3D com geometria vetorial e exportação STL/3MF multicolor.",
   "scripts": {
