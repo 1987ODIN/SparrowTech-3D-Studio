@@ -3,12 +3,12 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backScale: 100, backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
+const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backScale: 100, backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 60, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.5, ringInner: 3.6, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
 let fontScan = {};           // nome → resultado de imprimibilidade para o nome atual
-const SHAPES = [['contour', '✦ Segue letras'], ['cloud', '☁ Nuvem'], ['rounded', '▣ Tablet arredondado'], ['square', '▭ Tablet quadrado'], ['oval', '⬭ Oval'], ['none', '✎ Só letras']];
+const SHAPES = [['contour', 'Segue as letras'], ['rounded', 'Tag arredondada'], ['softRectangle', 'Retangular · ajustar cantos']];
 const FRONT = [['raised', '↑ Relevo'], ['flush', '▰ À face'], ['engraved', '↓ Gravado'], ['cutout', '◯ Vazado']];
 const BACK = [['smooth', '▱ Liso'], ['inlay', '▰ À face'], ['raised', '↑ Relevo'], ['engraved', '↓ Gravado'], ['through', '↕ Passante']];
 const EXPORT_LAYER_HEIGHT = .16;
@@ -110,15 +110,15 @@ function selectTab(tab) {
     else setPlateSelection(null);
     requestAnimationFrame(() => { fitCamera(); requestRender() });
   }
-  for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', t !== tab);
+  for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', !['letters','base'].includes(t) && t !== tab);
   for (const t of ['letters', 'base', 'ring', 'print']) $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
   $('btnPlate').classList.toggle('on', tab === 'plate');
-  $('fontsPanel').classList.toggle('hidden', tab !== 'letters');
+  $('fontsPanel').classList.remove('hidden');
   $('selectionLabel').textContent = selectionText(tab);
-  ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
+  updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
   updatePlatePanel();
 }
-function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Detalhe da malha exportada', plate: 'Arrasta uma peça para a posicionar' }[tab] }
+function selectionText(tab) { return { letters: 'Arrasta o fundo para rodar · roda do rato para zoom', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Detalhe da malha exportada', plate: 'Arrasta uma peça para a posicionar' }[tab] }
 function optionButtons(id, items, current, callback) { const node = $(id); node.textContent = ''; for (const [value, label] of items) { const b = document.createElement('button'); b.textContent = label; b.classList.toggle('on', value === current); b.addEventListener('click', () => { callback(value); updateControls(); scheduleRebuild() }); node.appendChild(b) } }
 function explanation(kind) { let title = '', msg = ''; if (kind === 'raised') { title = 'Relevo'; msg = 'As letras ficam salientes sobre a base. A face com relevo deve ficar virada para cima na impressão.' } if (kind === 'flush') { title = 'Ao nível'; msg = 'As letras ficam encaixadas na superfície da base, sem degrau. Ideal para impressões multicolor.' } if (kind === 'engraved') { title = 'Gravado'; msg = 'As letras são cavadas na base e mostram profundidade real.' } if (kind === 'cutout') { title = 'Vazado'; msg = 'As letras atravessam a base como recortes vazios.' } if (kind === 'smooth') { title = 'Liso'; msg = 'O verso fica totalmente liso, sem letras.' } if (kind === 'inlay') { title = 'Ao nível'; msg = 'O texto do verso é embutido na base.' } if (kind === 'through') { title = 'Passante'; msg = 'As letras atravessam toda a base. Visto por trás, o nome original aparece espelhado, como acontece numa peça real.' } return `<svg viewBox="0 0 96 56" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="24" width="84" height="26" rx="5" fill="#378ff3"/><rect x="28" y="${kind === 'raised' ? 13 : kind === 'cutout' ? 24 : kind === 'engraved' ? 30 : 23}" width="41" height="${kind === 'raised' ? 17 : kind === 'cutout' ? 26 : kind === 'engraved' ? 12 : 20}" rx="4" fill="${kind === 'cutout' ? '#121a28' : '#fff'}" stroke="${kind === 'engraved' ? '#1e507b' : '#e9eef8'}" stroke-width="1"/><text x="48" y="${kind === 'raised' ? 26 : 38}" text-anchor="middle" font-size="12" fill="${kind === 'cutout' ? '#89beff' : '#122438'}">Aa</text></svg><span><b>${title}</b><br>${msg}</span>` }
 function updateControls() {
@@ -131,6 +131,9 @@ function updateControls() {
   optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) });
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
+  $('cornerControl').classList.toggle('hidden', S.shape !== 'softRectangle');
+  $('cornerRadius').value = S.cornerRadius || 5;
+  $('cornerValue').textContent = fmt($('cornerRadius').value) + ' mm';
   updateRangeLabels();
   $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('fillLetterHoles').checked = S.fillLetterHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('quality').value = S.quality; $('copyTop').value = S.copies; updateQualityBadge();
   $('machineBadge').textContent = plateLabel(); updatePlatePanel();
@@ -176,11 +179,20 @@ function chooseFont(font, quick) {
   else { interactiveBuild = false; scheduleRebuild(true) }
 }
 function stepFont(dir) { const i = FONTS.indexOf(S.font); chooseFont(FONTS[(i + dir + FONTS.length) % FONTS.length], true) }
-function updateFontSwitch() { const n = $('fontName'); if (!n) return; n.textContent = S.font; n.style.fontFamily = `'${S.font}'`; $('fontCount').textContent = `${FONTS.indexOf(S.font) + 1}/${FONTS.length}`; $('fontSwitch').classList.toggle('active', fontMode) }
+function updateFontSwitch() { const n = $('fontName'); if (!n) return; n.textContent = S.font; n.style.fontFamily = `'${S.font}'`; $('fontCount').textContent = `${FONTS.indexOf(S.font) + 1}/${FONTS.length}`; $('fontSwitch').classList.add('hidden') }
 let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  $('editTools').ontoggle = () => setFontMode(false);
+  $('nameSection').ontoggle = () => {
+    if (!$('nameSection').open) $('printbarSuggestions').classList.add('hidden');
+  };
+  $('cornerRadius').oninput = () => {
+    S.cornerRadius = +$('cornerRadius').value;
+    $('cornerValue').textContent = fmt(S.cornerRadius) + ' mm';
+    scheduleRebuild();
+  };
   $('closeBackTools').onclick = () => $('backTools').classList.add('hidden');
   $('backScale').oninput = () => {
     S.backScale = +$('backScale').value;
@@ -234,7 +246,7 @@ function bindControls() {
     plateChanged();
   };
   $('copyTop').onchange = () => { const piece = selectedPlacement()?.piece || activePiece; $('copyTop').value = piece ? pieceState(piece).copies : '' };
-  bindRingMenu(); bindPartMenu(); bindPlateControls(); bindPieceTools();
+  updateRingMenu(); bindRingMenu(); bindPartMenu(); bindPlateControls(); bindPieceTools();
   $('importFont').onclick = () => $('fontFile').click();
   $('testPlate').onclick = () => exportTestPlate();
   $('fontPrev').onclick = () => stepFont(-1); $('fontNext').onclick = () => stepFont(1);
@@ -366,7 +378,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'cornerRadius', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -444,24 +456,31 @@ function updateRingCheck() {
 // Etiqueta junto à argola no ecrã: ensina a arrastar e mostra o aviso de fragilidade.
 let ringTagUntil = Date.now() + 15000, ringDragged = false;
 // Menu da argola no próprio ecrã (toca na argola): tamanho e repor posição — essencial no telemóvel, onde o painel fica fora de vista.
-let ringMenuClosed = false;
+let ringMenuClosed = true;
 function updateRingMenu() {
   const m = $('ringMenu'); if (!m) return;
-  const on = S.selected === 'ring' && S.hasRing && !ringGhost && !ringMenuClosed && !S.plateView;
-  m.classList.toggle('hidden', !on); $('viewport').classList.toggle('ringMenuOn', on);
-  if (on) { if (document.activeElement !== $('rmSize')) $('rmSize').value = S.ringOuter; $('rmVal').textContent = fmt(S.ringOuter) + ' mm' }
-}
-function setRingSize(v) {
-  const ratio = S.ringInner / S.ringOuter; S.ringOuter = Math.max(6, Math.min(13, Math.round(v * 2) / 2));
-  S.ringInner = Math.max(2.4, Math.min(5.5, S.ringOuter - 2, Math.round(S.ringOuter * ratio * 5) / 5));
-  $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; updateRangeLabels(); updateRingMenu(); scheduleRebuild();
+  m.classList.toggle('hidden', ringMenuClosed);
+  $('rmSize').value = S.ringOuter;
+  $('rmInner').max = Math.min(5.5, S.ringOuter - 2);
+  $('rmInner').value = S.ringInner;
+  $('rmVal').textContent = fmt(S.ringOuter) + ' mm';
+  $('rmInnerVal').textContent = fmt(S.ringInner) + ' mm';
+  $('rmEnabled').checked = S.hasRing;
+  $('rmReinforce').checked = S.ringReinforce;
 }
 function bindRingMenu() {
-  const m = $('ringMenu'); for (const t of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'click', 'touchstart']) m.addEventListener(t, e => e.stopPropagation());
-  $('rmSize').oninput = () => setRingSize(+$('rmSize').value);
-  $('rmMinus').onclick = () => setRingSize(S.ringOuter - .5); $('rmPlus').onclick = () => setRingSize(S.ringOuter + .5);
-  $('rmReset').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
-  $('rmClose').onclick = () => { ringMenuClosed = true; updateRingMenu() };
+  for (const [id, key] of [['rmSize','ringOuter'],['rmInner','ringInner']]) {
+    $(id).oninput = () => {
+      S[key] = +$(id).value;
+      S.ringInner = Math.min(S.ringInner, S.ringOuter - 2);
+      updateControls(); updateRingMenu(); scheduleRebuild();
+    };
+  }
+  for (const [id,key] of [['rmEnabled','hasRing'],['rmReinforce','ringReinforce']]) {
+    $(id).onchange = () => { S[key] = $(id).checked; updateControls(); scheduleRebuild(); };
+  }
+  $('rmReset').onclick = () => { S.ringManual = false; scheduleRebuild(true); };
+  $('rmClose').onclick = () => { ringMenuClosed = true; updateRingMenu(); };
 }
 function updateRingTag() {
   updateRingMenu();
@@ -735,10 +754,13 @@ function bindViewerEvents() {
     else if (Math.cos(camera.yaw) < 0 && model?.regions.back.length &&
       (!hit || hit.piece === activePiece) && hitsBackText(screenLocal(e, 0))) kind = 'back';
     else if (S.plateView) {
+      const ring = hit?.piece.model?.regions.ring;
+      const atRing = ring && Math.hypot(point.x-hit.x-ring.x, point.y-hit.y-ring.y) <= pieceState(hit.piece).ringOuter/2 + 2;
       setPlateSelection(hit);
-      kind = hit ? 'move' : 'pan';
-    }
-    else if (clicked === 'ring') kind = 'ring';
+      kind = atRing || (hit && selectAt(e) === 'ring') ? 'ring' : hit ? 'move' : 'rotate';
+    } else if (clicked === 'ring') kind = 'ring';
+    ringMenuClosed = kind !== 'ring';
+    updateRingMenu();
     dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, backStart: kind === 'back' ? screenLocal(e,0) : null, backX: model?.regions.backX || 0, backY: model?.regions.backY || 0, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
     canvas.setPointerCapture(e.pointerId);
     if (kind === 'pan') canvas.parentElement.classList.add('dragging');
@@ -764,7 +786,7 @@ function bindViewerEvents() {
     if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(e); return }
     if ((e.buttons & 3) === 3 && d.kind !== 'pan') startPan(d);
     const dx = e.clientX - d.lastX, dy = e.clientY - d.lastY; d.lastX = e.clientX; d.lastY = e.clientY;
-    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'move') d.savedPlacements = pieces.map(piece => [piece, new Map(piece.placements)]); if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
+    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'move') d.savedPlacements = pieces.map(piece => [piece, new Map(piece.placements)]); if (d.kind === 'ring') { ringDragged = true } }
     if (!d.moved) return;
     if (d.kind === 'pan') { camera.panX += dx; camera.panY += dy; requestRender() }
     else if (d.kind === 'ring') {
@@ -822,8 +844,9 @@ function bindViewerEvents() {
       } else $('backTools').classList.remove('hidden');
       return;
     }
-    if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
+    if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; setFontMode(false); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
+      ringMenuClosed = true; updateRingMenu();
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
       endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
     }
@@ -838,10 +861,8 @@ function bindViewerEvents() {
   canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag(e) });
   canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; if (dragAction?.kind === 'move' && dragAction.moved) restorePlatePosition(dragAction); endDrag(e) });
   canvas.addEventListener('lostpointercapture', () => { if (dragAction && dragAction.kind !== 'pinch') endDrag() });
-  let wheelAcc = 0;
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
-    if (fontMode) { wheelAcc += e.deltaY; if (Math.abs(wheelAcc) >= 40) { stepFont(wheelAcc > 0 ? 1 : -1); wheelAcc = 0 } return }
     const r = canvas.getBoundingClientRect(), mx = e.clientX - r.left - r.width / 2, my = e.clientY - r.top - r.height / 2;
     const k = e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1;
     const before = camera.scale, after = Math.min(80, Math.max(.3, before * Math.exp(-e.deltaY * k * .0012)));
