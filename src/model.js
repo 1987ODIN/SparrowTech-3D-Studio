@@ -122,7 +122,8 @@
     else {
       const pad = S.border + 1, x0 = tb.minX - pad, x1 = tb.maxX + pad, y0 = tb.minY - pad, y1 = tb.maxY + pad;
       const bw = x1 - x0, bh = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-      if (S.shape === 'rounded') shape = G.roundRect(x0, y0, x1, y1, Math.min(12, bh * 0.3), tol, ang);
+      if (S.shape === 'softRectangle') shape = G.roundRect(x0, y0, x1, y1, Math.min(S.cornerRadius || 5, bw / 2, bh / 2), tol, ang);
+      else if (S.shape === 'rounded') shape = G.roundRect(x0, y0, x1, y1, Math.min(12, bh * 0.3), tol, ang);
       else if (S.shape === 'square') shape = G.rect(x0, y0, x1, y1);
       else if (S.shape === 'oval') shape = growToContain(k => G.ellipse(cx, cy, bw / 2 * k, bh / 2 * k, tol, ang), text);
       else if (S.shape === 'cloud') shape = growToContain(k => G.cloud(cx, cy, bw / 2 * k, bh / 2 * k, tol, ang), text);
