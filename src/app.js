@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, layer: .16, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: 'A1', positionX: 0, positionY: 0, printMode: 'layers', plateView: false, quality: 'fine', copies: 1 };
+const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -11,24 +11,20 @@ let fontScan = {};           // nome → resultado de imprimibilidade para o nom
 const SHAPES = [['contour', '✦ Segue letras'], ['cloud', '☁ Nuvem'], ['rounded', '▣ Tablet arredondado'], ['square', '▭ Tablet quadrado'], ['oval', '⬭ Oval'], ['none', '✎ Só letras']];
 const FRONT = [['raised', '↑ Relevo'], ['flush', '▰ À face'], ['engraved', '↓ Gravado'], ['cutout', '◯ Vazado']];
 const BACK = [['smooth', '▱ Liso'], ['inlay', '▰ À face'], ['raised', '↑ Relevo'], ['engraved', '↓ Gravado'], ['through', '↕ Passante']];
-// Só impressoras Bambu Lab (o ficheiro é para o Bambu Studio). [nome, largura, profundidade do tabuleiro (mm), marca, slicer]
-// Tabuleiros: valores úteis conservadores (nas H2 de bico duplo usa-se a área comum aos dois bicos).
-const PRINTERS = {
-  A1Mini: ['Bambu Lab A1 mini', 180, 180], A1: ['Bambu Lab A1', 256, 256], P1S: ['Bambu Lab P1S', 256, 256], P1P: ['Bambu Lab P1P', 256, 256], P2S: ['Bambu Lab P2S', 256, 256],
-  X1C: ['Bambu Lab X1 Carbon', 256, 256], X1E: ['Bambu Lab X1E', 256, 256], A2L: ['Bambu Lab A2L', 330, 320], H2S: ['Bambu Lab H2S', 340, 320], H2D: ['Bambu Lab H2D', 325, 320], H2C: ['Bambu Lab H2C', 300, 320]
-};
-for (const k in PRINTERS) PRINTERS[k].push('Bambu Lab', 'Bambu Studio');
-const plateW = () => PRINTERS[S.printer][1], plateH = () => PRINTERS[S.printer][2];
+const EXPORT_LAYER_HEIGHT = .16;
+const PLATE_SIZES = { 180: [180, 180], 220: [220, 220], 256: [256, 256], '300x320': [300, 320], '325x320': [325, 320], '330x320': [330, 320], '340x320': [340, 320], custom: [256, 256] };
+const plateW = () => PLATE_SIZES[S.printer][0], plateH = () => PLATE_SIZES[S.printer][1];
+const plateLabel = () => `${plateW()} × ${plateH()} mm`;
 // Filamentos oficiais (src/filaments.js, gerado a partir das listas do Bambu Studio e do Creality Print).
 const FILAMENTS = window.SPARROW_FILAMENTS || {};
 const MAIN_SERIES = { 'Bambu Lab': 'PLA Basic', 'Creality': 'Hyper PLA' };
 const PARTS = [['base', 'Base', 'baseColor'], ['letters', 'Letras', 'letterColor'], ['outline', 'Contorno', 'outlineColor']];
-const brand = () => PRINTERS[S.printer][3];
+const brand = () => 'Bambu Lab';
 function hexDist(a, b) { const x = rgb(a), y = rgb(b); return (x[0] - y[0]) ** 2 * 0.3 + (x[1] - y[1]) ** 2 * 0.59 + (x[2] - y[2]) ** 2 * 0.11 }
 function nearestFilament(hex, br, series) { const list = (FILAMENTS[br] || {})[series || MAIN_SERIES[br]] || []; let best = null; for (const f of list) if (!best || hexDist(f.hex, hex) < hexDist(best.hex, hex)) best = f; return best && { brand: br, series: series || MAIN_SERIES[br], ...best } }
 function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)[2]; S.filaments[part] = fil; if (fil) S[key] = fil.hex.toLowerCase(); $(key).value = S[key] }
 function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
-function filamentLabel(part) { const f = S.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
+function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
 function renderFilaChips() {
   const box = $('filaChips'); box.textContent = '';
@@ -66,13 +62,8 @@ function renderPicker() {
   box.append(sel, grid, name);
 }
 function updatePrintBar() { }
-// Cartão mostrado antes de descarregar o 3MF: o que vai no ficheiro e que bico usar.
 function infoText() {
-  const c = v => String(v).replace('.', ','), fil = PARTS.filter(p => p[0] !== 'outline' || S.outline).map(([part, title]) => `<li>${title}: <b>${filamentLabel(part)}</b></li>`).join('');
-  const pl = model && S.copies > 1 ? layoutPlan().plates.length : 1;
-  return `<ul><li>As <b>cores vão separadas</b> (base, letras${S.outline ? ' e contorno' : ''}), cada uma no seu filamento, com camada de <b>${c(S.layer)} mm</b>.</li>`
-    + `<li><b>Melhor qualidade:</b> bico de 0,2 mm.</li><li><b>Bico de 0,4 mm:</b> aceitável, com a camada mais fina que a impressora permitir.</li>`
-    + (S.copies > 1 ? `<li>${S.copies} cópias${pl > 1 ? ` em ${pl} tabuleiros` : ''}.</li>` : '') + `</ul>No Bambu Studio carrega estes filamentos:<ul>${fil}</ul>`;
+  return 'O 3MF inclui as peças, as posições, as cores e uma altura de camada de 0,16 mm por objeto para slicers compatíveis. Podes ajustar a camada e o bico no slicer.';
 }
 let infoSkip = false; try { infoSkip = localStorage.getItem('st3d_info3mf') === '1' } catch (e) { }
 function openStudioAfter() {
@@ -86,7 +77,7 @@ function bindCards() {
   $('infoCancel').onclick = () => $('infoCard').classList.add('hidden');
   $('infoGo').onclick = () => { close(); export3MF() };
   // Uma página local não consegue entregar o ficheiro ao Bambu Studio: descarrega e pede ao sistema para o iniciar (bambustudio://).
-  $('infoStudio').onclick = async () => { close(); await export3MF(); openStudioAfter() };
+  $('infoStudio').onclick = async () => { close(); if (await export3MF()) openStudioAfter() };
   let seen = /semintro/.test(location.hash); try { seen = seen || localStorage.getItem('st3d_intro') === '1' } catch (e) { }
   if (!seen) $('introCard').classList.remove('hidden');
   $('introGo').onclick = () => { $('introCard').classList.add('hidden'); try { localStorage.setItem('st3d_intro', '1') } catch (e) { } };
@@ -106,26 +97,36 @@ function rgb(hex) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) 
 
 // ---------------------------------------------------------------- painéis
 function selectTab(tab) {
-  if (tab === 'print') { S.plateView = true; setView('front'); requestAnimationFrame(() => { fitCamera(); requestRender() }) }
-  else if (S.plateView) { S.plateView = false; requestAnimationFrame(() => { fitCamera(); requestRender() }) }
+  const viewChanged = S.plateView !== (tab === 'plate');
+  S.plateView = tab === 'plate';
   S.selected = tab;
-  ['letters', 'base', 'ring', 'print'].forEach(t => { $(t + 'Panel').classList.toggle('hidden', t !== tab); $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab) });
+  if (viewChanged) {
+    $('viewport').classList.toggle('plate-view', S.plateView);
+    $('viewerHelp').classList.toggle('hidden', S.plateView);
+    if (S.plateView) { setView('front'); setFontMode(false) }
+    else setPlateSelection(null);
+    requestAnimationFrame(() => { fitCamera(); requestRender() });
+  }
+  for (const t of ['letters', 'base', 'ring', 'print', 'plate']) $(t + 'Panel').classList.toggle('hidden', t !== tab);
+  for (const t of ['letters', 'base', 'ring', 'print']) $('tab' + t[0].toUpperCase() + t.slice(1)).classList.toggle('on', t === tab);
+  $('btnPlate').classList.toggle('on', S.plateView);
   $('selectionLabel').textContent = selectionText(tab);
   ringMenuClosed = false; updateRingMenu(); if (tab !== partMenuFor) partMenuFor = null; updatePartMenu();
+  updatePlatePanel();
 }
-function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Pro (beta): impressora, cópias, bico e formatos' }[tab] }
+function selectionText(tab) { return { letters: '✎ Selecionado: letras · roda o rato para trocar de fonte', base: '▱ Selecionado: base · formato e rebordo', ring: '◉ Selecionado: argola · agarra e arrasta', print: '⚙ Detalhe da malha exportada', plate: 'Arrasta uma peça para a posicionar' }[tab] }
 function optionButtons(id, items, current, callback) { const node = $(id); node.textContent = ''; for (const [value, label] of items) { const b = document.createElement('button'); b.textContent = label; b.classList.toggle('on', value === current); b.addEventListener('click', () => { callback(value); updateControls(); scheduleRebuild() }); node.appendChild(b) } }
 function explanation(kind) { let title = '', msg = ''; if (kind === 'raised') { title = 'Relevo'; msg = 'As letras ficam salientes sobre a base. A face com relevo deve ficar virada para cima na impressão.' } if (kind === 'flush') { title = 'Ao nível'; msg = 'As letras ficam encaixadas na superfície da base, sem degrau. Ideal para impressões multicolor.' } if (kind === 'engraved') { title = 'Gravado'; msg = 'As letras são cavadas na base e mostram profundidade real.' } if (kind === 'cutout') { title = 'Vazado'; msg = 'As letras atravessam a base como recortes vazios.' } if (kind === 'smooth') { title = 'Liso'; msg = 'O verso fica totalmente liso, sem letras.' } if (kind === 'inlay') { title = 'Ao nível'; msg = 'O texto do verso é embutido na base.' } if (kind === 'through') { title = 'Passante'; msg = 'As letras atravessam toda a base. Visto por trás, o nome original aparece espelhado, como acontece numa peça real.' } return `<svg viewBox="0 0 96 56" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="24" width="84" height="26" rx="5" fill="#378ff3"/><rect x="28" y="${kind === 'raised' ? 13 : kind === 'cutout' ? 24 : kind === 'engraved' ? 30 : 23}" width="41" height="${kind === 'raised' ? 17 : kind === 'cutout' ? 26 : kind === 'engraved' ? 12 : 20}" rx="4" fill="${kind === 'cutout' ? '#121a28' : '#fff'}" stroke="${kind === 'engraved' ? '#1e507b' : '#e9eef8'}" stroke-width="1"/><text x="48" y="${kind === 'raised' ? 26 : 38}" text-anchor="middle" font-size="12" fill="${kind === 'cutout' ? '#89beff' : '#122438'}">Aa</text></svg><span><b>${title}</b><br>${msg}</span>` }
 function updateControls() {
   document.body.classList.add('pro');
   $('inputName').value = S.name; $('backText').value = S.backText;
   renderGallery();
-  optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) }); optionButtons('printModeButtons', [['layers', 'Por camadas'], ['sequential', 'Um objeto de cada vez']], S.printMode, v => { S.printMode = v; updateModeNotice() });
+  optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) });
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('nozzle').value = String(S.nozzle); fillLayers(); $('quality').value = S.quality; $('copyCount').value = S.copies; $('copyTop').value = S.copies; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge();
-  $('machineBadge').textContent = PRINTERS[S.printer][0]; updateModeNotice(); drawMiniPlate();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('quality').value = S.quality; $('copyTop').value = S.copies; updateQualityBadge();
+  $('machineBadge').textContent = plateLabel(); updatePlatePanel();
   renderFilaChips(); renderPicker(); updatePrintBar();
 }
 function renderGallery() {
@@ -154,14 +155,6 @@ function updateBadges() {
     el.title = r ? `Bico ${fmt2(S.nozzle)} mm: ${Math.round(r.stroke * 100)}% do traço mais fino que o bico, ${Math.round(r.gap * 100)}% de espaços apertados` : '';
   }
 }
-// Camadas válidas para cada bico (limites dos perfis Bambu); a 1.ª marcada é a recomendada.
-const LAYERS = { 0.2: [[.06], [.08, 1], [.1], [.12]], 0.4: [[.08], [.12], [.16, 1], [.2], [.24]], 0.6: [[.18], [.24, 1], [.3]], 0.8: [[.24], [.32, 1], [.4]] };
-function fillLayers() {
-  const sel = $('layer'), list = LAYERS[S.nozzle] || LAYERS[0.4]; sel.textContent = '';
-  if (!list.some(l => Math.abs(l[0] - S.layer) < 1e-9)) S.layer = (list.find(l => l[1]) || list[0])[0];
-  for (const [v, rec] of list) { const o = document.createElement('option'); o.value = String(v); o.textContent = v.toFixed(2).replace('.', ',') + ' mm' + (rec ? ' (recomendada)' : ''); sel.appendChild(o) }
-  sel.value = String(S.layer);
-}
 function fmt2(n) { return (+n).toFixed(1).replace('.', ',') }
 function toggleFavorite(font) { const i = S.favorites.indexOf(font); if (i >= 0) S.favorites.splice(i, 1); else if (S.favorites.length < 12) S.favorites.push(font); else alert('Máximo de 12 fontes na placa de teste.'); renderGallery(); $('testPlate').textContent = `⬇ Placa de teste (★ ${S.favorites.length})` }
 // Troca de fonte: atualiza só o necessário e calcula primeiro uma pré-visualização rápida.
@@ -181,7 +174,7 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
-  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
+  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { renderNameList(); S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
@@ -189,17 +182,31 @@ function bindControls() {
   bindCards();
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
-  $('btnFit').onclick = () => { S.plateView = false; fitCamera(); requestRender() }; $('btnPlate').onclick = () => { S.plateView = true; fitCamera(); requestRender() };
+  $('btnFit').onclick = () => { if (S.plateView) selectTab('letters'); fitCamera(); requestRender() };
+  $('btnPlate').onclick = () => selectTab('plate');
   $('autoRing').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
-  $('printer').onchange = () => { S.printer = $('printer').value; matchFilamentsToBrand(); refreshMeshColors(); pickerPart = null; clampToPlate(); updateControls(); rebuildBed(); if (S.plateView) fitCamera(); requestRender() };
-  $('quality').onchange = () => { S.quality = $('quality').value; $('qualityVal').textContent = QUALITY_LABEL[S.quality]; updateQualityBadge(); scheduleRebuild(true) };
-  const setCopies = n => { S.copies = Math.max(1, Math.min(40, Math.round(n) || 1)); $('copyCount').value = S.copies; if (document.activeElement !== $('copyTop')) $('copyTop').value = S.copies; drawMiniPlate(); updatePrintBar(); if (S.plateView) fitCamera(); requestRender() };
-  $('copyCount').oninput = () => setCopies(+$('copyCount').value); $('copyTop').oninput = () => setCopies(+$('copyTop').value); $('copyTop').onchange = () => { $('copyTop').value = S.copies };
-  bindRingMenu(); bindPartMenu();
-  $('autoArrange').onclick = () => { S.positionX = 0; S.positionY = 0; drawMiniPlate(); requestRender(); selectTab('print') };
+  $('printer').onchange = () => { S.printer = $('printer').value; changePlateSize() };
+  for (const [id, axis] of [['plateWidth', 0], ['plateDepth', 1]]) $(id).onchange = () => {
+    const field = $(id);
+    field.value = Math.min(1000, Math.max(30, Math.round(field.valueAsNumber || PLATE_SIZES.custom[axis])));
+    PLATE_SIZES.custom[axis] = +field.value;
+    changePlateSize();
+  };
+  $('printMode').onchange = () => {
+    S.printMode = $('printMode').value;
+    $('printModeNotice').classList.toggle('hidden', S.printMode !== 'sequential');
+    plateChanged();
+  };
+  $('quality').onchange = () => { S.quality = $('quality').value; updateQualityBadge(); scheduleRebuild(true) };
+  $('copyTop').oninput = () => {
+    S.copies = Math.max(1, Math.min(40, Math.round(+$('copyTop').value) || 1));
+    for (const index of activePiece.placements.keys()) if (index >= S.copies) activePiece.placements.delete(index);
+    if (plateSelection?.piece === activePiece && plateSelection.index >= S.copies) plateSelection = null;
+    plateChanged();
+  };
+  $('copyTop').onchange = () => { $('copyTop').value = S.copies };
+  bindRingMenu(); bindPartMenu(); bindPlateControls();
   $('importFont').onclick = () => $('fontFile').click();
-  $('nozzle').onchange = () => { S.nozzle = +$('nozzle').value; S.layer = (LAYERS[S.nozzle].find(l => l[1]) || LAYERS[S.nozzle][0])[0]; fillLayers(); scheduleRebuild(true); scheduleScan(); updatePrintBar() };
-  $('layer').onchange = () => { S.layer = +$('layer').value; if (model) updatePrintCheck() };
   $('testPlate').onclick = () => exportTestPlate();
   $('fontPrev').onclick = () => stepFont(-1); $('fontNext').onclick = () => stepFont(1);
   $('fontName').onclick = () => setFontMode(!fontMode);
@@ -207,7 +214,7 @@ function bindControls() {
   $('fontSwitch').addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); acc += e.deltaY; if (Math.abs(acc) >= 40) { stepFont(acc > 0 ? 1 : -1); acc = 0 } }, { passive: false });
   document.addEventListener('keydown', e => { if (!fontMode || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return; if (e.key === 'Escape') setFontMode(false); if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { stepFont(1); e.preventDefault() } if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { stepFont(-1); e.preventDefault() } });
   $('fontFile').onchange = async () => { const f = $('fontFile').files[0]; $('fontFile').value = ''; if (f) await importFont(f) };
-  initPlateDrag(); bindViewCube();
+  bindViewCube();
 }
 // Estilos de letra (exemplos prontos): direitas · pontas redondas · aresta suave · almofada (alta e abaulada).
 function currentStyle() { return S.letterStyle !== 'flat' ? S.letterStyle : S.letterRound > 0 ? 'tips' : 'flat' }
@@ -236,7 +243,6 @@ function bindPartMenu() {
   $('pmClose').onclick = () => { partMenuFor = null; updatePartMenu() };
 }
 function updateRangeLabels() { updatePartMenu(); $('roundAmountVal').textContent = fmt(S.roundAmount) + ' mm'; $('roundBaseBox').classList.toggle('hidden', !S.roundBase); $('borderVal').textContent = fmt(S.border) + ' mm'; $('bodyVal').textContent = fmt(S.bodyThickness) + ' mm'; $('heightVal').textContent = fmt(S.letterHeight) + ' mm'; $('outlineVal').textContent = fmt(S.outlineWidth) + ' mm'; $('nameSizeVal').textContent = S.nameSize + '%'; $('outerVal').textContent = fmt(S.ringOuter) + ' mm'; $('innerVal').textContent = fmt(S.ringInner) + ' mm'; $('holeVal').textContent = fmt(S.holeArea) + ' mm²'; $('tipVal').textContent = S.letterRound.toFixed(2).replace('.', ',') + ' mm'; $('weightVal').textContent = (S.textWeight >= 0 ? '+' : '') + S.textWeight.toFixed(2).replace('.', ',') + ' mm'; $('spacingVal').textContent = (S.letterSpacing > 0 ? '+' : '') + S.letterSpacing + '%'; $('outlineControls').classList.toggle('hidden', !S.outline) }
-function updateModeNotice() { $('printModeNotice').textContent = S.printMode === 'layers' ? 'O slicer imprime cada camada de todos os objetos. Recomendado para letras salientes, multicolor e peças próximas.' : 'Modo sequencial: o slicer imprime um objeto completo antes do próximo. A distância segura depende do volume da cabeça e do pórtico da impressora. O editor NÃO valida colisões com a cabeça nem o pórtico: confirma no slicer e ativa lá a impressão por objeto.' }
 
 // ---------------------------------------------------------------- fontes
 function b64ToBuffer(b64) { const bin = atob(b64), u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u.buffer }
@@ -329,9 +335,9 @@ function geometryCall(msg) {
     } catch (e) { reject(e) }
   }, 0));
 }
-function geometryState() {
+function geometryState(state = S) {
   const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
-  const o = {}; for (const key of k) o[key] = S[key]; return o;
+  const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
 // ---------------------------------------------------------------- reconstrução
@@ -350,20 +356,22 @@ async function rebuildModel() {
   building = true; buildAgain = false;
   let quality = interactiveBuild ? (ringDragging ? 'draft' : (S.quality === 'fine' || S.quality === 'ultra') ? 'normal' : S.quality) : S.quality;
   if (!worker && quality === 'ultra') quality = 'fine';   // modo compatível: «Muito fina» só na exportação
+  const piece = activePiece, state = geometryState();
   $('overlayStatus').textContent = 'A calcular geometria vetorial…';
   try {
-    const r = await geometryCall({ type: 'build', S: geometryState(), quality });
-    if (buildAgain) return;
-    applyModel(r, quality);
+    const r = await geometryCall({ type: 'build', S: state, quality });
+    if (buildAgain || piece !== activePiece) return;
+    applyModel(r, quality, state);
   } catch (err) { console.error(err); $('qualityNotice').textContent = 'Erro na geração: ' + err.message.split('\n')[0]; $('qualityNotice').classList.add('warn') }
   finally { building = false; if (buildAgain) { buildAgain = false; scheduleRebuild(true) } }
 }
-function applyModel(r, quality) {
+function applyModel(r, quality, state) {
   releaseMeshBuffers();
   model = r;
   if (!S.ringManual && r.regions.ring) { S.ringX = r.regions.ring.x; S.ringY = r.regions.ring.y }
   components = r.parts.map(p => ({ ...p, color: partColor(p.id) }));
   uploadMeshBuffers();
+  activePiece.model = model; activePiece.components = components; activePiece.previewKey = previewKey(state, quality);
   const total = components.reduce((s, c) => s + c.mesh.triangleCount, 0), b = r.regions.bounds || { width: 0, height: 0 };
   $('triangleBadge').textContent = total.toLocaleString('pt-PT') + ' triângulos';
   $('sizeBadge').textContent = `${fmt(b.width)} × ${fmt(b.height)} × ${fmt(r.height)} mm`;
@@ -375,38 +383,22 @@ function applyModel(r, quality) {
   if (ri && ri.status === 'solta') msg = '⚠ A argola está solta da peça! Arrasta a bola para cima da base ou carrega em «◎ Reposicionar automaticamente».';
   else if (ri && ri.status === 'fraca') msg = `⚠ Argola frágil: só ${Math.round(ri.frac * 100)}% da bola está em cima da peça — vai partir com o peso das chaves. Arrasta-a mais para dentro (≥ 30%) ou usa «◎ Reposicionar».`;
   else if (ri && ri.holeCuts) msg = '⚠ O furo da argola corta letras. Arrasta a argola para outra zona.';
-  if (S.copies === 1 && (Math.abs(S.positionX) + b.width / 2 > plateW() / 2 || Math.abs(S.positionY) + b.height / 2 > plateH() / 2)) msg = '⚠ A peça está parcialmente fora dos limites do tabuleiro.';
   $('qualityNotice').textContent = msg; $('qualityNotice').classList.toggle('warn', msg.startsWith('⚠'));
   $('overlayStatus').textContent = msg.startsWith('⚠') ? msg : `Modelo 3D · ${fmt(S.bodyThickness)} mm de base`;
   updatePrintCheck(); updateRingCheck();
-  clampToPlate(); drawMiniPlate();
+  plateChanged();
   if (autoFitAfterRebuild) { fitCamera(); autoFitAfterRebuild = false }
   requestRender();
 }
-// Mensagem de imprimibilidade: bico, camadas e sugestões concretas.
+// Os avisos de geometria usam 0,4 mm como referência. O bico real escolhe-se no slicer.
 function updatePrintCheck() {
   const p = model && model.regions.print; if (!p) return;
-  const n = fmt2(S.nozzle), layers = S.letterHeight / S.layer, exact = Math.abs(layers - Math.round(layers)) < 1e-6;
-  let html, cls = p.status;
-  if (p.status === 'ok') html = `✓ <b>Bico ${n} mm</b>: traços e espaços das letras imprimíveis.`;
-  else {
-    const parts = [];
-    if (p.stroke > 0.02) parts.push(`${Math.round(p.stroke * 100)}% do traço é mais fino que o bico (as letras podem falhar ou partir)`);
-    if (p.gap > 0.015) parts.push(`há espaços mais estreitos que o bico (as letras podem ficar «fechadas»/coladas)`);
-    const tips = [];
-    if (p.stroke > 0.02) tips.push('aumenta a «Espessura das letras»', 'aumenta o tamanho do nome', 'usa um bico mais fino');
-    if (p.gap > 0.015) tips.push('aumenta o «Espaçamento entre letras»', 'diminui a espessura', 'usa um bico mais fino');
-    tips.push('ou escolhe uma fonte com ✓ na galeria');
-    html = `⚠ <b>Bico ${n} mm</b>: ${parts.join('; ')}. Sugestão: ${[...new Set(tips)].join(', ')}.`;
-  }
-  html += `<br>Altura das letras ${fmt(S.letterHeight)} mm = ${exact ? Math.round(layers) : layers.toFixed(1).replace('.', ',')} camada(s) de ${String(S.layer).replace('.', ',')} mm${exact ? '' : ' ⚠ não é múltiplo da camada: o slicer arredonda'}. Contorno ${fmt(S.outlineWidth)} mm${S.outline && S.outlineWidth < S.nozzle * 1.1 ? ' ⚠ mais estreito que o bico' : ''}.`;
-  if (FONT_GROUP[S.font] === 'fina') html += '<br>Fonte fina: imprime melhor com letra grande, bico 0,2–0,4 e espessura +0,2 mm ou mais.';
-  const layerTip = { 0.2: '0,06–0,12 mm', 0.4: '0,12–0,20 mm', 0.6: '0,20–0,30 mm', 0.8: '0,28–0,40 mm' }[S.nozzle];
-  if (S.nozzle <= 0.2) html += `<br>💎 <b>Premium</b> (bico 0,2): letras mais perfeitas; camada recomendada ${layerTip}. Demora mais a imprimir.`;
-  else if (S.nozzle <= 0.4) html += `<br>Normal (bico 0,4), camada ${layerTip}. Para letras ainda mais perfeitas, usa bico 0,2 (premium).`;
-  else { html += `<br>⚠ <b>Bico ${n} mm não é recomendado para letras</b>: o traço fica grosso e as letras fecham. Usa 0,4 (normal) ou 0,2 (premium). <span id="minScaleTip">A calcular o tamanho mínimo para este bico…</span>`; cls = 'aviso' }
-  for (const id of ['printCheck', 'printCheck2']) { const el = $(id); el.className = 'printcheck ' + cls + (id === 'printCheck' && cls === 'ok' ? ' hidden' : ''); el.innerHTML = html.replace('id="minScaleTip"', `class="minScaleTip"`) }
-  if (p.status !== 'ok' || S.nozzle > 0.4) suggestMinScale();
+  const el = $('printCheck');
+  el.className = 'printcheck' + (p.status === 'ok' ? ' hidden' : ' ' + p.status);
+  const problems = [];
+  if (p.stroke > 0.02) problems.push(`${Math.round(p.stroke * 100)}% do traço é mais fino que o bico`);
+  if (p.gap > 0.015) problems.push('há espaços mais estreitos que o bico');
+  el.textContent = `⚠ Estimativa para bico de ${fmt2(S.nozzle)} mm: ${problems.join(' e ')}. Experimenta aumentar o nome ou escolher outra fonte.`;
 }
 function updateRingCheck() {
   const el = $('ringCheck'), ri = model && model.regions.ring;
@@ -453,21 +445,7 @@ function updateRingTag() {
   tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
 }
 setInterval(() => { if (!ringDragged && Date.now() > ringTagUntil) updateRingTag() }, 1000);
-// Calcula (no Worker) o tamanho mínimo do nome para o bico escolhido e oferece «Aumentar para X %».
-let minScaleSeq = 0;
-async function suggestMinScale() {
-  const seq = ++minScaleSeq, st = geometryState(); st.nameSize = S.nameSize;
-  let pct = null; try { pct = await geometryCall({ type: 'minScale', S: st }) } catch (e) { return }
-  if (seq !== minScaleSeq) return;
-  const w = model && model.regions.bounds ? model.regions.bounds.width : 0;
-  for (const el of document.querySelectorAll('.minScaleTip')) {
-    if (pct == null) { el.textContent = 'Mesmo a 400 % não fica bom com este bico: troca de bico ou de fonte.'; continue }
-    if (pct <= S.nameSize) { el.textContent = 'Com este tamanho já imprime, mas o detalhe fica pior do que com 0,4.'; continue }
-    el.innerHTML = `Para este bico o nome tem de ter pelo menos <b>${pct}%</b> (≈ ${Math.round(w * pct / S.nameSize)} mm de largura). <button class="tiny growBtn">Aumentar para ${pct}%</button>`;
-    el.querySelector('.growBtn').onclick = () => { S.nameSize = pct; S.ringManual = false; $('nameSize').value = pct; updateRangeLabels(); scheduleRebuild(true); scheduleScan() };
-  }
-}
-function partColor(id) { return { base: S.baseColor, letters: S.letterColor, outline: S.outlineColor, back: S.letterColor }[id] }
+function partColor(id, state = S) { return { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
 
 // ---------------------------------------------------------------- WebGL
@@ -505,7 +483,7 @@ function packMesh(mesh, col) {
 }
 function uploadOneMesh(c) { if (!gl) return; if (c.glBuffer) gl.deleteBuffer(c.glBuffer); c.glBuffer = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, c.glBuffer); gl.bufferData(gl.ARRAY_BUFFER, packMesh(c.mesh, c.color), gl.STATIC_DRAW); c.vertexCount = c.mesh.indices.length }
 function uploadMeshBuffers() { if (gl) for (const c of components) uploadOneMesh(c) }
-function releaseMeshBuffers() { if (gl) for (const c of components) if (c.glBuffer) gl.deleteBuffer(c.glBuffer) }
+function releaseMeshBuffers(meshes = components) { if (gl) for (const c of meshes) if (c.glBuffer) gl.deleteBuffer(c.glBuffer) }
 function packRaw(vertices, col) { const arr = new Float32Array(vertices.length * 9), c = rgb(col); for (let k = 0; k < vertices.length; k++) { const p = vertices[k]; arr.set([p[0], p[1], p[2], p[3] || 0, p[4] || 0, p[5] || 1, c[0], c[1], c[2]], k * 9) } return arr }
 function makeBuffer(data) { const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW); return { buf: b, n: data.length / 9 } }
 function rebuildBed() {
@@ -523,8 +501,8 @@ function pixelRatio() { return Math.min(window.devicePixelRatio || 1, 2) }
 function resizeCanvas() { const r = $('viewport').getBoundingClientRect(), ratio = pixelRatio(); $('gl').width = Math.max(1, Math.round(r.width * ratio)); $('gl').height = Math.max(1, Math.round(r.height * ratio)); if (gl) gl.viewport(0, 0, $('gl').width, $('gl').height) }
 function bindBufferAndDraw(buffer, n, mode, offset) { if (!buffer) return; gl.bindBuffer(gl.ARRAY_BUFFER, buffer); const stride = 36; for (const [key, i] of [['position', 0], ['normal', 3], ['color', 6]]) { gl.enableVertexAttribArray(attrib[key]); gl.vertexAttribPointer(attrib[key], 3, gl.FLOAT, false, stride, i * 4) } gl.uniform2f(uniform.offset, offset[0], offset[1]); gl.drawArrays(mode, 0, n) }
 function requestRender() { if (renderQueued) return; renderQueued = true; requestAnimationFrame(() => { renderQueued = false; render3D() }) }
-function materialFor(id) {
-  const f = S.filaments[id === 'back' ? 'letters' : id], sr = f ? f.series : '';
+function materialFor(id, state = S) {
+  const f = state.filaments[id === 'back' ? 'letters' : id], sr = f ? f.series : '';
   if (/Silk/i.test(sr)) return [.55, 36, .9];
   if (/Matte/i.test(sr)) return [.02, 8, .15];
   if (/PETG/i.test(sr)) return [.35, 60, .4];
@@ -538,8 +516,16 @@ function render3D() {
   gl.uniform1f(uniform.distance, PERSPECTIVE); gl.uniform2f(uniform.viewport, c.width, c.height); gl.uniform2f(uniform.pan, camera.panX * ratio, camera.panY * ratio); gl.uniform3f(uniform.center, camera.cx, camera.cy, camera.cz);
   gl.uniform3f(uniform.mat, .05, 16, 0); gl.uniform4f(uniform.tint, 0, 0, 0, 0);
   if (Math.cos(camera.yaw) > -.18) { bindBufferAndDraw(plateBuffer && plateBuffer.buf, plateBuffer && plateBuffer.n, gl.TRIANGLES, [0, 0]); bindBufferAndDraw(gridBuffer && gridBuffer.buf, gridBuffer && gridBuffer.n, gl.LINES, [0, 0]) }
-  for (const pos of objectPositions()) for (const m of components) if (m.glBuffer) { const mt = materialFor(m.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
+  for (const pos of objectPositions()) for (const m of (pos.piece === activePiece ? components : pos.piece.components)) if (m.glBuffer) { const mt = materialFor(m.id, pieceState(pos.piece)); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
   // Argola «fantasma» durante o arrasto: desenhada direto na GPU, segue o cursor sem recalcular a peça.
+  if (S.plateView && plateSelection) {
+    const selected = objectPositions().find(p => p.piece === plateSelection.piece && p.index === plateSelection.index);
+    if (selected) {
+      gl.uniform4f(uniform.tint, .15, .62, 1, .3);
+      for (const mesh of selected.piece.components) bindBufferAndDraw(mesh.glBuffer, mesh.vertexCount, gl.TRIANGLES, [selected.x, selected.y]);
+      gl.uniform4f(uniform.tint, 0, 0, 0, 0);
+    }
+  }
   if (ringGhost && ringGhostBuf) { const pos = objectPositions()[0], st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
   // Câmara da argola: desenha-se num canto, copia-se para o quadro fixo no topo e volta a desenhar-se a cena por cima.
   if (ringGhost && loupeOn) { if (!loupePass) { renderLoupe(c, ratio); loupePass = true; try { render3D() } finally { loupePass = false } return } } else $('loupe').classList.add('hidden');
@@ -668,7 +654,7 @@ function selectAt(evt, extra = 0) {
 
 // ---------------------------------------------------------------- rato
 // Esquerdo: rodar · Esquerdo + direito, direito, roda premida ou Shift+esquerdo: deslocar a VISTA (pan)
-// Ctrl+arrastar no plate: mover a peça · Roda: zoom em torno do cursor · Clique: selecionar.
+// Tabuleiro: arrastar uma peça para a mover. Roda: zoom em torno do cursor.
 // Botões em event.buttons: esquerdo = 1, direito = 2, meio = 4; esquerdo+direito = 3.
 function bindViewerEvents() {
   const canvas = $('gl');
@@ -677,7 +663,7 @@ function bindViewerEvents() {
   const startPan = d => {
     // Repõe o que o primeiro botão possa ter mexido antes de o segundo ser premido.
     if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch }
-    if (d.kind === 'move') { S.positionX = d.originalX; S.positionY = d.originalY; clampToPlate(); drawMiniPlate() }
+    if (d.kind === 'move' && d.moved) restorePlatePosition(d);
     if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; interactiveBuild = false; endRingGhost(); if (d.moved) scheduleRebuild(true) }
     d.kind = 'pan'; d.chord = true; canvas.parentElement.classList.add('dragging'); requestRender();
   };
@@ -688,7 +674,7 @@ function bindViewerEvents() {
     if (e.pointerType === 'touch') {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2) {
-        const d = dragAction; if (d && d.kind !== 'pinch') { if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch } if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; endRingGhost(); scheduleRebuild(true) } }
+        const d = dragAction; if (d && d.kind !== 'pinch') { if (d.kind === 'move' && d.moved) restorePlatePosition(d); if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch } if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; endRingGhost(); scheduleRebuild(true) } }
         const p0 = pinchState(); dragAction = { kind: 'pinch', p0, s0: camera.scale, px: camera.panX, py: camera.panY, chord: true }; touchLock = true;
         try { canvas.setPointerCapture(e.pointerId) } catch (err) { }
         return;
@@ -697,12 +683,17 @@ function bindViewerEvents() {
     }
     if (dragAction) { if ((e.buttons & 3) === 3 && dragAction.kind !== 'pan') startPan(dragAction); return }
     const both = (e.buttons & 3) === 3, left = e.button === 0 && !both;
-    const clicked = left ? selectAt(e, e.pointerType === 'touch' ? 26 / camera.scale : 0) : '';
+    const point = S.plateView ? platePoint(e) : null;
+    const hit = left && point ? plateHit(point) : null;
+    const clicked = left && !S.plateView ? selectAt(e, e.pointerType === 'touch' ? 26 / camera.scale : 0) : '';
     let kind = 'rotate';
     if (!left || e.shiftKey) kind = 'pan';
-    else if (e.ctrlKey && S.plateView) kind = 'move';
+    else if (S.plateView) {
+      setPlateSelection(hit);
+      kind = hit ? 'move' : 'pan';
+    }
     else if (clicked === 'ring') kind = 'ring';
-    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, yaw: camera.yaw, pitch: camera.pitch, originalX: S.positionX, originalY: S.positionY, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
+    dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
     canvas.setPointerCapture(e.pointerId);
     if (kind === 'pan') canvas.parentElement.classList.add('dragging');
   });
@@ -710,7 +701,7 @@ function bindViewerEvents() {
   canvas.addEventListener('mousedown', e => { if (dragAction && (e.buttons & 3) === 3 && dragAction.kind !== 'pan') startPan(dragAction) });
   let hoverT = 0;
   canvas.addEventListener('pointermove', e => {
-    if (!dragAction && e.buttons === 0 && performance.now() - hoverT > 60) { hoverT = performance.now(); canvas.style.cursor = selectAt(e) === 'ring' ? 'move' : fontMode ? 'ns-resize' : '' }
+    if (!dragAction && e.buttons === 0 && performance.now() - hoverT > 60) { hoverT = performance.now(); canvas.style.cursor = S.plateView ? (plateHit(platePoint(e)) ? 'move' : '') : selectAt(e) === 'ring' ? 'move' : fontMode ? 'ns-resize' : '' }
   });
   canvas.addEventListener('pointermove', e => {
     if (e.pointerType === 'touch' && touches.has(e.pointerId)) {
@@ -727,7 +718,7 @@ function bindViewerEvents() {
     if (e.pointerType === 'mouse' && e.buttons === 0) { endDrag(e); return }
     if ((e.buttons & 3) === 3 && d.kind !== 'pan') startPan(d);
     const dx = e.clientX - d.lastX, dy = e.clientY - d.lastY; d.lastX = e.clientX; d.lastY = e.clientY;
-    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
+    if (!d.moved && Math.abs(e.clientX - d.startX) + Math.abs(e.clientY - d.startY) > 3) { d.moved = true; if (d.kind === 'move') d.savedPlacements = pieces.map(piece => [piece, new Map(piece.placements)]); if (d.kind === 'ring') { selectTab('ring'); ringDragged = true } }
     if (!d.moved) return;
     if (d.kind === 'pan') { camera.panX += dx; camera.panY += dy; requestRender() }
     else if (d.kind === 'ring') {
@@ -744,12 +735,15 @@ function bindViewerEvents() {
         ringGhost.x = p.x; ringGhost.y = p.y; ringGhost.status = ghostStatus(p.x, p.y); requestRender();
       }
     }
-    else if (d.kind === 'move') { S.positionX = d.originalX + (e.clientX - d.startX) / camera.scale; S.positionY = d.originalY - (e.clientY - d.startY) / camera.scale; clampToPlate(); drawMiniPlate(); requestRender() }
+    else if (d.kind === 'move') {
+      const point = platePoint(e);
+      if (point) movePlatePiece(d.hit, d.hit.x + point.x - d.point.x, d.hit.y + point.y - d.point.y);
+    }
     else { camera.yaw += dx * .008; camera.pitch = Math.max(-1.1, Math.min(1.1, camera.pitch + dy * .008)); requestRender() }
   });
   const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
-    if (!d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
+    if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
       endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
@@ -763,7 +757,7 @@ function bindViewerEvents() {
     return false;
   };
   canvas.addEventListener('pointerup', e => { if (touchEnd(e)) return; if (dragAction && e.pointerId === dragAction.id && e.buttons === 0) endDrag(e) });
-  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; endDrag(e) });
+  canvas.addEventListener('pointercancel', e => { if (touchEnd(e)) return; if (dragAction?.kind === 'move' && dragAction.moved) restorePlatePosition(dragAction); endDrag(e) });
   canvas.addEventListener('lostpointercapture', () => { if (dragAction && dragAction.kind !== 'pinch') endDrag() });
   let wheelAcc = 0;
   canvas.addEventListener('wheel', e => {
@@ -782,58 +776,320 @@ function bindViewerEvents() {
 // ---------------------------------------------------------------- pré-visualização sem WebGL
 function renderFallback() {
   if (!fallbackCtx || !model) return;
-  const c = $('gl'), ctx = fallbackCtx, r = c.width / Math.max(1, c.clientWidth), back = Math.cos(camera.yaw) < 0, R = model.regions;
+  const c = $('gl'), ctx = fallbackCtx, r = c.width / Math.max(1, c.clientWidth), back = Math.cos(camera.yaw) < 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0d1520'; ctx.fillRect(0, 0, c.width, c.height); ctx.setTransform(r, 0, 0, r, 0, 0);
   const drawPaths = (paths, dx, dy, fill) => { if (!paths || !paths.length) return; ctx.beginPath(); for (const p of paths) p.forEach((q, i) => { const s = project(q.X / SparrowGeo.SCALE + dx, q.Y / SparrowGeo.SCALE + dy, 0); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y) }), ctx.closePath(); ctx.fillStyle = fill; ctx.fill('evenodd') };
   if (Math.cos(camera.yaw) > -.18) { const w = plateW() / 2 * 1e4, h = plateH() / 2 * 1e4; drawPaths([[{ X: -w, Y: -h }, { X: w, Y: -h }, { X: w, Y: h }, { X: -w, Y: h }]], 0, 0, '#1e3345') }
   for (const pos of objectPositions()) {
-    drawPaths(R.base, pos.x, pos.y, S.baseColor);
-    if (back) drawPaths(R.back, pos.x, pos.y, S.back === 'engraved' ? '#16416b' : S.letterColor);
-    else { drawPaths(R.outline, pos.x, pos.y, S.outlineColor); drawPaths(R.text, pos.x, pos.y, S.front === 'engraved' ? '#1b5684' : S.front === 'cutout' ? '#102030' : S.letterColor) }
+    const R = pos.piece.model.regions, state = pieceState(pos.piece);
+    drawPaths(R.base, pos.x, pos.y, state.baseColor);
+    if (back) drawPaths(R.back, pos.x, pos.y, state.back === 'engraved' ? '#16416b' : state.letterColor);
+    else { drawPaths(R.outline, pos.x, pos.y, state.outlineColor); drawPaths(R.text, pos.x, pos.y, state.front === 'engraved' ? '#1b5684' : state.front === 'cutout' ? '#102030' : state.letterColor) }
   }
 }
 
 // ---------------------------------------------------------------- tabuleiro
 const PLATE_MARGIN = 5;
-function modelBounds() { const b = model && model.regions.bounds; return b ? { minX: b.minX, maxX: b.maxX, minY: b.minY, maxY: b.maxY, width: b.width, height: b.height } : { minX: -35, maxX: 35, minY: -16, maxY: 16, width: 70, height: 32 } }
-function clampToPlate() {
-  if (!model) return;
-  const b = modelBounds(), hx = plateW() / 2 - PLATE_MARGIN, hy = plateH() / 2 - PLATE_MARGIN, loX = -hx - b.minX, hiX = hx - b.maxX, loY = -hy - b.minY, hiY = hy - b.maxY;
-  if (loX > hiX) S.positionX = (loX + hiX) / 2; else S.positionX = Math.min(hiX, Math.max(loX, S.positionX));
-  if (loY > hiY) S.positionY = (loY + hiY) / 2; else S.positionY = Math.min(hiY, Math.max(loY, S.positionY));
-  for (const side of [loX, hiX]) if (Math.abs(S.positionX - side) < 1.4) S.positionX = side;
-  for (const side of [loY, hiY]) if (Math.abs(S.positionY - side) < 1.4) S.positionY = side;
+const pieceGap = () => S.printMode === 'sequential' ? 32 : 6;
+const EXAMPLE_NAMES = ['Filipe', 'André', 'Rodrigo', 'David'];
+const pieces = [];
+let activePiece = makePiece();
+let platePage = 0, plateSelection = null, cachedPlan = null;
+
+function makePiece(state = null) {
+  const piece = { state, model: null, components: [], placements: new Map(), previewKey: null };
+  pieces.push(piece);
+  return piece;
 }
-function layoutPlan() {
-  const b = modelBounds(), gap = S.printMode === 'sequential' ? 32 : 6, innerW = plateW() - PLATE_MARGIN * 2, innerH = plateH() - PLATE_MARGIN * 2;
-  const cols = Math.max(0, Math.floor((innerW + gap) / (b.width + gap))), rows = Math.max(0, Math.floor((innerH + gap) / (b.height + gap)));
-  const capacity = cols * rows;
-  if (S.copies === 1) { const positions = [{ x: S.positionX, y: S.positionY, plate: 0 }]; return { positions, plates: [positions], capacity: capacity >= 1 ? capacity : 0, gap, b } }
-  // As cópias que não cabem passam para tabuleiros seguintes (o Bambu Studio aceita até 36).
-  const grid = (count, plate) => { const useCols = Math.min(cols, Math.max(1, Math.ceil(count / Math.max(1, rows)))), useRows = Math.ceil(count / useCols), out = []; for (let i = 0; i < count; i++) { const c = i % useCols, r = Math.floor(i / useCols), rowCount = Math.min(useCols, count - r * useCols); out.push({ x: (c - (rowCount - 1) / 2) * (b.width + gap) - (b.minX + b.maxX) / 2, y: ((useRows - 1) / 2 - r) * (b.height + gap) - (b.minY + b.maxY) / 2, plate }) } return out };
-  const plates = []; for (let left = capacity ? S.copies : 0; left > 0 && plates.length < 36; left -= capacity) plates.push(grid(Math.min(left, capacity), plates.length));
-  return { positions: plates[0] || [], plates, capacity, gap, b };
+function pieceState(piece) { return piece === activePiece ? S : piece.state }
+function editableState() {
+  return { ...geometryState(), copies: S.copies, filaments: { ...S.filaments }, _heightBefore: S._heightBefore, _tipBefore: S._tipBefore };
 }
-function objectPositions() { return layoutPlan().positions }
-function drawMiniPlate() {
-  const mini = $('miniPlate'), el = $('plateObject'); if (!mini || !el || !model) return;
-  const data = layoutPlan(), W = plateW(), H = plateH(), b = data.b; mini.style.aspectRatio = `${W} / ${H}`;
-  $('platePreset').textContent = PRINTERS[S.printer][0].toUpperCase(); $('plateXY').textContent = `${W} × ${H} mm`; $('copyVal').textContent = S.copies === 1 ? '1 peça' : `${S.copies} peças`;
-  mini.querySelectorAll('.extraPlateObject').forEach(e => e.remove());
-  data.positions.forEach((pos, i) => { const node = i === 0 ? el : document.createElement('div'); if (i > 0) { node.className = 'extraPlateObject'; mini.appendChild(node) } node.style.width = `${100 * b.width / W}%`; node.style.height = `${100 * b.height / H}%`; node.style.left = `${(50 + (pos.x + b.minX) / W * 100).toFixed(3)}%`; node.style.top = `${(50 - (pos.y + b.maxY) / H * 100).toFixed(3)}%`; node.textContent = S.copies === 1 ? (S.name || 'Peça') : String(i + 1) });
-  el.classList.toggle('multi', S.copies > 1);
-  const tooBig = b.width > W - PLATE_MARGIN * 2 || b.height > H - PLATE_MARGIN * 2;
-  let msg = `Área útil estimada: ${W - 2 * PLATE_MARGIN} × ${H - 2 * PLATE_MARGIN} mm · margem de ${PLATE_MARGIN} mm. `;
-  if (tooBig) msg += '⚠ A peça é demasiado grande para este tabuleiro.'; else if (data.plates.length > 1) msg += `Cabem ${data.capacity} por tabuleiro: as ${S.copies} cópias vão em ${data.plates.length} tabuleiros (aqui vês o 1.º).`; else msg += `Cabem ${data.positions.length} peça(s) no planeamento atual.`;
-  if (S.printMode === 'sequential') msg += ' ⚠ Os 32 mm de separação são apenas uma estimativa: verifica as colisões da cabeça e o pórtico no slicer.';
-  $('plateWarnings').textContent = msg;
+function previewKey(state, quality) {
+  const keys = geometryState(state);
+  if (!keys.ringManual) keys.ringX = keys.ringY = 0;
+  return JSON.stringify([keys, quality]);
 }
-function initPlateDrag() {
-  const mini = $('miniPlate'), obj = $('plateObject'); let pointer = null;
-  obj.addEventListener('pointerdown', e => { if (S.copies > 1) return; pointer = { x: e.clientX, y: e.clientY, startX: S.positionX, startY: S.positionY }; obj.setPointerCapture(e.pointerId); e.stopPropagation(); e.preventDefault() });
-  obj.addEventListener('pointermove', e => { if (!pointer) return; const r = mini.getBoundingClientRect(); S.positionX = pointer.startX + (e.clientX - pointer.x) / r.width * plateW(); S.positionY = pointer.startY - (e.clientY - pointer.y) / r.height * plateH(); clampToPlate(); drawMiniPlate(); requestRender() });
-  for (const ev of ['pointerup', 'pointercancel']) obj.addEventListener(ev, () => { pointer = null; drawMiniPlate() });
-  mini.addEventListener('pointerdown', e => { if (S.copies > 1 || e.target !== mini) return; const r = mini.getBoundingClientRect(), b = modelBounds(); S.positionX = ((e.clientX - r.left) / r.width - .5) * plateW() - (b.minX + b.maxX) / 2; S.positionY = (.5 - (e.clientY - r.top) / r.height) * plateH() - (b.minY + b.maxY) / 2; clampToPlate(); drawMiniPlate(); requestRender() });
+async function refreshInactivePiece(piece, state, quality) {
+  const key = previewKey(state, quality);
+  if (key === piece.previewKey) return;
+  try {
+    const result = await geometryCall({ type: 'build', S: state, quality });
+    if (piece === activePiece || piece.state !== state) return;
+    releaseMeshBuffers(piece.components);
+    piece.model = result;
+    piece.components = result.parts.map(part => ({ ...part, color: partColor(part.id, state) }));
+    piece.components.forEach(uploadOneMesh);
+    piece.previewKey = key;
+    plateChanged();
+  } catch (error) {
+    console.error(error);
+    $('qualityNotice').textContent = 'Erro na geração de «' + state.name + '»: ' + error.message.split('\n')[0];
+  }
+}
+function activatePiece(piece) {
+  if (piece !== activePiece) {
+    const previous = activePiece;
+    previous.state = editableState();
+    activePiece = piece;
+    refreshInactivePiece(previous, previous.state, S.quality);
+    Object.assign(S, piece.state);
+    model = piece.model;
+    components = piece.components;
+    pickerPart = null;
+    clearTimeout(fontSettle);
+    interactiveBuild = false;
+    ++scanSeq;
+    fontScan = {};
+    updateControls();
+    scheduleRebuild(true);
+    scheduleScan();
+    autoFitAfterRebuild = true;
+  }
+  selectTab('letters');
+}
+
+function fitsPlate(placement, neighbors, width = plateW(), height = plateH(), gap = pieceGap()) {
+  const { left, right, top, bottom } = placement;
+  if (left < -width / 2 + PLATE_MARGIN - 1e-6 || right > width / 2 - PLATE_MARGIN + 1e-6 ||
+      bottom < -height / 2 + PLATE_MARGIN - 1e-6 || top > height / 2 - PLATE_MARGIN + 1e-6) return false;
+  return neighbors.every(p => right + gap <= p.left + 1e-6 || p.right + gap <= left + 1e-6 ||
+    top + gap <= p.bottom + 1e-6 || p.top + gap <= bottom + 1e-6);
+}
+function place(piece, index, bounds, x, y, plate) {
+  return { piece, index, x, y, plate, left: x + bounds.minX, right: x + bounds.maxX, top: y + bounds.maxY, bottom: y + bounds.minY };
+}
+function arrangePiece(piece, index, bounds, neighbors, plate, width, height, gap) {
+  const left = -width / 2 + PLATE_MARGIN - bounds.minX, top = height / 2 - PLATE_MARGIN - bounds.maxY;
+  const xs = [left, ...neighbors.map(p => p.right + gap - bounds.minX)];
+  const ys = [top, ...neighbors.map(p => p.bottom - gap - bounds.maxY)];
+  xs.sort((a, b) => a - b);
+  ys.sort((a, b) => b - a);
+  for (const y of ys) {
+    for (const x of xs) {
+      const candidate = place(piece, index, bounds, x, y, plate);
+      if (fitsPlate(candidate, neighbors, width, height, gap)) return candidate;
+    }
+  }
+  return null;
+}
+function layoutPlan(models, states, placements, { plateW: width, plateH: height, gap }) {
+  const plates = [[]], pending = [], oversized = new Set();
+  for (const [piece, result] of models) {
+    const bounds = result?.regions.bounds;
+    if (!bounds) continue;
+    if (bounds.width > width - 2 * PLATE_MARGIN || bounds.height > height - 2 * PLATE_MARGIN) {
+      oversized.add(piece);
+      continue;
+    }
+    const copies = states.get(piece).copies;
+    for (let index = 0; index < copies; index++) {
+      const manual = placements.get(piece).get(index);
+      if (manual) {
+        const candidate = place(piece, index, bounds, manual.x, manual.y, manual.plate);
+        if (fitsPlate(candidate, plates[manual.plate] || [], width, height, gap)) {
+          while (plates.length <= manual.plate) plates.push([]);
+          plates[manual.plate].push(candidate);
+          continue;
+        }
+      }
+      pending.push({ piece, index, bounds });
+    }
+  }
+  for (const { piece, index, bounds } of pending) {
+    const centered = place(piece, index, bounds, -(bounds.minX + bounds.maxX) / 2, -(bounds.minY + bounds.maxY) / 2, 0);
+    if (pending.length === 1 && plates.length === 1 && !plates[0].length && fitsPlate(centered, [], width, height, gap)) {
+      plates[0].push(centered);
+      continue;
+    }
+    let candidate;
+    for (let plate = 0; plate < plates.length && !candidate; plate++) {
+      candidate = arrangePiece(piece, index, bounds, plates[plate], plate, width, height, gap);
+    }
+    if (!candidate && plates.length < 36) {
+      candidate = arrangePiece(piece, index, bounds, [], plates.length, width, height, gap);
+      if (candidate) plates.push([]);
+    }
+    if (!candidate) oversized.add(piece);
+    else plates[candidate.plate].push(candidate);
+  }
+  return { plates, oversized };
+}
+function currentPlan() {
+  return cachedPlan ||= layoutPlan(
+    new Map(pieces.map(piece => [piece, piece.model])),
+    new Map(pieces.map(piece => [piece, pieceState(piece)])),
+    new Map(pieces.map(piece => [piece, piece.placements])),
+    { plateW: plateW(), plateH: plateH(), gap: pieceGap() }
+  );
+}
+function objectPositions() {
+  if (S.plateView) return currentPlan().plates[platePage] || [];
+  return [{ piece: activePiece, x: S.positionX, y: S.positionY }];
+}
+function renderNameList() {
+  const list = $('nameList');
+  list.replaceChildren();
+  list.classList.toggle('hidden', pieces.length < 2);
+  for (const piece of pieces) {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = pieceState(piece).name || 'Nome';
+    button.classList.toggle('on', piece === activePiece);
+    button.onclick = () => activatePiece(piece);
+    list.append(button);
+  }
+}
+function updatePlatePanel() {
+  const { plates, oversized } = currentPlan();
+  platePage = Math.min(platePage, plates.length - 1);
+  const positions = plates[platePage];
+  $('plateXY').textContent = plateLabel();
+  $('platePage').textContent = `${platePage + 1} / ${plates.length}`;
+  $('prevPlate').disabled = platePage === 0;
+  $('nextPlate').disabled = platePage >= plates.length - 1;
+  const overflow = [...oversized].map(piece => pieceState(piece).name || 'Nome').join(', ');
+  $('plateWarnings').textContent = overflow ? `Peças fora da área disponível: ${overflow}.` :
+    `${positions.length} peça(s) neste tabuleiro · margem de ${PLATE_MARGIN} mm`;
+  const selected = plateSelection && positions.find(p => p.piece === plateSelection.piece && p.index === plateSelection.index);
+  $('plateSelection').classList.toggle('hidden', !selected);
+  $('editPiece').textContent = selected ? `Editar ${pieceState(selected.piece).name || 'nome'}` : 'Editar peça';
+}
+function plateChanged() {
+  cachedPlan = null;
+  updatePlatePanel();
+  requestRender();
+}
+function changePlateSize() {
+  for (const piece of pieces) piece.placements.clear();
+  platePage = 0;
+  plateSelection = null;
+  $('customPlate').classList.toggle('hidden', S.printer !== 'custom');
+  $('machineBadge').textContent = plateLabel();
+  rebuildBed();
+  plateChanged();
+  if (S.plateView) fitCamera();
+}
+function setPlateSelection(selection) {
+  plateSelection = selection;
+  $('plateCorner').value = '';
+  updatePlatePanel();
+  requestRender();
+}
+function platePoint(event) {
+  const rect = $('gl').getBoundingClientRect();
+  return unproject(event.clientX - rect.left, event.clientY - rect.top, 0);
+}
+function plateHit(point) {
+  if (!point) return null;
+  return (currentPlan().plates[platePage] || []).find(p =>
+    point.x >= p.left && point.x <= p.right && point.y >= p.bottom && point.y <= p.top) || null;
+}
+function movePlatePiece(hit, x, y) {
+  const { piece, index, plate } = hit, bounds = piece.model.regions.bounds;
+  const hx = plateW() / 2 - PLATE_MARGIN, hy = plateH() / 2 - PLATE_MARGIN;
+  const candidate = place(piece, index, bounds,
+    Math.min(hx - bounds.maxX, Math.max(-hx - bounds.minX, x)),
+    Math.min(hy - bounds.maxY, Math.max(-hy - bounds.minY, y)), plate);
+  const neighbors = currentPlan().plates[plate].filter(p => p.piece !== piece || p.index !== index);
+  if (!fitsPlate(candidate, neighbors)) return false;
+  // Reserva as outras posições deste tabuleiro para mover apenas a peça selecionada.
+  for (const p of neighbors) p.piece.placements.set(p.index, { x: p.x, y: p.y, plate });
+  piece.placements.set(index, { x: candidate.x, y: candidate.y, plate });
+  plateChanged();
+  return true;
+}
+function restorePlatePosition(drag) {
+  for (const [p, placements] of drag.savedPlacements) p.placements = placements;
+  plateChanged();
+}
+async function addNames(names) {
+  if (!model || !names.length) return;
+  const before = editableState(), quality = S.quality;
+  $('addName').disabled = $('addExamples').disabled = true;
+  $('addNameForm').querySelector('button').disabled = true;
+  try {
+    const built = [];
+    for (const name of names) {
+      const state = { ...before, name, ringManual: false, copies: 1, filaments: { ...before.filaments } };
+      const result = await geometryCall({ type: 'build', S: state, quality });
+      built.push({ state, result });
+    }
+    const newPieces = built.map(({ state, result }) => {
+      const piece = makePiece(state);
+      piece.model = result;
+      piece.components = result.parts.map(part => ({ ...part, color: partColor(part.id, state) }));
+      piece.components.forEach(uploadOneMesh);
+      piece.previewKey = previewKey(state, quality);
+      return piece;
+    });
+    const piece = newPieces.at(-1);
+    plateChanged();
+    activatePiece(piece);
+    selectTab('plate');
+    const plan = currentPlan();
+    const page = plan.plates.findIndex(positions => positions.some(p => p.piece === piece));
+    if (page >= 0) {
+      platePage = page;
+      setPlateSelection(plan.plates[page].find(p => p.piece === piece));
+    }
+    return true;
+  } catch (error) {
+    console.error(error);
+    $('qualityNotice').textContent = 'Erro ao adicionar nome: ' + error.message;
+    return false;
+  } finally {
+    renderNameList();
+    plateChanged();
+    $('addName').disabled = $('addExamples').disabled = false;
+    $('addNameForm').querySelector('button').disabled = false;
+  }
+}
+function bindPlateControls() {
+  const form = $('addNameForm'), input = $('newName');
+  for (const name of EXAMPLE_NAMES) {
+    const option = document.createElement('option');
+    option.value = name;
+    $('exampleNames').append(option);
+  }
+  function showForm(show) {
+    form.classList.toggle('hidden', !show);
+    $('addName').setAttribute('aria-expanded', String(show));
+    if (show) input.focus();
+  }
+  $('addName').onclick = () => showForm(form.classList.contains('hidden'));
+  input.onkeydown = event => { if (event.key === 'Escape') { showForm(false); $('addName').focus() } };
+  form.onsubmit = async event => {
+    event.preventDefault();
+    const name = input.value.trim();
+    if (!name) return;
+    if (!await addNames([name])) return;
+    input.value = '';
+    showForm(false);
+    $('addName').focus();
+  };
+  $('addExamples').onclick = () => addNames(EXAMPLE_NAMES.filter(name => !pieces.some(piece => pieceState(piece).name === name)));
+  $('prevPlate').onclick = () => { platePage--; setPlateSelection(null) };
+  $('nextPlate').onclick = () => { platePage++; setPlateSelection(null) };
+  $('editPiece').onclick = () => { if (plateSelection) activatePiece(plateSelection.piece) };
+  $('autoArrange').onclick = () => {
+    for (const piece of pieces) piece.placements.clear();
+    platePage = 0;
+    setPlateSelection(null);
+    plateChanged();
+  };
+  $('plateCorner').onchange = () => {
+    const choice = $('plateCorner').value;
+    if (!choice || !plateSelection) return;
+    const { piece } = plateSelection, bounds = piece.model.regions.bounds;
+    const [x, y] = choice.split(',');
+    const hx = plateW() / 2 - PLATE_MARGIN, hy = plateH() / 2 - PLATE_MARGIN;
+    if (!movePlatePiece(plateSelection, x === 'left' ? -hx - bounds.minX : hx - bounds.maxX,
+      y === 'top' ? hy - bounds.maxY : -hy - bounds.minY)) {
+      $('plateWarnings').textContent = 'O canto já está ocupado. Escolhe outro canto ou move a outra peça.';
+    }
+    $('plateCorner').value = '';
+  };
 }
 function bindViewCube() {
   document.querySelectorAll('.viewCube button').forEach(b => b.onclick = () => {
@@ -847,11 +1103,13 @@ function bindViewCube() {
 // ---------------------------------------------------------------- exportação
 function download(data, filename, type) { const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data], { type })), a = document.createElement('a'); a.href = url; a.download = filename; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000) }
 function safeName(n) { return (n || 'nome').normalize('NFKD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 28) }
-function stlBytes(meshes, positions = objectPositions()) {
-  const count = meshes.reduce((s, m) => s + m.indices.length / 3, 0) * positions.length; if (!count) return null;
+function stlBytes(positions, models) {
+  const count = positions.reduce((sum, pos) => sum + models.get(pos.piece).union.indices.length / 3, 0);
+  if (!count) return null;
   const ab = new ArrayBuffer(84 + count * 50), view = new DataView(ab), hdr = new TextEncoder().encode('SparrowTech 3D Studio v5 / malha vetorial fechada, milimetros');
   new Uint8Array(ab, 0, Math.min(80, hdr.length)).set(hdr.slice(0, 80)); view.setUint32(80, count, true); let off = 84;
-  for (const pos of positions) for (const m of meshes) {
+  for (const pos of positions) {
+    const m = models.get(pos.piece).union;
     const P = m.positions, I = m.indices;
     for (let k = 0; k < I.length; k += 3) {
       const a = I[k] * 3, b = I[k + 1] * 3, c = I[k + 2] * 3, ux = P[b] - P[a], uy = P[b + 1] - P[a + 1], uz = P[b + 2] - P[a + 2], vx = P[c] - P[a], vy = P[c + 1] - P[a + 1], vz = P[c + 2] - P[a + 2];
@@ -863,32 +1121,59 @@ function stlBytes(meshes, positions = objectPositions()) {
   return new Blob([ab], { type: 'model/stl' });
 }
 async function withBusy(button, label, fn) { const old = button.textContent; button.disabled = true; button.textContent = label; try { await fn() } catch (e) { console.error(e); alert('Erro na exportação: ' + e.message.split('\n')[0]) } finally { button.disabled = false; button.textContent = old } }
-// STL: um único sólido por cópia (sem cores). Um ficheiro por tabuleiro quando as cópias não cabem num só.
+// A exportação usa a revisão atual de cada nome, mesmo durante uma reconstrução da vista.
+async function exportPlan(union) {
+  const size = { plateW: plateW(), plateH: plateH() }, gap = pieceGap(), quality = S.quality;
+  const states = new Map(pieces.map(piece => {
+    const state = pieceState(piece);
+    return [piece, { ...state, filaments: { ...state.filaments } }];
+  }));
+  const placements = new Map(pieces.map(piece => [piece, new Map(piece.placements)]));
+  const models = new Map();
+  for (const [piece, state] of states) {
+    const result = await geometryCall({ type: 'build', S: state, quality, union });
+    if (!result.regions.bounds || !result.parts.length) throw new Error(`Sem malha para «${state.name || 'Nome'}».`);
+    models.set(piece, result);
+  }
+  const { plates, oversized } = layoutPlan(models, states, placements, { ...size, gap });
+  if (oversized.size) throw new Error('Peças fora da área disponível: ' + [...oversized].map(piece => states.get(piece).name || 'Nome').join(', '));
+  const title = states.size > 1 ? 'Tabuleiro' : (states.values().next().value.name || 'Nome');
+  return { plates, models, states, size, title };
+}
 async function exportSTL() {
-  if (!components.length) { alert('Ainda não existe modelo.'); return }
-  const plan = layoutPlan(); if (!plan.plates.length) { alert('A peça é demasiado grande para este tabuleiro.'); return }
+  if (!model) return;
   return withBusy($('dlSTL'), '⏳ STL', async () => {
-    const r = await geometryCall({ type: 'build', S: geometryState(), quality: S.quality, union: true });
-    plan.plates.forEach((pos, i) => { const b = stlBytes([r.union], pos); if (b) download(b, `SparrowTech_${safeName(S.name)}${plan.plates.length > 1 ? '_tabuleiro' + (i + 1) : ''}.stl`) });
-    $('qualityNotice').textContent = `STL exportado: ${S.copies} peça(s)${plan.plates.length > 1 ? ' em ' + plan.plates.length + ' ficheiros (um por tabuleiro)' : ''}, sem cores.`;
+    const { plates, models, title } = await exportPlan(true);
+    plates.forEach((positions, i) => {
+      const blob = stlBytes(positions, models);
+      if (blob) download(blob, `SparrowTech_${safeName(title)}${plates.length > 1 ? '_tabuleiro' + (i + 1) : ''}.stl`);
+    });
+    $('qualityNotice').textContent = `STL exportado com ${plates.flat().length} peça(s) em ${plates.filter(plate => plate.length).length} ficheiro(s).`;
   });
 }
-// Garante que a exportação usa a qualidade escolhida (não a pré-visualização rápida do arrasto).
-async function finalComponents() { if (building || interactiveBuild || (!worker && S.quality === 'ultra')) { interactiveBuild = false; const r = await geometryCall({ type: 'build', S: geometryState(), quality: S.quality }); applyModel(r, S.quality) } return components }
 async function export3MF() {
-  if (!components.length || !model) { alert('Não existe malha para exportar.'); return }
-  const plan = layoutPlan(), b = plan.b;
-  if (!plan.plates.length || b.width > plateW() - PLATE_MARGIN * 2 || b.height > plateH() - PLATE_MARGIN * 2) { alert('A peça é demasiado grande para este tabuleiro. Diminui o nome ou escolhe uma impressora maior.'); return }
-  const all = [].concat(...plan.plates);
+  if (!model) return false;
+  let exported = false;
   await withBusy($('dl3MF'), '⏳ 3MF', async () => {
-    await new Promise(r => setTimeout(r, 30));
-    const parts = (await finalComponents()).map(c => ({ id: c.id, label: `${c.label} — ${filamentLabel(c.id)} ${c.color.toUpperCase()}`, color: c.color, mesh: c.mesh }));
-    const res = Sparrow3MF.build(parts, all, { name: S.name || 'SparrowTech', printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });
-    const bytes = await Sparrow3MF.zip(res.entries);
-    download(bytes, `SparrowTech_${safeName(S.name)}_${PRINTERS[S.printer][0].replace(/[^A-Za-z0-9]/g, '')}.3mf`, 'model/3mf');
-    const list = parts.map(p => `${p.label.split(' — ')[0]} → filamento ${res.extruders[p.id]} (${filamentLabel(p.id)})`).join(' · ');
-    $('qualityNotice').textContent = `3MF exportado (${all.length} cópia(s)${res.plates > 1 ? ' em ' + res.plates + ' tabuleiros' : ''}). ${list}. Abre no ${PRINTERS[S.printer][4]} e carrega esses filamentos.`;
+    const { plates, models, states, size, title } = await exportPlan(false);
+    const positions = plates.flat();
+    const objects = [...models].map(([piece, result]) => {
+      const state = states.get(piece);
+      return {
+        name: state.name || 'Nome',
+        placements: positions.filter(p => p.piece === piece),
+        parts: result.parts.map(part => {
+          const color = partColor(part.id, state);
+          return { id: part.id, label: `${partLabel(part)} — ${filamentLabel(part.id, state)} ${color.toUpperCase()}`, color, mesh: part.mesh };
+        })
+      };
+    });
+    const result = Sparrow3MF.buildObjects(objects, { name: title, ...size, layerHeight: EXPORT_LAYER_HEIGHT });
+    download(await Sparrow3MF.zip(result.entries), `SparrowTech_${safeName(title)}_${size.plateW}x${size.plateH}.3mf`, 'model/3mf');
+    $('qualityNotice').textContent = `3MF exportado com ${positions.length} peça(s) em ${result.plates} tabuleiro(s).`;
+    exported = true;
   });
+  return exported;
 }
 
 // Placa de teste: o mesmo nome em várias fontes (★), lado a lado, para imprimir e comparar.
@@ -911,9 +1196,9 @@ async function exportTestPlate() {
       placed.push({ font, r, pos: { x: x - b.minX, y: y - b.maxY } }); x += b.width + gap; rowH = Math.max(rowH, b.height);
     }
     const objects = placed.map(({ font, r, pos }) => ({ name: `${S.name || 'Nome'} — ${font}`, placements: [pos], parts: r.parts.map(p => ({ id: p.id, label: `${partLabel(p)} — ${filamentLabel(p.id)} ${partColor(p.id).toUpperCase()}`, color: partColor(p.id), mesh: p.mesh })) }));
-    const res = Sparrow3MF.buildObjects(objects, { name: `Teste de fontes — ${S.name}`, printerName: PRINTERS[S.printer][0], plateW: plateW(), plateH: plateH(), layerHeight: S.layer, nozzle: S.nozzle });
+    const res = Sparrow3MF.buildObjects(objects, { name: `Teste de fontes — ${S.name}`, plateW: plateW(), plateH: plateH(), layerHeight: EXPORT_LAYER_HEIGHT });
     download(await Sparrow3MF.zip(res.entries), `SparrowTech_teste_fontes_${safeName(S.name)}.3mf`, 'model/3mf');
-    $('qualityNotice').textContent = `Placa de teste: ${placed.length} fonte(s) (${placed.map(p => p.font).join(', ')}).` + (skipped.length ? ` Não couberam: ${skipped.join(', ')}.` : '') + ` Bico ${fmt2(S.nozzle)} mm, camada ${String(S.layer).replace('.', ',')} mm.`;
+    $('qualityNotice').textContent = `Placa de teste: ${placed.length} fonte(s) (${placed.map(p => p.font).join(', ')}).` + (skipped.length ? ` Não couberam: ${skipped.join(', ')}.` : '');
   });
 }
 function partLabel(p) { return { base: 'Base e argola', letters: 'Letras da frente', outline: 'Contorno', back: 'Letras do verso' }[p.id] || p.label }
@@ -928,5 +1213,6 @@ async function boot() {
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
   matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
+  $('addName').disabled = $('addExamples').disabled = !model;
 }
 boot();
