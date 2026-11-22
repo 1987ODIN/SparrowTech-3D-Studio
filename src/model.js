@@ -149,11 +149,11 @@
       const backName = (S.backText || '').trim() || name;
       const fontFor = fonts.back || fonts.front;
       const wordWidth = Math.min(218, Math.max(65, tb.width + 25));
-      let backEm = Math.min(em, (wordWidth - 5) * 1.8 / Math.max(1, backName.length));
+      let backEm = Math.min(em, (wordWidth - 5) * 1.8 / Math.max(1, backName.length)) * (S.backScale || 100) / 100;
       const bb = G.bounds(shape) || tb, cx = (bb.minX + bb.maxX) / 2, cy = (bb.minY + bb.maxY) / 2;
       const inset = G.offset(base, -0.8, tol, ang), margin = G.offset(base, -0.5, tol, ang);
       let K = [];
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 28; i++) {
         let Kt = G.textRegion(fontFor, backName, backEm, tol, ang, { letterSpacing: spacing }).paths;
         if (Math.abs(weight) > 1e-3 && Kt.length) Kt = G.offset(Kt, weight * backEm / em, tol, ang);
         K = G.translate(G.mirrorX(Kt), cx, cy);

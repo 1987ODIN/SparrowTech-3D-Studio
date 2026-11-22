@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
+const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backScale: 100, backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -124,6 +124,8 @@ function explanation(kind) { let title = '', msg = ''; if (kind === 'raised') { 
 function updateControls() {
   document.body.classList.add('pro');
   syncNameEntry();
+  $('backScale').value = S.backScale || 100;
+  $('backScaleValue').textContent = $('backScale').value + '%';
   $('backText').value = S.backText;
   renderGallery();
   optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) });
@@ -179,6 +181,12 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  $('closeBackTools').onclick = () => $('backTools').classList.add('hidden');
+  $('backScale').oninput = () => {
+    S.backScale = +$('backScale').value;
+    $('backScaleValue').textContent = S.backScale + '%';
+    scheduleRebuild();
+  };
   $('moveBack').onclick = () => {
     if (['smooth','through'].includes(S.back)) { S.back = 'inlay'; updateControls(); scheduleRebuild(true) }
     setView('back');
@@ -358,7 +366,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -632,7 +640,7 @@ function fitCamera() {
   camera.panX = inset / 2;
   camera.panY = 0;
 }
-function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
+function setView(side) { $('backTools').classList.add('hidden'); camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
 /**
  * Correção ao largar: ao levantar o dedo (ou soltar o botão) a ponta «rola» e os últimos ~100 ms
  * deslocam a argola uns milímetros. Usa-se a posição de ~100 ms antes de largar (60 ms com rato),
@@ -694,6 +702,7 @@ function bindViewerEvents() {
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('auxclick', e => e.preventDefault());
   const startPan = d => {
+    $('backGhost').classList.add('hidden');
     // Repõe o que o primeiro botão possa ter mexido antes de o segundo ser premido.
     if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch }
     if (d.kind === 'move' && d.moved) restorePlatePosition(d);
@@ -707,6 +716,7 @@ function bindViewerEvents() {
     if (e.pointerType === 'touch') {
       touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
       if (touches.size === 2) {
+        $('backGhost').classList.add('hidden');
         const d = dragAction; if (d && d.kind !== 'pinch') { if (d.kind === 'move' && d.moved) restorePlatePosition(d); if (d.kind === 'rotate') { camera.yaw = d.yaw; camera.pitch = d.pitch } if (d.kind === 'ring') { S.ringX = d.ringX; S.ringY = d.ringY; S.ringManual = d.ringManual; endRingGhost(); scheduleRebuild(true) } }
         const p0 = pinchState(); dragAction = { kind: 'pinch', p0, s0: camera.scale, px: camera.panX, py: camera.panY, chord: true }; touchLock = true;
         try { canvas.setPointerCapture(e.pointerId) } catch (err) { }
@@ -719,6 +729,7 @@ function bindViewerEvents() {
     const point = S.plateView ? platePoint(e) : null;
     const hit = left && point ? plateHit(point) : null;
     const clicked = left && !S.plateView ? selectAt(e, e.pointerType === 'touch' ? 26 / camera.scale : 0) : '';
+    $('backTools').classList.add('hidden');
     let kind = 'rotate';
     if (!left || e.shiftKey) kind = 'pan';
     else if (Math.cos(camera.yaw) < 0 && model?.regions.back.length &&
@@ -773,9 +784,25 @@ function bindViewerEvents() {
     else if (d.kind === 'back') {
       const p = screenLocal(e,0);
       if (p && d.backStart) {
-        S.backX = d.backX + p.x - d.backStart.x;
-        S.backY = d.backY + p.y - d.backStart.y;
-        if (!building) scheduleRebuild(true);
+        d.deltaX = p.x - d.backStart.x;
+        d.deltaY = p.y - d.backStart.y;
+        const ghost = $('backGhost');
+        if (ghost.classList.contains('hidden')) {
+          ghost.classList.remove('hidden');
+          ghost.width = ghost.clientWidth; ghost.height = ghost.clientHeight;
+          const ctx = ghost.getContext('2d'), origin = activePosition();
+          ctx.beginPath();
+          for (const path of model.regions.back) {
+            path.forEach((v,i) => {
+              const pt = project(origin.x + v.X / SparrowGeo.SCALE, origin.y + v.Y / SparrowGeo.SCALE, 0);
+              if (i) ctx.lineTo(pt.x,pt.y); else ctx.moveTo(pt.x,pt.y);
+            });
+            ctx.closePath();
+          }
+          ctx.fillStyle = '#88d5ff'; ctx.fill('evenodd');
+        }
+        ghost.style.transform = 'translate('+(e.clientX-d.startX)+'px,'+(e.clientY-d.startY)+'px)';
+
       }
     }
     else if (d.kind === 'move') {
@@ -786,7 +813,15 @@ function bindViewerEvents() {
   });
   const endDrag = e => {
     const d = dragAction; if (!d) return; dragAction = null; canvas.parentElement.classList.remove('dragging');
-    if (d.kind === 'back') { if (d.moved) scheduleRebuild(true); return }
+    if (d.kind === 'back') {
+      $('backGhost').classList.add('hidden');
+      if (d.moved) {
+        S.backX = d.backX + (d.deltaX || 0);
+        S.backY = d.backY + (d.deltaY || 0);
+        scheduleRebuild(true);
+      } else $('backTools').classList.remove('hidden');
+      return;
+    }
     if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; if (d.clicked) selectTab(d.clicked); setFontMode(d.clicked === 'letters'); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
