@@ -30,3 +30,12 @@ const adFooter = '<footer style="margin-top:2rem;padding-top:1rem;border-top:1px
 const page = editor.replace('</head>', loader + '</head>')
   .replace('</aside></div>', adFooter + '</aside></div>').replace(/<title>[^<]+<\/title>/, metadata).replace(brand, brand + home);
 await writeFile(file('site/tags/index.html'), page);
+
+// A demonstração usa o mesmo rodapé, sem carregar o AdSense.
+const sample = '<div id="amostra" tabindex="-1" style="box-sizing:border-box;width:100%;min-height:110px;display:grid;place-content:center;text-align:center;padding:16px;border:2px dashed #286986;background:#eaf7fb;color:#123e50;font:600 16px system-ui">Publicidade · Demonstração</div>';
+for (const [path, html] of [['', portal], ['tags/', page]]) {
+  const demo = html.replace(loader, '').replace(ad, sample)
+    .replace('<title>', '<meta name="robots" content="noindex,nofollow"><title>')
+    .replace('</html>', '<script>window.addEventListener("load",()=>{const el=document.getElementById("amostra");document.getElementById("introCard")?.classList.add("hidden");el.scrollIntoView({block:"center"});el.focus({preventScroll:true})})</script></html>');
+  await writeFile(file('site/' + path + 'demonstracao.html'), demo);
+}
