@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Filipa', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
+const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 100, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.2, ringInner: 3.0, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -97,6 +97,7 @@ function rgb(hex) { return [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) 
 
 // ---------------------------------------------------------------- painéis
 function selectTab(tab) {
+  if (!activePiece && tab !== 'print') tab = 'plate';
   const viewChanged = S.plateView !== (tab === 'plate');
   S.plateView = tab === 'plate';
   S.selected = tab;
@@ -125,7 +126,7 @@ function updateControls() {
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
   updateRangeLabels();
-  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('quality').value = S.quality; $('copyTop').value = S.copies; updateQualityBadge();
+  $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('fillLetterHoles').checked = S.fillLetterHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('quality').value = S.quality; $('copyTop').value = S.copies; updateQualityBadge();
   $('machineBadge').textContent = plateLabel(); updatePlatePanel();
   renderFilaChips(); renderPicker(); updatePrintBar();
 }
@@ -174,16 +175,16 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
-  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { renderNameList(); S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
+  [['inputName', 'name'], ['backText', 'backText']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; if (key === 'name') { S.ringManual = false; document.querySelectorAll('.fontcard span').forEach(el => el.textContent = S.name || 'Nome'); scheduleScan() } scheduleRebuild() }));
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
-  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
+  [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['fillLetterHoles', 'fillLetterHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   bindCards();
   $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { if (S.plateView) selectTab('letters'); fitCamera(); requestRender() };
-  $('btnPlate').onclick = () => selectTab('plate');
+  $('btnPlate').onclick = () => revealOnPlate(activePiece);
   $('autoRing').onclick = () => { S.ringManual = false; scheduleRebuild(true) };
   $('printer').onchange = () => { S.printer = $('printer').value; changePlateSize() };
   for (const [id, axis] of [['plateWidth', 0], ['plateDepth', 1]]) $(id).onchange = () => {
@@ -199,13 +200,16 @@ function bindControls() {
   };
   $('quality').onchange = () => { S.quality = $('quality').value; updateQualityBadge(); scheduleRebuild(true) };
   $('copyTop').oninput = () => {
-    S.copies = Math.max(1, Math.min(40, Math.round(+$('copyTop').value) || 1));
-    for (const index of activePiece.placements.keys()) if (index >= S.copies) activePiece.placements.delete(index);
-    if (plateSelection?.piece === activePiece && plateSelection.index >= S.copies) plateSelection = null;
+    const piece = selectedPlacement()?.piece || activePiece;
+    if (!piece) return;
+    const state = pieceState(piece);
+    state.copies = Math.max(1, Math.min(40, Math.round(+$('copyTop').value) || 1));
+    for (const index of piece.placements.keys()) if (index >= state.copies) piece.placements.delete(index);
+    if (plateSelection?.piece === piece && plateSelection.index >= state.copies) setPlateSelection(null);
     plateChanged();
   };
-  $('copyTop').onchange = () => { $('copyTop').value = S.copies };
-  bindRingMenu(); bindPartMenu(); bindPlateControls();
+  $('copyTop').onchange = () => { const piece = selectedPlacement()?.piece || activePiece; $('copyTop').value = piece ? pieceState(piece).copies : '' };
+  bindRingMenu(); bindPartMenu(); bindPlateControls(); bindPieceTools();
   $('importFont').onclick = () => $('fontFile').click();
   $('testPlate').onclick = () => exportTestPlate();
   $('fontPrev').onclick = () => stepFont(-1); $('fontNext').onclick = () => stepFont(1);
@@ -234,6 +238,7 @@ function updatePartMenu() {
   for (const b of document.querySelectorAll('.stylecard[data-base]')) b.classList.toggle('on', (b.dataset.base === '1') === !!S.roundBase);
   const m = $('partMenu'), on = (partMenuFor === 'letters' || partMenuFor === 'base') && S.selected === partMenuFor && !S.plateView;
   m.classList.toggle('hidden', !on); $('viewport').classList.toggle('partMenuOn', on);
+  updatePieceTools();
   if (on) { $('pmTitle').textContent = partMenuFor === 'letters' ? 'Letras' : 'Base'; $('pmLetters').style.display = partMenuFor === 'letters' ? '' : 'none'; $('pmBase').style.display = partMenuFor === 'base' ? '' : 'none' }
 }
 function bindPartMenu() {
@@ -336,7 +341,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -352,6 +357,7 @@ async function runScan() {
   try { const r = await geometryCall({ type: 'scan', S: geometryState(), names: FONTS.slice() }); if (seq === scanSeq) { fontScan = r; updateBadges() } } catch (e) { console.warn('Análise de fontes', e) }
 }
 async function rebuildModel() {
+  if (!activePiece) return;
   if (building) { buildAgain = true; return }
   building = true; buildAgain = false;
   let quality = interactiveBuild ? (ringDragging ? 'draft' : (S.quality === 'fine' || S.quality === 'ultra') ? 'normal' : S.quality) : S.quality;
@@ -439,7 +445,9 @@ function updateRingTag() {
   if (ringGhost) { const pos = objectPositions()[0], p = project(ringGhost.x + pos.x, ringGhost.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness); tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px'; tag.className = 'ringtag ' + (ringGhost.status === 'ok' ? '' : ringGhost.status === 'tapa' ? 'fraca' : ringGhost.status); tag.textContent = ringGhost.status === 'ok' ? `✓ ${Math.round(ringGhost.frac * 100)}% na peça — solta aqui` : ringGhost.status === 'fraca' ? `⚠ só ${Math.round(ringGhost.frac * 100)}% na peça — frágil` : ringGhost.status === 'tapa' ? '⚠ a argola tapa letras' : '✗ fora da peça'; return }
   const weak = ri.status !== 'ok', show = weak; // só avisa quando a argola está frágil/solta; o resto explica-se no cartão inicial
   if (!show || Math.cos(camera.yaw) < 0) { tag.classList.add('hidden'); return }
-  const pos = objectPositions()[0], p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
+  const pos = objectPositions()[0];
+  if (!pos || S.plateView) { tag.classList.add('hidden'); return }
+  const p = project(ri.x + pos.x, ri.y + pos.y + S.ringOuter / 2 + 1, (model.zShift || 0) + S.bodyThickness);
   tag.style.left = p.x + 'px'; tag.style.top = p.y + 'px';
   tag.className = 'ringtag ' + (weak ? ri.status : '');
   tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
@@ -602,7 +610,10 @@ function fitCamera() {
   if (S.plateView) { camera.cx = 0; camera.cy = 0; camera.cz = 0 }
   else { const c = pieceCenter(); camera.cx = c.x; camera.cy = c.y; camera.cz = c.z }
   const width = S.plateView ? plateW() + 23 : Math.max(65, b ? b.width : 80) * 1.45, height = S.plateView ? plateH() + 23 : Math.max(33, b ? b.height : 40) * 1.9;
-  camera.scale = Math.max(.6, Math.min(r.width / width, r.height / height, 12)); camera.panX = 0; camera.panY = 0;
+  const inset = S.plateView && moveToolsOpen && r.width >= 590 ? $('pieceTools').offsetWidth + 20 : 0;
+  camera.scale = Math.max(.6, Math.min((r.width - inset) / width, r.height / height, 12));
+  camera.panX = inset / 2;
+  camera.panY = 0;
 }
 function setView(side) { camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
 /**
@@ -775,7 +786,7 @@ function bindViewerEvents() {
 
 // ---------------------------------------------------------------- pré-visualização sem WebGL
 function renderFallback() {
-  if (!fallbackCtx || !model) return;
+  if (!fallbackCtx) return;
   const c = $('gl'), ctx = fallbackCtx, r = c.width / Math.max(1, c.clientWidth), back = Math.cos(camera.yaw) < 0;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = '#0d1520'; ctx.fillRect(0, 0, c.width, c.height); ctx.setTransform(r, 0, 0, r, 0, 0);
   const drawPaths = (paths, dx, dy, fill) => { if (!paths || !paths.length) return; ctx.beginPath(); for (const p of paths) p.forEach((q, i) => { const s = project(q.X / SparrowGeo.SCALE + dx, q.Y / SparrowGeo.SCALE + dy, 0); i ? ctx.lineTo(s.x, s.y) : ctx.moveTo(s.x, s.y) }), ctx.closePath(); ctx.fillStyle = fill; ctx.fill('evenodd') };
@@ -791,10 +802,10 @@ function renderFallback() {
 // ---------------------------------------------------------------- tabuleiro
 const PLATE_MARGIN = 5;
 const pieceGap = () => S.printMode === 'sequential' ? 32 : 6;
-const EXAMPLE_NAMES = ['Filipe', 'André', 'Rodrigo', 'David'];
+const EXAMPLE_NAMES = ['Ana', 'André', 'Beatriz', 'Carolina', 'David', 'Diogo', 'Filipe', 'Francisco', 'Inês', 'João', 'Leonor', 'Madalena', 'Manuel', 'Maria', 'Mariana', 'Miguel', 'Pedro', 'Rodrigo', 'Sofia', 'Tiago'];
 const pieces = [];
 let activePiece = makePiece();
-let platePage = 0, plateSelection = null, cachedPlan = null;
+let platePage = 0, plateSelection = null, cachedPlan = null, moveToolsOpen = false, removedPiece = null;
 
 function makePiece(state = null) {
   const piece = { state, model: null, components: [], placements: new Map(), previewKey: null };
@@ -815,7 +826,7 @@ async function refreshInactivePiece(piece, state, quality) {
   if (key === piece.previewKey) return;
   try {
     const result = await geometryCall({ type: 'build', S: state, quality });
-    if (piece === activePiece || piece.state !== state) return;
+    if (piece === activePiece || piece.state !== state || !pieces.includes(piece)) return;
     releaseMeshBuffers(piece.components);
     piece.model = result;
     piece.components = result.parts.map(part => ({ ...part, color: partColor(part.id, state) }));
@@ -827,12 +838,12 @@ async function refreshInactivePiece(piece, state, quality) {
     $('qualityNotice').textContent = 'Erro na geração de «' + state.name + '»: ' + error.message.split('\n')[0];
   }
 }
-function activatePiece(piece) {
+function activatePiece(piece, tab = 'letters') {
   if (piece !== activePiece) {
     const previous = activePiece;
-    previous.state = editableState();
+    if (previous) previous.state = editableState();
     activePiece = piece;
-    refreshInactivePiece(previous, previous.state, S.quality);
+    if (previous) refreshInactivePiece(previous, previous.state, S.quality);
     Object.assign(S, piece.state);
     model = piece.model;
     components = piece.components;
@@ -844,9 +855,9 @@ function activatePiece(piece) {
     updateControls();
     scheduleRebuild(true);
     scheduleScan();
-    autoFitAfterRebuild = true;
+    autoFitAfterRebuild = tab !== 'plate';
   }
-  selectTab('letters');
+  selectTab(tab);
 }
 
 function fitsPlate(placement, neighbors, width = plateW(), height = plateH(), gap = pieceGap()) {
@@ -925,20 +936,7 @@ function currentPlan() {
 }
 function objectPositions() {
   if (S.plateView) return currentPlan().plates[platePage] || [];
-  return [{ piece: activePiece, x: S.positionX, y: S.positionY }];
-}
-function renderNameList() {
-  const list = $('nameList');
-  list.replaceChildren();
-  list.classList.toggle('hidden', pieces.length < 2);
-  for (const piece of pieces) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.textContent = pieceState(piece).name || 'Nome';
-    button.classList.toggle('on', piece === activePiece);
-    button.onclick = () => activatePiece(piece);
-    list.append(button);
-  }
+  return activePiece?.model ? [{ piece: activePiece, x: S.positionX, y: S.positionY }] : [];
 }
 function updatePlatePanel() {
   const { plates, oversized } = currentPlan();
@@ -951,9 +949,12 @@ function updatePlatePanel() {
   const overflow = [...oversized].map(piece => pieceState(piece).name || 'Nome').join(', ');
   $('plateWarnings').textContent = overflow ? `Peças fora da área disponível: ${overflow}.` :
     `${positions.length} peça(s) neste tabuleiro · margem de ${PLATE_MARGIN} mm`;
-  const selected = plateSelection && positions.find(p => p.piece === plateSelection.piece && p.index === plateSelection.index);
-  $('plateSelection').classList.toggle('hidden', !selected);
-  $('editPiece').textContent = selected ? `Editar ${pieceState(selected.piece).name || 'nome'}` : 'Editar peça';
+  const piece = selectedPlacement()?.piece || activePiece;
+  $('copyTop').disabled = !piece;
+  $('qualityNotice').classList.toggle('hidden', !pieces.length);
+  if (document.activeElement !== $('copyTop')) $('copyTop').value = piece ? pieceState(piece).copies : '';
+  $('undoRemoval').classList.toggle('hidden', !removedPiece);
+  updatePieceTools();
 }
 function plateChanged() {
   cachedPlan = null;
@@ -964,6 +965,7 @@ function changePlateSize() {
   for (const piece of pieces) piece.placements.clear();
   platePage = 0;
   plateSelection = null;
+  moveToolsOpen = false;
   $('customPlate').classList.toggle('hidden', S.printer !== 'custom');
   $('machineBadge').textContent = plateLabel();
   rebuildBed();
@@ -972,6 +974,9 @@ function changePlateSize() {
 }
 function setPlateSelection(selection) {
   plateSelection = selection;
+  if (selection && selection.piece !== activePiece) activatePiece(selection.piece, 'plate');
+  if (!selection) moveToolsOpen = false;
+  $('pieceFeedback').classList.add('hidden');
   $('plateCorner').value = '';
   updatePlatePanel();
   requestRender();
@@ -1003,75 +1008,78 @@ function restorePlatePosition(drag) {
   for (const [p, placements] of drag.savedPlacements) p.placements = placements;
   plateChanged();
 }
-async function addNames(names) {
-  if (!model || !names.length) return;
-  const before = editableState(), quality = S.quality;
-  $('addName').disabled = $('addExamples').disabled = true;
-  $('addNameForm').querySelector('button').disabled = true;
+async function addName(name) {
+  const state = { ...editableState(), name, ringManual: false, copies: 1 }, quality = S.quality;
+  const submit = $('addNameForm').querySelector('button[type="submit"]');
+  if (submit.disabled) return false;
+  $('addName').disabled = submit.disabled = true;
   try {
-    const built = [];
-    for (const name of names) {
-      const state = { ...before, name, ringManual: false, copies: 1, filaments: { ...before.filaments } };
-      const result = await geometryCall({ type: 'build', S: state, quality });
-      built.push({ state, result });
-    }
-    const newPieces = built.map(({ state, result }) => {
-      const piece = makePiece(state);
-      piece.model = result;
-      piece.components = result.parts.map(part => ({ ...part, color: partColor(part.id, state) }));
-      piece.components.forEach(uploadOneMesh);
-      piece.previewKey = previewKey(state, quality);
-      return piece;
-    });
-    const piece = newPieces.at(-1);
-    plateChanged();
+    const result = await geometryCall({ type: 'build', S: state, quality });
+    const piece = makePiece(state);
+    piece.model = result;
+    piece.components = result.parts.map(part => ({ ...part, color: partColor(part.id, state) }));
+    piece.components.forEach(uploadOneMesh);
+    piece.previewKey = previewKey(state, quality);
     activatePiece(piece);
-    selectTab('plate');
-    const plan = currentPlan();
-    const page = plan.plates.findIndex(positions => positions.some(p => p.piece === piece));
-    if (page >= 0) {
-      platePage = page;
-      setPlateSelection(plan.plates[page].find(p => p.piece === piece));
-    }
+    plateChanged();
+    revealOnPlate(piece);
     return true;
   } catch (error) {
     console.error(error);
     $('qualityNotice').textContent = 'Erro ao adicionar nome: ' + error.message;
     return false;
   } finally {
-    renderNameList();
-    plateChanged();
-    $('addName').disabled = $('addExamples').disabled = false;
-    $('addNameForm').querySelector('button').disabled = false;
+    $('addName').disabled = submit.disabled = false;
   }
 }
 function bindPlateControls() {
-  const form = $('addNameForm'), input = $('newName');
-  for (const name of EXAMPLE_NAMES) {
-    const option = document.createElement('option');
-    option.value = name;
-    $('exampleNames').append(option);
+  const form = $('addNameForm'), input = $('newName'), options = $('printbarSuggestions');
+  const fold = text => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  function updateSuggestions() {
+    const search = fold(input.value.trim());
+    const matches = EXAMPLE_NAMES.filter(name => fold(name).startsWith(search));
+    options.replaceChildren();
+    for (const name of matches) {
+      const option = document.createElement('button');
+      option.type = 'button';
+      option.textContent = name;
+      option.onclick = () => {
+        input.focus();
+        input.value = name;
+        options.classList.add('hidden');
+      };
+      options.append(option);
+    }
+    options.classList.toggle('hidden', !matches.length);
   }
   function showForm(show) {
     form.classList.toggle('hidden', !show);
     $('addName').setAttribute('aria-expanded', String(show));
-    if (show) input.focus();
+    if (show) { input.focus(); updateSuggestions() }
+    else options.classList.add('hidden');
   }
   $('addName').onclick = () => showForm(form.classList.contains('hidden'));
-  input.onkeydown = event => { if (event.key === 'Escape') { showForm(false); $('addName').focus() } };
+  input.onfocus = input.oninput = updateSuggestions;
+  input.onkeydown = event => {
+    if (event.key === 'ArrowDown' && !options.classList.contains('hidden')) { event.preventDefault(); options.firstElementChild?.focus() }
+  };
+  form.onkeydown = event => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    showForm(false);
+    $('addName').focus();
+  };
+  form.onfocusout = event => { if (!form.contains(event.relatedTarget)) options.classList.add('hidden') };
   form.onsubmit = async event => {
     event.preventDefault();
     const name = input.value.trim();
-    if (!name) return;
-    if (!await addNames([name])) return;
+    if (!name || !await addName(name)) return;
     input.value = '';
     showForm(false);
     $('addName').focus();
   };
-  $('addExamples').onclick = () => addNames(EXAMPLE_NAMES.filter(name => !pieces.some(piece => pieceState(piece).name === name)));
   $('prevPlate').onclick = () => { platePage--; setPlateSelection(null) };
   $('nextPlate').onclick = () => { platePage++; setPlateSelection(null) };
-  $('editPiece').onclick = () => { if (plateSelection) activatePiece(plateSelection.piece) };
   $('autoArrange').onclick = () => {
     for (const piece of pieces) piece.placements.clear();
     platePage = 0;
@@ -1086,11 +1094,214 @@ function bindPlateControls() {
     const hx = plateW() / 2 - PLATE_MARGIN, hy = plateH() / 2 - PLATE_MARGIN;
     if (!movePlatePiece(plateSelection, x === 'left' ? -hx - bounds.minX : hx - bounds.maxX,
       y === 'top' ? hy - bounds.maxY : -hy - bounds.minY)) {
-      $('plateWarnings').textContent = 'O canto já está ocupado. Escolhe outro canto ou move a outra peça.';
+      $('pieceFeedback').textContent = 'Canto ocupado.';
+      $('pieceFeedback').classList.remove('hidden');
+    } else {
+      $('pieceFeedback').classList.add('hidden');
     }
     $('plateCorner').value = '';
   };
 }
+function selectedPlacement() {
+  return plateSelection && currentPlan().plates[platePage]?.find(
+    p => p.piece === plateSelection.piece && p.index === plateSelection.index
+  );
+}
+function selectedPiece() {
+  return S.plateView ? selectedPlacement()?.piece : partMenuFor ? activePiece : null;
+}
+function updatePieceTools() {
+  const piece = selectedPiece(), show = Boolean(piece);
+  const tray = $('pieceTools');
+  tray.classList.toggle('hidden', !show);
+  tray.classList.toggle('moving', show && moveToolsOpen);
+  $('movePanel').classList.toggle('hidden', !show || !moveToolsOpen);
+  $('movePiece').classList.toggle('on', show && moveToolsOpen);
+  $('movePiece').setAttribute('aria-expanded', String(show && moveToolsOpen));
+  $('editPiece').classList.toggle('hidden', !S.plateView);
+  if (!show) return;
+  const state = pieceState(piece), base = !S.plateView && partMenuFor === 'base';
+  $('pieceToolName').textContent = state.name || 'Nome';
+  $('pieceColorLabel').textContent = base ? 'Cor da base' : 'Cor das letras';
+  $('pieceColor').value = base ? state.baseColor : state.letterColor;
+  $('pieceFillHoles').classList.toggle('on', Boolean(state.fillLetterHoles));
+  $('pieceFillHoles').setAttribute('aria-pressed', String(Boolean(state.fillLetterHoles)));
+  if (moveToolsOpen) drawMoveMap();
+}
+function drawMoveMap() {
+  const canvas = $('moveMap'), ctx = canvas.getContext('2d');
+  const width = canvas.width, height = canvas.height;
+  const { x, y, scale } = mapFrame();
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = '#213447';
+  ctx.fillRect(x, y, plateW() * scale, plateH() * scale);
+  ctx.strokeStyle = '#496178';
+  ctx.beginPath();
+  for (let col = 0; col <= 10; col++) {
+    const gx = x + col * plateW() * scale / 10, gy = y + col * plateH() * scale / 10;
+    ctx.moveTo(gx, y); ctx.lineTo(gx, y + plateH() * scale);
+    ctx.moveTo(x, gy); ctx.lineTo(x + plateW() * scale, gy);
+  }
+  ctx.stroke();
+  const selected = selectedPlacement();
+  for (const pos of currentPlan().plates[platePage]) {
+    const left = width / 2 + pos.left * scale, top = height / 2 - pos.top * scale;
+    const w = (pos.right - pos.left) * scale, h = (pos.top - pos.bottom) * scale;
+    ctx.fillStyle = pieceState(pos.piece).baseColor;
+    ctx.fillRect(left, top, w, h);
+    if (pos === selected) {
+      ctx.strokeStyle = '#fff';
+      ctx.strokeRect(left, top, w, h);
+    }
+  }
+}
+function mapFrame() {
+  const { width, height } = $('moveMap');
+  const scale = Math.min((width - 2) / plateW(), (height - 2) / plateH());
+  return { scale, x: (width - plateW() * scale) / 2, y: (height - plateH() * scale) / 2 };
+}
+function mapPoint(event) {
+  const canvas = $('moveMap'), r = canvas.getBoundingClientRect(), { scale } = mapFrame();
+  return {
+    x: ((event.clientX - r.left) / r.width - .5) * canvas.width / scale,
+    y: (.5 - (event.clientY - r.top) / r.height) * canvas.height / scale
+  };
+}
+function bindMoveMap() {
+  const canvas = $('moveMap');
+  let drag = null;
+  canvas.onlostpointercapture = () => { drag = null };
+  canvas.onpointerdown = event => {
+    if (event.button !== 0 || drag) return;
+    const start = mapPoint(event), hit = plateHit(start);
+    setPlateSelection(hit);
+    if (!hit) return;
+    drag = { id: event.pointerId, hit, start, savedPlacements: pieces.map(piece => [piece, new Map(piece.placements)]) };
+    canvas.setPointerCapture(event.pointerId);
+  };
+  canvas.onpointermove = event => {
+    if (drag?.id !== event.pointerId) return;
+    const point = mapPoint(event);
+    movePlatePiece(drag.hit, drag.hit.x + point.x - drag.start.x, drag.hit.y + point.y - drag.start.y);
+  };
+  canvas.onpointerup = () => { drag = null };
+  canvas.onpointercancel = () => { if (drag) restorePlatePosition(drag); drag = null };
+}
+function revealOnPlate(piece) {
+  selectTab('plate');
+  const { plates } = currentPlan();
+  const page = plates.findIndex(positions => positions.some(p => p.piece === piece));
+  if (page < 0) return;
+  platePage = page;
+  setPlateSelection(plates[page].find(p => p.piece === piece));
+}
+function updateSelectedColor(color) {
+  const piece = selectedPiece();
+  if (!piece) return;
+  const base = !S.plateView && partMenuFor === 'base', key = base ? 'baseColor' : 'letterColor';
+  const state = pieceState(piece);
+  state[key] = color;
+  state.filaments[base ? 'base' : 'letters'] = null;
+  if (piece === activePiece) {
+    $(key).value = color;
+    refreshMeshColors();
+    renderFilaChips();
+    renderPicker();
+  } else {
+    for (const part of piece.components) {
+      part.color = partColor(part.id, state);
+      uploadOneMesh(part);
+    }
+  }
+  if (moveToolsOpen) drawMoveMap();
+  requestRender();
+}
+function deleteSelectedPiece() {
+  const piece = selectedPiece();
+  if (!piece || dragAction) return;
+  const state = pieceState(piece), index = S.plateView ? selectedPlacement().index : 0;
+  const at = pieces.indexOf(piece), placements = new Map(piece.placements), copies = state.copies;
+  removedPiece = { piece, at, placements, copies };
+  if (copies > 1) {
+    state.copies--;
+    piece.placements = new Map([...placements].filter(([i]) => i !== index).map(([i, p]) => [i > index ? i - 1 : i, p]));
+  } else {
+    if (piece === activePiece) piece.state = editableState();
+    pieces.splice(at, 1);
+    releaseMeshBuffers(piece.components);
+    if (piece === activePiece) {
+      const next = pieces[Math.min(at, pieces.length - 1)];
+      activePiece = null;
+      model = null;
+      components = [];
+      if (next) activatePiece(next);
+    }
+  }
+  partMenuFor = null;
+  setPlateSelection(null);
+  selectTab('plate');
+  plateChanged();
+}
+function undoPieceRemoval() {
+  if (!removedPiece) return;
+  const { piece, at, placements, copies } = removedPiece;
+  removedPiece = null;
+  if (!pieces.includes(piece)) {
+    pieces.splice(at, 0, piece);
+    piece.components.forEach(uploadOneMesh);
+  }
+  pieceState(piece).copies = copies;
+  piece.placements = placements;
+  if (!activePiece) activatePiece(piece);
+  plateChanged();
+  revealOnPlate(piece);
+}
+function bindPieceTools() {
+  $('movePiece').onclick = () => {
+    if (!S.plateView) revealOnPlate(activePiece);
+    if (!selectedPlacement()) return;
+    moveToolsOpen = !moveToolsOpen;
+    updatePieceTools();
+    if ($('viewport').clientWidth >= 590) { fitCamera(); requestRender() }
+  };
+  $('pieceColor').oninput = e => updateSelectedColor(e.target.value);
+  $('pieceFillHoles').onclick = () => {
+    const piece = selectedPiece();
+    if (!piece) return;
+    const state = pieceState(piece);
+    state.fillLetterHoles = !state.fillLetterHoles;
+    if (piece === activePiece) {
+      $('fillLetterHoles').checked = state.fillLetterHoles;
+      scheduleRebuild(true);
+    } else {
+      piece.state = { ...state };
+      refreshInactivePiece(piece, piece.state, S.quality);
+    }
+    updatePieceTools();
+  };
+  $('zoomPiece').onclick = () => {
+    const pos = selectedPlacement();
+    if (S.plateView && pos) {
+      const r = $('viewport').getBoundingClientRect();
+      camera.cx = (pos.left + pos.right) / 2;
+      camera.cy = (pos.top + pos.bottom) / 2;
+      camera.cz = 0;
+      camera.panX = camera.panY = 0;
+      camera.scale = Math.min(r.width * .56 / (pos.right - pos.left), r.height * .65 / (pos.top - pos.bottom), 22);
+    } else fitCamera();
+    requestRender();
+  };
+  $('editPiece').onclick = () => { const piece = selectedPiece(); if (piece) activatePiece(piece) };
+  $('deletePiece').onclick = deleteSelectedPiece;
+  $('undoRemoval').onclick = undoPieceRemoval;
+  document.addEventListener('keydown', event => {
+    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.key === 'Delete' && selectedPiece()) { event.preventDefault(); deleteSelectedPiece() }
+    if (event.key === 'Escape' && S.plateView && plateSelection) setPlateSelection(null);
+  });
+  bindMoveMap();
+}
+
 function bindViewCube() {
   document.querySelectorAll('.viewCube button').forEach(b => b.onclick = () => {
     const v = b.dataset.view;
@@ -1213,6 +1424,6 @@ async function boot() {
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
   matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); fitCamera(); requestRender();
-  $('addName').disabled = $('addExamples').disabled = !model;
+  $('addName').disabled = false;
 }
 boot();
