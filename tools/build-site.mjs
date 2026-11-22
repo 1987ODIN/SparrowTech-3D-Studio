@@ -1,5 +1,5 @@
 import './build.mjs';
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 
 const root = new URL('../', import.meta.url);
 const file = path => new URL(path, root);
@@ -25,17 +25,10 @@ const portal = await readFile(file('portal/index.html'), 'utf8');
 const loader = portal.match(/<script async src="https:\/\/pagead2\.googlesyndication\.com[^"]+"[^>]*><\/script>/)?.[0];
 const ad = portal.match(/<aside id="publicidade"[\s\S]*?<\/aside>/)?.[0];
 if (!loader || !ad) throw new Error('Configuração AdSense em falta no portal');
-const adFooter = '<footer style="margin-top:2rem;padding-top:1rem;border-top:1px solid #334357">' +
-  '<small>Publicidade</small>' + ad + '</footer>';
-const page = editor.replace('</head>', loader + '</head>')
-  .replace('</aside></div>', adFooter + '</aside></div>').replace(/<title>[^<]+<\/title>/, metadata).replace(brand, brand + home);
+const adFooter = '<footer id="editorAd" style="box-sizing:border-box;padding:4px 12px;border-top:1px solid #334357"><small>Publicidade</small>' + ad + '</footer>';
+const adLayout = '<style>body:has(#editorAd){height:100dvh;display:grid;grid-template-rows:minmax(0,1fr) 78px}body:has(#editorAd) .app{height:100%;min-height:0;overflow:auto}#editorAd #publicidade{margin:0}#editorAd{overflow:hidden}#editorAd ins{height:50px}#editorAd ins[data-ad-status="unfilled"]{visibility:hidden}</style>';
+const page = editor.replace('</head>', loader + adLayout + '</head>')
+  .replace('</body>', adFooter + '</body>')
+  .replace(/<title>[^<]+<\/title>/, metadata).replace(brand, brand + home);
 await writeFile(file('site/tags/index.html'), page);
-
-// A demonstração usa o mesmo rodapé, sem carregar o AdSense.
-const sample = '<div id="amostra" tabindex="-1" style="box-sizing:border-box;width:100%;min-height:110px;display:grid;place-content:center;text-align:center;padding:16px;border:2px dashed #286986;background:#eaf7fb;color:#123e50;font:600 16px system-ui">Publicidade · Demonstração</div>';
-for (const [path, html] of [['', portal], ['tags/', page]]) {
-  const demo = html.replace(loader, '').replace(ad, sample)
-    .replace('<title>', '<meta name="robots" content="noindex,nofollow"><title>')
-    .replace('</html>', '<script>window.addEventListener("load",()=>{const el=document.getElementById("amostra");document.getElementById("introCard")?.classList.add("hidden");el.scrollIntoView({block:"center"});el.focus({preventScroll:true})})</script></html>');
-  await writeFile(file('site/' + path + 'demonstracao.html'), demo);
-}
+for (const dir of ['site/', 'site/tags/']) await rm(file(dir + 'demonstracao.html'), { force: true });

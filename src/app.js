@@ -8,7 +8,7 @@ const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato per
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
 let fontScan = {};           // nome → resultado de imprimibilidade para o nome atual
-const SHAPES = [['contour', '✦ Segue letras'], ['cloud', '☁ Nuvem'], ['rounded', '▣ Tablet arredondado'], ['square', '▭ Tablet quadrado'], ['oval', '⬭ Oval'], ['none', '✎ Só letras']];
+const SHAPES = [['contour', 'Segue as letras'], ['rounded', 'Tag arredondada'], ['softRectangle', 'Retangular · ajustar cantos']];
 const FRONT = [['raised', '↑ Relevo'], ['flush', '▰ À face'], ['engraved', '↓ Gravado'], ['cutout', '◯ Vazado']];
 const BACK = [['smooth', '▱ Liso'], ['inlay', '▰ À face'], ['raised', '↑ Relevo'], ['engraved', '↓ Gravado'], ['through', '↕ Passante']];
 const EXPORT_LAYER_HEIGHT = .16;
@@ -131,6 +131,9 @@ function updateControls() {
   optionButtons('shapeButtons', SHAPES, S.shape, v => { S.shape = v; S.ringManual = false }); optionButtons('finishFront', FRONT, S.front, v => S.front = v); optionButtons('finishBack', BACK, S.back, v => { S.back = v; if (v !== 'smooth') setTimeout(() => setView('back'), 20) });
   $('frontExplain').innerHTML = explanation(S.front); $('backExplain').innerHTML = explanation(S.back);
   $('hasOutline').checked = S.outline; $('outlineControls').classList.toggle('hidden', !S.outline);
+  $('cornerControl').classList.toggle('hidden', S.shape !== 'softRectangle');
+  $('cornerRadius').value = S.cornerRadius || 5;
+  $('cornerValue').textContent = fmt($('cornerRadius').value) + ' mm';
   updateRangeLabels();
   $('baseColor').value = S.baseColor; $('letterColor').value = S.letterColor; $('outlineColor').value = S.outlineColor; $('roundBase').checked = S.roundBase; $('roundBack').checked = S.roundBack; $('roundAmount').value = S.roundAmount; $('borderWidth').value = S.border; $('bodyThickness').value = S.bodyThickness; $('letterHeight').value = S.letterHeight; $('outlineWidth').value = S.outlineWidth; $('nameSize').value = S.nameSize; $('ringOuter').value = S.ringOuter; $('ringInner').value = S.ringInner; $('fillHoles').checked = S.fillHoles; $('fillLetterHoles').checked = S.fillLetterHoles; $('smallHole').value = S.holeArea; $('hasRing').checked = S.hasRing; $('letterRound').value = S.letterRound; $('ringReinforce').checked = S.ringReinforce; $('printer').value = S.printer; $('textWeight').value = S.textWeight; $('letterSpacing').value = S.letterSpacing; $('quality').value = S.quality; $('copyTop').value = S.copies; updateQualityBadge();
   $('machineBadge').textContent = plateLabel(); updatePlatePanel();
@@ -181,6 +184,11 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  $('cornerRadius').oninput = () => {
+    S.cornerRadius = +$('cornerRadius').value;
+    $('cornerValue').textContent = fmt(S.cornerRadius) + ' mm';
+    scheduleRebuild();
+  };
   $('closeBackTools').onclick = () => $('backTools').classList.add('hidden');
   $('backScale').oninput = () => {
     S.backScale = +$('backScale').value;
@@ -366,7 +374,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'cornerRadius', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -736,7 +744,7 @@ function bindViewerEvents() {
       (!hit || hit.piece === activePiece) && hitsBackText(screenLocal(e, 0))) kind = 'back';
     else if (S.plateView) {
       setPlateSelection(hit);
-      kind = hit ? 'move' : 'pan';
+      kind = hit ? 'move' : 'rotate';
     }
     else if (clicked === 'ring') kind = 'ring';
     dragAction = { touch: e.pointerType === 'touch', id: e.pointerId, startX: e.clientX, startY: e.clientY, lastX: e.clientX, lastY: e.clientY, kind, clicked, backStart: kind === 'back' ? screenLocal(e,0) : null, backX: model?.regions.backX || 0, backY: model?.regions.backY || 0, yaw: camera.yaw, pitch: camera.pitch, hit, point, ringX: S.ringX, ringY: S.ringY, ringManual: S.ringManual, moved: false };
