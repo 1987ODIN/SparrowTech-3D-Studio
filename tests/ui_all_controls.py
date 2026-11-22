@@ -100,9 +100,10 @@ with sync_playwright() as p:
     # Importar fonte (usa uma das fontes do projeto)
     page.click('#tabLetters')
     page.set_input_files('#fontFile', os.path.join(ROOT, 'fonts', 'Cookie.ttf')); page.wait_for_timeout(600); verify('importar fonte TTF')
-    # Filamentos: chips → paleta oficial → escolher cor; marca segue a impressora
+    # Filamentos: abrir a paleta oficial depois de usar cor livre
     page.select_option('#printer', '256'); page.wait_for_timeout(100)
-    page.locator('.filachip').first.click(); page.wait_for_timeout(100)
+    page.locator('.filachip').first.click()
+    page.select_option('#filaSeries', 'PLA Basic')
     sw = page.locator('#filaPicker .swatch'); n = sw.count()
     sw.nth(min(5, n - 1)).click(); page.wait_for_timeout(100); verify(f'paleta Bambu ({n} cores) → base escolhida')
     fb = page.evaluate("S.filaments.base"); ok = fb and fb['brand'] == 'Bambu Lab' and page.evaluate("S.baseColor") == fb['hex'].lower()

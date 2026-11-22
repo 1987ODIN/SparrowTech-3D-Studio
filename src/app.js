@@ -1047,6 +1047,11 @@ async function addNames(names) {
 }
 function bindPlateControls() {
   const form = $('addNameForm'), input = $('newName');
+  for (const name of EXAMPLE_NAMES) {
+    const option = document.createElement('option');
+    option.value = name;
+    $('exampleNames').append(option);
+  }
   function showForm(show) {
     form.classList.toggle('hidden', !show);
     $('addName').setAttribute('aria-expanded', String(show));
