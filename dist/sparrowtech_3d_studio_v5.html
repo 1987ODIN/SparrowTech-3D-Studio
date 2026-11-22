@@ -9827,6 +9827,34 @@ let pendingNamePiece = null;
 function unavailableName(name) {
   return /gou?veia/i.test(name.normalize('NFKC'));
 }
+// Alternativa experimental, ativada apenas na pré-visualização.
+const FALLING_LETTERS = true;
+function animateDetachedLetters(text) {
+  const pos = selectedPlacement() || objectPositions().find(item => item.piece === activePiece);
+  if (!pos || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const viewport = $('viewport');
+  const start = project(pos.right, (pos.top + pos.bottom) / 2, 0);
+  const height = Math.max(12, Math.abs(project(0, pos.top, 0).y - project(0, pos.bottom, 0).y));
+  const bottom = Math.min(viewport.clientHeight, project(0, -plateH() / 2, 0).y);
+  let x = start.x - 2;
+  for (const [index, letter] of Array.from(text).entries()) {
+    const node = document.createElement('span');
+    node.setAttribute('aria-hidden', 'true');
+    node.textContent = letter;
+    Object.assign(node.style, { position: 'absolute', pointerEvents: 'none', left: x + 'px',
+      top: (start.y - height / 2) + 'px', fontFamily: S.font, fontSize: height + 'px',
+      lineHeight: '1', color: S.letterColor, webkitTextStroke: '1px ' + S.outlineColor,
+      textShadow: '0 2px 0 ' + S.baseColor });
+    viewport.append(node);
+    x += node.getBoundingClientRect().width - 1;
+    const distance = Math.max(0, bottom - start.y - height / 2);
+    const landing = 'translateY(' + distance + 'px) rotate(' + (index % 2 ? 11 : -14) + 'deg)';
+    const motion = node.animate([{ transform: 'none', easing: 'cubic-bezier(.45,0,.92,.6)' },
+      { transform: landing, opacity: 1, offset: .78 }, { transform: landing, opacity: 0 }],
+      { duration: 950, delay: 320 + index * 45, fill: 'both' });
+    motion.onfinish = () => node.remove();
+  }
+}
 function rejectUnavailableName(input) {
   if (!unavailableName(input.value)) return false;
   $('nameNotice').textContent = 'Não é possível criar uma tag com este nome.';
@@ -9908,7 +9936,8 @@ function bindPlateControls() {
     }
     if (event.key === 'Enter' && activePiece && !addingName) {
       event.preventDefault();
-      rejectUnavailableName(input);
+      if (FALLING_LETTERS && unavailableName(input.value)) form.requestSubmit();
+      else rejectUnavailableName(input);
       options.classList.add('hidden');
     }
   };
@@ -9923,6 +9952,26 @@ function bindPlateControls() {
   form.onfocusout = event => { if (!form.contains(event.relatedTarget)) options.classList.add('hidden') };
   form.onsubmit = async event => {
     event.preventDefault();
+    const detached = FALLING_LETTERS && input.value.match(/gou?veia/gi);
+    const remaining = detached && input.value.replace(/gou?veia/gi, '').trim();
+    if (detached && remaining) {
+      if (addingName || !activePiece) {
+        if (!await addName(remaining)) return;
+        addingName = false;
+      } else {
+        input.value = remaining;
+        renameFromInput(input);
+        clearTimeout(rebuildTimeout);
+        await rebuildModel();
+        selectPieceOnBoard(activePiece);
+      }
+      input.value = remaining;
+      pendingNamePiece = null;
+      syncNameEntry();
+      options.classList.add('hidden');
+      animateDetachedLetters(detached.join(''));
+      return;
+    }
     if (rejectUnavailableName(input)) return;
     if (activePiece && !addingName) {
       addingName = true;
