@@ -78,8 +78,9 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 .editor-version{color:var(--muted);font-size:.75rem;font-weight:600}
 #editTools summary{cursor:pointer;padding:10px 12px;background:var(--surface);border-radius:10px;margin-bottom:8px;font-weight:700}
 #ringMenu{width:min(185px,48vw);overflow:auto;touch-action:pan-y}#ringMenu .ring-controls,#ringMenu .ring-checks{display:flex;align-items:center;gap:5px;justify-content:center}#ringMenu .ring-control{display:flex;align-items:center;gap:2px}#ringMenu .ring-control label{font-size:10px;text-align:center}#ringMenu output{display:block;white-space:nowrap}#ringMenu .ring-control>div{display:grid;justify-items:center;gap:2px}#ringMenu .ring-control input{appearance:auto;writing-mode:vertical-lr;direction:rtl;width:16px;height:65px;margin:0}#ringMenu button{padding:2px 5px;min-width:23px}#ringMenu .ring-checks label{font-size:11px}#nameSection #printbarSuggestions{position:static;max-height:120px;overflow:auto}#nameSection summary{cursor:pointer;margin-bottom:8px}
+#slotFields label{display:flex;justify-content:space-between;gap:5px;margin:4px 0}#slotFields input{width:55px}
 </style></head>
-<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.10.3</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
+<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.11.0</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
 <div class="viewport" id="viewport"><canvas id="gl"></canvas><canvas id="backGhost" class="hidden" style="position:absolute;inset:0;pointer-events:none;width:100%;height:100%;z-index:3"></canvas><section id="backTools" class="piece-tools hidden" style="z-index:8;width:min(144px,37%)" aria-label="Texto do verso"><strong>Texto do verso</strong><label for="backScale">Tamanho <output id="backScaleValue">100%</output></label><input id="backScale" type="range" min="35" max="200" step="5" value="100"><button id="closeBackTools" type="button">Voltar à frente</button></section><section class="piece-tools hidden" id="pieceTools" aria-label="Ferramentas da peça">
 <strong id="pieceToolName"></strong>
 <button id="movePiece" type="button" aria-controls="movePanel" aria-expanded="false">✥ Mover</button>
@@ -92,7 +93,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 </select>
 </div>
 <label class="piece-color"><span id="pieceColorLabel">Cor das letras</span><input id="pieceColor" type="color"></label>
-<label>Tamanho das letras <output id="pieceSizeValue"></output><input id="pieceSize" type="number" min="30" max="800" step="1" aria-label="Tamanho das letras em percentagem"></label><label><input id="pieceOutline" type="checkbox"> Contorno das letras</label><button id="zoomPiece" type="button">Aproximar</button>
+<label>Tamanho das letras <output id="pieceSizeValue"></output><input id="pieceSize" type="number" min="30" max="800" step="1" aria-label="Tamanho das letras em percentagem"></label><label><input id="pieceOutline" type="checkbox"> Contorno das letras</label><details><summary>Filamentos 3MF</summary><p class="muted">Indica o número no slicer ou deixa em Auto.</p><label>Cor do verso <input id="backColor" type="color"></label><div id="slotFields"></div></details><button id="zoomPiece" type="button">Aproximar</button>
 <button id="editPiece" type="button">Editar</button>
 <button id="pieceFillHoles" type="button" aria-pressed="false">Tapar furos</button>
 <button id="deletePiece" type="button" title="Apagar a peça selecionada (Delete)">Apagar peça</button>
@@ -8702,8 +8703,23 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
   function buildObjects(objects, meta) {
     objects = objects.map(o => Object.assign({}, o, { parts: o.parts.filter(p => p.mesh && p.mesh.indices && p.mesh.indices.length) })).filter(o => o.parts.length && o.placements.length);
     if (!objects.length) throw new Error('Sem malhas para exportar.');
-    const { map, colors } = extruderMap([].concat(...objects.map(o => o.parts)));
-    const extruder = part => colors.indexOf(String(part.color).toLowerCase()) + 1;
+    const parts = objects.flatMap(o => o.parts);
+    const colors = [], map = {}, assigned = new Map();
+    const reserved = new Set(parts.map(p => p.slot).filter(n => Number.isInteger(n) && n >= 1 && n <= 99));
+    const automatic = new Map();
+    for (const part of parts) {
+      const color = String(part.color).toLowerCase();
+      let slot = reserved.has(part.slot) ? part.slot : automatic.get(color);
+      if (!slot) {
+        slot = 1;
+        while (reserved.has(slot) || colors[slot - 1]) slot++;
+        automatic.set(color, slot);
+      }
+      colors[slot - 1] ||= color;
+      assigned.set(part, slot);
+      map[part.id] = slot;
+    }
+    const extruder = part => assigned.get(part);
     const date = meta.date || new Date().toISOString().slice(0, 10);
     const halfW = (meta.plateW || meta.plateSize || 256) / 2, halfH = (meta.plateH || meta.plateSize || 256) / 2;
     const title = meta.name || 'SparrowTech';
@@ -9179,7 +9195,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'cornerRadius', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'cornerRadius', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'backColor', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -9306,7 +9322,7 @@ function updateRingTag() {
   tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
 }
 setInterval(() => { if (!ringDragged && Date.now() > ringTagUntil) updateRingTag() }, 1000);
-function partColor(id, state = S) { return { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.letterColor }[id] }
+function partColor(id, state = S) { return { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.backColor || state.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
 
 // ---------------------------------------------------------------- WebGL
@@ -9711,7 +9727,7 @@ function makePiece(state = null) {
 }
 function pieceState(piece) { return piece === activePiece ? S : piece.state }
 function editableState() {
-  return { ...geometryState(), copies: S.copies, filaments: { ...S.filaments }, _heightBefore: S._heightBefore, _tipBefore: S._tipBefore };
+  return { ...geometryState(), copies: S.copies, slots: { ...S.slots }, filaments: { ...S.filaments }, _heightBefore: S._heightBefore, _tipBefore: S._tipBefore };
 }
 function previewKey(state, quality) {
   const keys = geometryState(state);
@@ -10095,6 +10111,8 @@ function updatePieceTools() {
   $('movePiece').setAttribute('aria-expanded', String(show && moveToolsOpen));
   $('editPiece').classList.toggle('hidden', !S.plateView);
   if (!show) return;
+  $('backColor').value = pieceState(piece).backColor || pieceState(piece).letterColor;
+  for (const [id] of slotParts) $('slot-'+id).value = pieceState(piece).slots?.[id] || '';
   const state = pieceState(piece), base = !S.plateView && partMenuFor === 'base';
   $('pieceToolName').textContent = state.name || 'Nome';
   if (document.activeElement !== $('pieceSize')) $('pieceSize').value = state.nameSize;
@@ -10178,7 +10196,21 @@ function undoPieceRemoval() {
   selectTab('letters');
   selectPieceOnBoard(piece);
 }
+const slotParts = [['base','Base'],['letters','Frente'],['outline','Contorno'],['back','Verso']];
 function bindPieceTools() {
+  for (const [id,label] of slotParts) {
+    const row = document.createElement('label');
+    row.textContent = label;
+    const input = document.createElement('input');
+    Object.assign(input, { id:'slot-'+id,type:'number',min:1,max:99,step:1,placeholder:'Auto',title:'Número do filamento no slicer' });
+    input.onchange = () => {
+      S.slots = { ...S.slots, [id]:input.value ? Math.min(99,Math.max(1,Math.round(input.valueAsNumber))) : undefined };
+      input.value = S.slots[id] || '';
+    };
+    row.append(input);
+    $('slotFields').append(row);
+  }
+  $('backColor').oninput = () => { S.backColor = $('backColor').value; refreshMeshColors(); requestRender(); };
   $('pieceSize').onchange = () => {
     const input = $('pieceSize');
     S.nameSize = Math.min(800, Math.max(30, input.valueAsNumber || S.nameSize));
@@ -10312,7 +10344,7 @@ async function export3MF() {
         placements: positions.filter(p => p.piece === piece),
         parts: result.parts.map(part => {
           const color = partColor(part.id, state);
-          return { id: part.id, label: `${partLabel(part)} — ${filamentLabel(part.id, state)} ${color.toUpperCase()}`, color, mesh: part.mesh };
+          return { id: part.id, label: `${partLabel(part)} — ${filamentLabel(part.id, state)} ${color.toUpperCase()}`, color, slot: state.slots?.[part.id], mesh: part.mesh };
         })
       };
     });
