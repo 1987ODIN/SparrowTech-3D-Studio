@@ -18,13 +18,13 @@ const plateLabel = () => `${plateW()} × ${plateH()} mm`;
 // Filamentos oficiais (src/filaments.js, gerado a partir das listas do Bambu Studio e do Creality Print).
 const FILAMENTS = window.SPARROW_FILAMENTS || {};
 const MAIN_SERIES = { 'Bambu Lab': 'PLA Basic', 'Creality': 'Hyper PLA' };
-const PARTS = [['base', 'Base', 'baseColor'], ['letters', 'Letras', 'letterColor'], ['outline', 'Contorno', 'outlineColor']];
+const PARTS = [['base', 'Base', 'baseColor'], ['letters', 'Letras', 'letterColor'], ['outline', 'Contorno', 'outlineColor'], ['back', 'Verso', 'backColor']];
 const brand = () => 'Bambu Lab';
 function hexDist(a, b) { const x = rgb(a), y = rgb(b); return (x[0] - y[0]) ** 2 * 0.3 + (x[1] - y[1]) ** 2 * 0.59 + (x[2] - y[2]) ** 2 * 0.11 }
 function nearestFilament(hex, br, series) { const list = (FILAMENTS[br] || {})[series || MAIN_SERIES[br]] || []; let best = null; for (const f of list) if (!best || hexDist(f.hex, hex) < hexDist(best.hex, hex)) best = f; return best && { brand: br, series: series || MAIN_SERIES[br], ...best } }
 function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)[2]; S.filaments[part] = fil; if (fil) S[key] = fil.hex.toLowerCase(); $(key).value = S[key] }
-function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
-function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
+function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { if (!S[key]) continue; const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
+function filamentLabel(part, state = S) { const f = state.filaments[part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
 const SLOT_COUNT = 8;
 const spoolColors = Array(SLOT_COUNT).fill(null);
@@ -103,7 +103,7 @@ function renderFilaChips() {
     if (part === 'outline' && !S.outline) continue;
     const f = S.filaments[part], b = document.createElement('button'); b.className = 'filachip' + (pickerPart === part ? ' on' : '');
     b.innerHTML = `<i style="background:${partColor(part)}"></i><span>${title}${S.slots?.[part] ? ' · '+S.slots[part] : ''}<small>${f ? f.name : 'cor livre'}</small></span>`;
-    b.title = `${title}: ${filamentLabel(part)} ${S[key].toUpperCase()}`;
+    b.title = `${title}: ${filamentLabel(part)} ${partColor(part).toUpperCase()}`;
     b.onclick = () => { pickerPart = pickerPart === part ? null : part; renderFilaChips(); renderPicker() };
     box.appendChild(b);
   }
@@ -118,7 +118,7 @@ function renderPicker() {
   const free = document.createElement('option'); free.value = '__free'; free.textContent = 'Genérico · cor livre'; sel.appendChild(free);
   sel.value = cur ? series : '__free';
   const grid = document.createElement('div'); grid.className = 'swatches';
-  const name = document.createElement('div'); name.className = 'filaname'; name.textContent = `${PARTS.find(p => p[0] === part)[1]}: ${filamentLabel(part)} · ${S[key].toUpperCase()}`;
+  const name = document.createElement('div'); name.className = 'filaname'; name.textContent = `${PARTS.find(p => p[0] === part)[1]}: ${filamentLabel(part)} · ${partColor(part).toUpperCase()}`;
   const fill = sname => {
     grid.textContent = '';
     if (sname === '__free') { const inp = document.createElement('input'); inp.type = 'color'; inp.value = partColor(part); inp.oninput = () => { S.filaments[part] = null; S[key] = inp.value; S.slots = { ...S.slots, [part]:undefined }; saveColorSettings(); $(key).value = inp.value; refreshMeshColors(); requestRender(); renderFilaChips(); name.textContent = 'Cor livre ' + inp.value.toUpperCase() }; grid.appendChild(inp); return }
@@ -1487,7 +1487,7 @@ function bindPieceTools() {
     row.append(input);
     $('slotFields').append(row);
   }
-  $('backColor').oninput = () => { S.backColor = $('backColor').value; saveColorSettings(); refreshMeshColors(); requestRender(); };
+  $('backColor').oninput = () => { S.backColor = $('backColor').value; S.filaments.back = null; applySpoolColors(); renderPicker(); };
   $('pieceSize').onchange = () => {
     const input = $('pieceSize');
     S.nameSize = Math.min(800, Math.max(30, input.valueAsNumber || S.nameSize));
