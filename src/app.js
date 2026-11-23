@@ -3,7 +3,7 @@
  * A geometria é calculada por SparrowModel/SparrowGeo (vetorial) num Web Worker, para
  * não bloquear a interface. Ver docs/ARQUITETURA-V5.md. */
 const $ = id => document.getElementById(id);
-const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backScale: 100, backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 60, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.5, ringInner: 3.6, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
+const S = { name: 'Name', font: 'Pacifico', roundTop: false, letterStyle: 'flat', roundBase: false, roundBack: false, roundAmount: .6, letterRound: 0, textWeight: 0, letterSpacing: 0, nozzle: .4, favorites: [], shape: 'contour', front: 'raised', back: 'smooth', backText: '', backScale: 100, backX: 0, backY: 0, outline: true, outlineWidth: .8, border: 3.5, letterHeight: .6, bodyThickness: 2.4, nameSize: 50, baseColor: '#348cf0', letterColor: '#ffffff', outlineColor: '#090c13', hasRing: true, ringOuter: 7.5, ringInner: 3.6, ringManual: false, ringX: 0, ringY: 0, fillHoles: true, fillLetterHoles: false, holeArea: 1.5, selected: 'letters', pro: true, ringReinforce: true, filaments: {}, printer: '256', positionX: 0, positionY: 0, plateView: false, printMode: 'layers', quality: 'fine', copies: 1 };
 const FONTS = [];            // nomes, pela ordem da galeria (a roda do rato percorre esta lista)
 const FONT_GROUP = {};       // nome → 'nomes' | 'imprensa' | 'fina' | 'importadas'
 const GROUPS = [['nomes', 'Recomendadas para nomes', 'manuscritas, ligadas'], ['imprensa', 'Letra de imprensa (grossas)', 'à máquina, muito legíveis'], ['fina', 'Finas e elegantes', 'pedem letra grande ou bico fino'], ['importadas', 'Importadas', '']];
@@ -193,7 +193,7 @@ function bindControls() {
     $('cornerValue').textContent = fmt(S.cornerRadius) + ' mm';
     scheduleRebuild();
   };
-  $('closeBackTools').onclick = () => $('backTools').classList.add('hidden');
+  $('closeBackTools').onclick = () => setView('front');
   $('backScale').oninput = () => {
     S.backScale = +$('backScale').value;
     $('backScaleValue').textContent = S.backScale + '%';
@@ -218,7 +218,7 @@ function bindControls() {
   [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   bindCards();
-  $('editBack').onclick = () => setView('back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
+  $('editBack').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
   $('resetCam').onclick = () => { camera.yaw = .23; camera.pitch = -.32; requestRender() };
   $('btnFit').onclick = () => { if (S.plateView) selectTab('letters'); fitCamera(); requestRender() };
   $('btnPlate').onclick = () => revealOnPlate(activePiece);
@@ -260,11 +260,11 @@ function bindControls() {
 function currentStyle() { return S.letterStyle !== 'flat' ? S.letterStyle : S.letterRound > 0 ? 'tips' : 'flat' }
 function setLetterStyle(v) {
   const was = S.letterStyle;
-  if (v === 'puffy') { if (was !== 'puffy') { S._heightBefore = S.letterHeight; S._tipBefore = S.letterRound } S.letterStyle = 'puffy'; S.letterHeight = Math.max(S.letterHeight, 1.6); S.letterRound = Math.max(S.letterRound, .3) }
+  if (v === 'puffy') { if (was !== 'puffy') { S._heightBefore = S.letterHeight; S._tipBefore = S.letterRound } S.letterStyle = 'puffy'; S.letterHeight = Math.max(S.letterHeight, 1.6); S.letterRound = 0 }
   else {
     if (was === 'puffy' && S._heightBefore) { S.letterHeight = S._heightBefore; S.letterRound = S._tipBefore || 0 }
     S.letterStyle = v === 'soft' ? 'soft' : 'flat';
-    if (v === 'flat') S.letterRound = 0; else if (v === 'tips') S.letterRound = Math.max(S.letterRound, .3);
+    if (v === 'flat') S.letterRound = 0; else if (v === 'tips') S.letterRound = 0;
   }
   S.roundTop = false; updateControls(); updateRangeLabels(); scheduleRebuild(true);
 }
@@ -666,7 +666,7 @@ function fitCamera() {
   camera.panX = inset / 2;
   camera.panY = 0;
 }
-function setView(side) { $('backTools').classList.add('hidden'); camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
+function setView(side) { $('editBack').textContent = side === 'back' ? '↻ Voltar à frente' : '↻ Ver verso'; $('backTools').classList.add('hidden'); camera.yaw = side === 'back' ? Math.PI : 0; camera.pitch = 0; $('btnFlip').innerHTML = '↻<span class="lbl"> ' + (side === 'front' ? 'Verso' : 'Frente') + '</span>'; $('btnFlip').title = side === 'front' ? 'Ver o verso' : 'Ver a frente'; requestRender() }
 /**
  * Correção ao largar: ao levantar o dedo (ou soltar o botão) a ponta «rola» e os últimos ~100 ms
  * deslocam a argola uns milímetros. Usa-se a posição de ~100 ms antes de largar (60 ms com rato),
@@ -1295,6 +1295,9 @@ function updatePieceTools() {
   if (!show) return;
   const state = pieceState(piece), base = !S.plateView && partMenuFor === 'base';
   $('pieceToolName').textContent = state.name || 'Nome';
+  if (document.activeElement !== $('pieceSize')) $('pieceSize').value = state.nameSize;
+  $('pieceSizeValue').textContent = state.nameSize + '%';
+  $('pieceOutline').checked = state.outline;
   $('pieceColorLabel').textContent = base ? 'Cor da base' : 'Cor das letras';
   $('pieceColor').value = base ? state.baseColor : state.letterColor;
   $('pieceFillHoles').classList.toggle('on', Boolean(state.fillLetterHoles));
@@ -1374,6 +1377,16 @@ function undoPieceRemoval() {
   selectPieceOnBoard(piece);
 }
 function bindPieceTools() {
+  $('pieceSize').onchange = () => {
+    const input = $('pieceSize');
+    S.nameSize = Math.min(800, Math.max(30, input.valueAsNumber || S.nameSize));
+    input.value = S.nameSize;
+    updateControls(); scheduleRebuild(true); scheduleScan();
+  };
+  $('pieceOutline').onchange = () => {
+    $('hasOutline').checked = $('pieceOutline').checked;
+    $('hasOutline').dispatchEvent(new Event('change'));
+  };
   $('movePiece').onclick = () => {
     if (!S.plateView) {
       S.plateView = true;
