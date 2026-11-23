@@ -377,7 +377,7 @@ function geometryCall(msg) {
   }, 0));
 }
 function geometryState(state = S) {
-  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'cornerRadius', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
+  const k = ['name', 'font', 'roundTop', 'letterStyle', 'roundBase', 'roundBack', 'roundAmount', 'letterRound', 'textWeight', 'letterSpacing', 'nozzle', 'shape', 'cornerRadius', 'front', 'back', 'backText', 'backScale', 'backX', 'backY', 'outline', 'outlineWidth', 'border', 'letterHeight', 'bodyThickness', 'nameSize', 'backColor', 'baseColor', 'letterColor', 'outlineColor', 'hasRing', 'ringOuter', 'ringInner', 'ringManual', 'ringX', 'ringY', 'ringReinforce', 'fillHoles', 'fillLetterHoles', 'holeArea'];
   const o = {}; for (const key of k) o[key] = state[key]; return o;
 }
 
@@ -504,7 +504,7 @@ function updateRingTag() {
   tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
 }
 setInterval(() => { if (!ringDragged && Date.now() > ringTagUntil) updateRingTag() }, 1000);
-function partColor(id, state = S) { return { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.letterColor }[id] }
+function partColor(id, state = S) { return { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.backColor || state.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
 
 // ---------------------------------------------------------------- WebGL
@@ -909,7 +909,7 @@ function makePiece(state = null) {
 }
 function pieceState(piece) { return piece === activePiece ? S : piece.state }
 function editableState() {
-  return { ...geometryState(), copies: S.copies, filaments: { ...S.filaments }, _heightBefore: S._heightBefore, _tipBefore: S._tipBefore };
+  return { ...geometryState(), copies: S.copies, slots: { ...S.slots }, filaments: { ...S.filaments }, _heightBefore: S._heightBefore, _tipBefore: S._tipBefore };
 }
 function previewKey(state, quality) {
   const keys = geometryState(state);
@@ -1293,6 +1293,8 @@ function updatePieceTools() {
   $('movePiece').setAttribute('aria-expanded', String(show && moveToolsOpen));
   $('editPiece').classList.toggle('hidden', !S.plateView);
   if (!show) return;
+  $('backColor').value = pieceState(piece).backColor || pieceState(piece).letterColor;
+  for (const [id] of slotParts) $('slot-'+id).value = pieceState(piece).slots?.[id] || '';
   const state = pieceState(piece), base = !S.plateView && partMenuFor === 'base';
   $('pieceToolName').textContent = state.name || 'Nome';
   if (document.activeElement !== $('pieceSize')) $('pieceSize').value = state.nameSize;
@@ -1376,7 +1378,21 @@ function undoPieceRemoval() {
   selectTab('letters');
   selectPieceOnBoard(piece);
 }
+const slotParts = [['base','Base'],['letters','Frente'],['outline','Contorno'],['back','Verso']];
 function bindPieceTools() {
+  for (const [id,label] of slotParts) {
+    const row = document.createElement('label');
+    row.textContent = label;
+    const input = document.createElement('input');
+    Object.assign(input, { id:'slot-'+id,type:'number',min:1,max:99,step:1,placeholder:'Auto',title:'Número do filamento no slicer' });
+    input.onchange = () => {
+      S.slots = { ...S.slots, [id]:input.value ? Math.min(99,Math.max(1,Math.round(input.valueAsNumber))) : undefined };
+      input.value = S.slots[id] || '';
+    };
+    row.append(input);
+    $('slotFields').append(row);
+  }
+  $('backColor').oninput = () => { S.backColor = $('backColor').value; refreshMeshColors(); requestRender(); };
   $('pieceSize').onchange = () => {
     const input = $('pieceSize');
     S.nameSize = Math.min(800, Math.max(30, input.valueAsNumber || S.nameSize));
@@ -1510,7 +1526,7 @@ async function export3MF() {
         placements: positions.filter(p => p.piece === piece),
         parts: result.parts.map(part => {
           const color = partColor(part.id, state);
-          return { id: part.id, label: `${partLabel(part)} — ${filamentLabel(part.id, state)} ${color.toUpperCase()}`, color, mesh: part.mesh };
+          return { id: part.id, label: `${partLabel(part)} — ${filamentLabel(part.id, state)} ${color.toUpperCase()}`, color, slot: state.slots?.[part.id], mesh: part.mesh };
         })
       };
     });

@@ -53,8 +53,23 @@
   function buildObjects(objects, meta) {
     objects = objects.map(o => Object.assign({}, o, { parts: o.parts.filter(p => p.mesh && p.mesh.indices && p.mesh.indices.length) })).filter(o => o.parts.length && o.placements.length);
     if (!objects.length) throw new Error('Sem malhas para exportar.');
-    const { map, colors } = extruderMap([].concat(...objects.map(o => o.parts)));
-    const extruder = part => colors.indexOf(String(part.color).toLowerCase()) + 1;
+    const parts = objects.flatMap(o => o.parts);
+    const colors = [], map = {}, assigned = new Map();
+    const reserved = new Set(parts.map(p => p.slot).filter(n => Number.isInteger(n) && n >= 1 && n <= 99));
+    const automatic = new Map();
+    for (const part of parts) {
+      const color = String(part.color).toLowerCase();
+      let slot = reserved.has(part.slot) ? part.slot : automatic.get(color);
+      if (!slot) {
+        slot = 1;
+        while (reserved.has(slot) || colors[slot - 1]) slot++;
+        automatic.set(color, slot);
+      }
+      colors[slot - 1] ||= color;
+      assigned.set(part, slot);
+      map[part.id] = slot;
+    }
+    const extruder = part => assigned.get(part);
     const date = meta.date || new Date().toISOString().slice(0, 10);
     const halfW = (meta.plateW || meta.plateSize || 256) / 2, halfH = (meta.plateH || meta.plateSize || 256) / 2;
     const title = meta.name || 'SparrowTech';
