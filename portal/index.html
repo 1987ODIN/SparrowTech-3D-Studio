@@ -2,24 +2,30 @@
 <html lang="pt-PT">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0b1726">
 <title>CrowMakes — Etiquetas para impressão 3D</title>
 <link rel="canonical" href="https://crowmakes.com/">
 <meta name="description" content="Cria etiquetas com nome e porta-chaves para impressão 3D. Personaliza texto, formato e cores e exporta em STL ou 3MF.">
 <style>
-*{box-sizing:border-box}body{margin:0;background:#f6f5f0;color:#192923;font:1rem system-ui,sans-serif}
+:root{color-scheme:dark;--bg:#0b1726;--panel:#14273c;--accent:#47c7f3;--primary:#168cc4;--text:#f5f8fc;--muted:#b8c9dc;--line:#284b69}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 80% 0%,#173752 0%,transparent 48%),var(--bg);color:var(--text);font:1rem system-ui,sans-serif}
 main{max-width:64rem;margin:auto;padding:3rem clamp(1.25rem,6vw,5rem)}
-header{font-weight:800;letter-spacing:-.05em;font-size:1.75rem;border-bottom:1px solid #bdc5bd;padding-bottom:1.2rem}
+header{font-weight:800;letter-spacing:-.05em;font-size:1.75rem;border-bottom:1px solid var(--line);padding-bottom:1.2rem;color:var(--text)}
 h1{font-size:clamp(2rem,6vw,4rem);letter-spacing:-.055em;margin:3rem 0 1.5rem}
 nav{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,14rem),17rem));gap:1rem}
-nav a,.coming-soon{display:flex;flex-direction:column;justify-content:space-between;aspect-ratio:1;padding:1.5rem;background:#184a3b;color:white;border-radius:1.7rem;text-decoration:none}
-nav a:hover,nav a:focus-visible{background:#215d4b}nav a:focus-visible{outline:3px solid #b86400;outline-offset:4px}
-.tag{position:relative;background:#dcf58a;color:#243b29;align-self:center;transform:rotate(-12deg);margin:auto;padding:.45rem 1rem .5rem 1.9rem;border-radius:1rem .65rem .65rem 1rem;box-shadow:0 .28rem #93b354;font:bold 1.8rem Georgia,serif}
-.tag:before{content:"";position:absolute;left:.55rem;top:45%;background:#184a3b;border-radius:50%;width:.45rem;height:.45rem}
-strong{font-size:1.35rem}small{display:block;color:#dbebde;margin-top:.25rem}
-.coming-soon{background:#edf0e8;color:#43584d;border:1px dashed #8e9f94}
-.plus{align-self:center;margin:auto;font-size:4rem;line-height:1;font-weight:300}
-footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid #bdc5bd;color:#43584d;font-size:.9rem}
-footer a{color:inherit}
+nav a,.coming-soon{display:flex;flex-direction:column;justify-content:space-between;aspect-ratio:1;padding:1.5rem;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:1.7rem;text-decoration:none;transition:background .2s,border-color .2s,transform .2s,box-shadow .2s}
+nav a:hover{background:#1b344d;border-color:var(--accent);transform:translateY(-2px);box-shadow:0 10px 30px #0003}
+nav a:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+.tag{position:relative;background:linear-gradient(145deg,#55d5f4,#168cc4);color:#0b1726;align-self:center;transform:rotate(-12deg);margin:auto;padding:.45rem 1rem .5rem 1.9rem;border-radius:1rem .65rem .65rem 1rem;box-shadow:0 .28rem #0e638b,0 0 25px #47c7f32b;font:bold 1.8rem Georgia,serif}
+.tag:before{content:"";position:absolute;left:.55rem;top:45%;background:#0b1726;border-radius:50%;width:.45rem;height:.45rem}
+strong{font-size:1.35rem}small{display:block;color:var(--muted);margin-top:.25rem}
+.coming-soon{background:#101f30;color:var(--muted);border:1px dashed #42617c}
+.plus{align-self:center;margin:auto;font-size:4rem;line-height:1;font-weight:300;color:var(--accent)}
+p{color:var(--muted);line-height:1.65}
+footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--line);color:var(--muted);font-size:.9rem}
+footer a{color:var(--accent)}
+@media(prefers-reduced-motion:reduce){nav a{transition:none}nav a:hover{transform:none}}
 </style>
 <main><header>CrowMakes</header><h1>Criar tags para impressão 3D</h1>
 <nav aria-label="Ferramentas"><a href="tags/"><span class="tag" aria-hidden="true">Tiago</span><span><strong>Criar tags em STL ↗</strong><small>Etiquetas com nome e porta-chaves</small></span></a>
