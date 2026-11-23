@@ -54,39 +54,31 @@ function restoreColorSettings() {
     if (typeof saved.backColor === 'string' && /^#[0-9a-f]{6}$/i.test(saved.backColor)) S.backColor = saved.backColor;
   } catch {}
 }
-function renderSpools() {
-  const box = $('spools');
-  box.replaceChildren();
+function renderSpools(part) {
+  const box = document.createElement('div');
+  box.className = 'slot-swatches';
   spoolColors.forEach((color, index) => {
-    const row = document.createElement('div');
-    const label = document.createElement('label');
-    label.textContent = index + 1;
-    const input = document.createElement('input');
-    input.type = 'color';
-    input.value = color || '#ffffff';
-    input.setAttribute('aria-label', 'Cor ' + (index + 1));
-    const action = document.createElement('button');
-    action.type = 'button';
-    action.textContent = color ? '×' : '✓';
-    row.classList.toggle('empty', !color);
-    action.title = color ? 'Retirar a cor da bobine' : 'Ativar a cor desta bobine';
-    input.oninput = () => {
-      spoolColors[index] = input.value;
-      action.textContent = '×';
-      row.classList.remove('empty');
-      action.title = 'Retirar a cor da bobine';
-      applySpoolColors();
+    const button = document.createElement('button');
+    const slot = index + 1;
+    button.type = 'button';
+    button.textContent = slot;
+    button.style.setProperty('--slot-color', color || 'transparent');
+    button.setAttribute('aria-label', 'Filamento ' + slot + (color ? ' ' + color : ' sem cor'));
+    button.setAttribute('aria-pressed', String(S.slots?.[part] === slot));
+    button.onclick = () => {
+      S.slots = { ...S.slots, [part]:slot };
+      applySpoolColors(); renderPicker();
     };
-    action.onclick = () => {
-      spoolColors[index] = spoolColors[index] ? null : input.value;
-      renderSpools();
-      applySpoolColors();
-    };
-    label.prepend(input);
-    row.append(label, action);
-    box.append(row);
+    box.append(button);
   });
-  $('addSpool').disabled = spoolColors.length >= 99;
+  if (spoolColors.length < 99) {
+    const add = document.createElement('button');
+    add.textContent = '+';
+    add.setAttribute('aria-label', 'Adicionar posição de filamento');
+    add.onclick = () => { spoolColors.push(null); saveColorSettings(); renderPicker(); };
+    box.append(add);
+  }
+  return box;
 }
 function applySpoolColors() {
   saveColorSettings();
@@ -115,7 +107,7 @@ function renderFilaChips() {
   for (const [part, title, key] of PARTS) {
     if (part === 'outline' && !S.outline) continue;
     const f = S.filaments[part], b = document.createElement('button'); b.className = 'filachip' + (pickerPart === part ? ' on' : '');
-    b.innerHTML = `<i style="background:${partColor(part)}"></i><span>${title} · ${S.slots?.[part] || 'Auto'}<small>${f ? f.name : 'cor livre'}</small></span>`;
+    b.innerHTML = `<i style="background:${partColor(part)}"></i><span>${title}${S.slots?.[part] ? ' · '+S.slots[part] : ''}<small>${f ? f.name : 'cor livre'}</small></span>`;
     b.title = `${title}: ${filamentLabel(part)} ${S[key].toUpperCase()}`;
     b.onclick = () => { pickerPart = pickerPart === part ? null : part; renderFilaChips(); renderPicker() };
     box.appendChild(b);
@@ -128,30 +120,37 @@ function renderPicker() {
   const series = cur && cur.brand === br ? cur.series : MAIN_SERIES[br];
   const sel = document.createElement('select'); sel.id = 'filaSeries';
   for (const sname of Object.keys(FILAMENTS[br] || {})) { const o = document.createElement('option'); o.value = sname; o.textContent = `${br} ${sname} (${FILAMENTS[br][sname].length} cores)`; sel.appendChild(o) }
-  const free = document.createElement('option'); free.value = '__free'; free.textContent = '🎨 Cor livre (qualquer cor)'; sel.appendChild(free);
+  const free = document.createElement('option'); free.value = '__free'; free.textContent = 'Genérico · cor livre'; sel.appendChild(free);
   sel.value = cur ? series : '__free';
   const grid = document.createElement('div'); grid.className = 'swatches';
   const name = document.createElement('div'); name.className = 'filaname'; name.textContent = `${PARTS.find(p => p[0] === part)[1]}: ${filamentLabel(part)} · ${S[key].toUpperCase()}`;
   const fill = sname => {
     grid.textContent = '';
-    if (sname === '__free') { const inp = document.createElement('input'); inp.type = 'color'; inp.value = S[key]; inp.oninput = () => { S.filaments[part] = null; S[key] = inp.value; saveColorSettings(); $(key).value = inp.value; refreshMeshColors(); requestRender(); renderFilaChips(); name.textContent = 'Cor livre ' + inp.value.toUpperCase() }; grid.appendChild(inp); return }
+    if (sname === '__free') { const inp = document.createElement('input'); inp.type = 'color'; inp.value = partColor(part); inp.oninput = () => { S.filaments[part] = null; S[key] = inp.value; S.slots = { ...S.slots, [part]:undefined }; saveColorSettings(); $(key).value = inp.value; refreshMeshColors(); requestRender(); renderFilaChips(); name.textContent = 'Cor livre ' + inp.value.toUpperCase() }; grid.appendChild(inp); return }
     for (const f of FILAMENTS[br][sname]) {
       const sw = document.createElement('button'); sw.className = 'swatch' + (cur && cur.series === sname && cur.code === f.code && cur.hex === f.hex ? ' on' : ''); sw.style.background = f.hex;
       sw.title = `${br} ${sname} — ${f.name}${br === 'Bambu Lab' ? ' · código ' + f.code : ''} · ${f.hex}`;
-      sw.onclick = () => { setPartFilament(part, { brand: br, series: sname, ...f }); saveColorSettings(); refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker() };
+      sw.onclick = () => { setPartFilament(part, { brand: br, series: sname, ...f }); const slot = S.slots?.[part]; if (slot) spoolColors[slot-1] = S[key]; applySpoolColors(); renderPicker() };
       grid.appendChild(sw);
     }
   };
   sel.onchange = () => fill(sel.value); fill(sel.value);
-  const numberRow = document.createElement('label');
-  numberRow.className = 'filaname';
-  numberRow.textContent = 'N.º do filamento no Bambu Studio ';
-  const number = document.createElement('input');
-  number.id = 'pickerFilamentNumber';
-  number.style.width = '5em';
-  bindFilamentNumber(number, part);
-  numberRow.append(number);
-  box.append(numberRow, sel, grid, name);
+  const generic = document.createElement('button');
+  generic.textContent = 'Genérico';
+  generic.setAttribute('aria-pressed', String(!S.slots?.[part]));
+  generic.onclick = () => {
+    const color = partColor(part);
+    S.slots = { ...S.slots, [part]:undefined };
+    S[key] = color;
+    $(key).value = color;
+    S.filaments[part] = null;
+    applySpoolColors(); renderPicker();
+  };
+  const clear = document.createElement('button');
+  clear.textContent = 'Limpar posição';
+  clear.disabled = !spoolColors[(S.slots?.[part] || 0)-1];
+  clear.onclick = () => { spoolColors[S.slots[part]-1] = null; applySpoolColors(); renderPicker(); };
+  box.append(renderSpools(part), generic, clear, sel, grid, name);
 }
 function updatePrintBar() { }
 function infoText() {
@@ -278,13 +277,7 @@ function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel'
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
   restoreColorSettings();
-  $('addSpool').onclick = event => {
-    event.preventDefault();
-    if (spoolColors.length < 99) spoolColors.push(null);
-    saveColorSettings();
-    renderSpools();
-  };
-  renderSpools();
+
   $('nameSection').ontoggle = () => {
     if (!$('nameSection').open) $('printbarSuggestions').classList.add('hidden');
   };
