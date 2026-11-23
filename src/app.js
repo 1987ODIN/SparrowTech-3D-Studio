@@ -26,12 +26,24 @@ function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)
 function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
 function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
+function bindFilamentNumber(input, part) {
+  Object.assign(input, {type:'number',min:1,max:99,step:1,placeholder:'Auto'});
+  input.value = S.slots?.[part] || '';
+  input.onchange = () => {
+    const n = input.valueAsNumber;
+    S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(99,Math.max(1,Math.round(n))) : undefined };
+    input.value = S.slots[part] || '';
+    renderFilaChips();
+    const paired = $(input.id === 'pickerFilamentNumber' ? 'slot-'+part : 'pickerFilamentNumber');
+    if (paired && (input.id === 'pickerFilamentNumber' || pickerPart === part)) paired.value = input.value;
+  };
+}
 function renderFilaChips() {
   const box = $('filaChips'); box.textContent = '';
   for (const [part, title, key] of PARTS) {
     if (part === 'outline' && !S.outline) continue;
     const f = S.filaments[part], b = document.createElement('button'); b.className = 'filachip' + (pickerPart === part ? ' on' : '');
-    b.innerHTML = `<i style="background:${S[key]}"></i><span>${title}<small>${f ? f.name : 'cor livre'}</small></span>`;
+    b.innerHTML = `<i style="background:${S[key]}"></i><span>${title} · ${S.slots?.[part] || 'Auto'}<small>${f ? f.name : 'cor livre'}</small></span>`;
     b.title = `${title}: ${filamentLabel(part)} ${S[key].toUpperCase()}`;
     b.onclick = () => { pickerPart = pickerPart === part ? null : part; renderFilaChips(); renderPicker() };
     box.appendChild(b);
@@ -59,7 +71,15 @@ function renderPicker() {
     }
   };
   sel.onchange = () => fill(sel.value); fill(sel.value);
-  box.append(sel, grid, name);
+  const numberRow = document.createElement('label');
+  numberRow.className = 'filaname';
+  numberRow.textContent = 'N.º do filamento no Bambu Studio ';
+  const number = document.createElement('input');
+  number.id = 'pickerFilamentNumber';
+  number.style.width = '5em';
+  bindFilamentNumber(number, part);
+  numberRow.append(number);
+  box.append(numberRow, sel, grid, name);
 }
 function updatePrintBar() { }
 function infoText() {
@@ -1384,11 +1404,8 @@ function bindPieceTools() {
     const row = document.createElement('label');
     row.textContent = label;
     const input = document.createElement('input');
-    Object.assign(input, { id:'slot-'+id,type:'number',min:1,max:99,step:1,placeholder:'Auto',title:'Número do filamento no slicer' });
-    input.onchange = () => {
-      S.slots = { ...S.slots, [id]:input.value ? Math.min(99,Math.max(1,Math.round(input.valueAsNumber))) : undefined };
-      input.value = S.slots[id] || '';
-    };
+    input.id = 'slot-'+id;
+    bindFilamentNumber(input, id);
     row.append(input);
     $('slotFields').append(row);
   }

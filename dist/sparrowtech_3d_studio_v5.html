@@ -80,7 +80,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 #ringMenu{width:min(185px,48vw);overflow:auto;touch-action:pan-y}#ringMenu .ring-controls,#ringMenu .ring-checks{display:flex;align-items:center;gap:5px;justify-content:center}#ringMenu .ring-control{display:flex;align-items:center;gap:2px}#ringMenu .ring-control label{font-size:10px;text-align:center}#ringMenu output{display:block;white-space:nowrap}#ringMenu .ring-control>div{display:grid;justify-items:center;gap:2px}#ringMenu .ring-control input{appearance:auto;writing-mode:vertical-lr;direction:rtl;width:16px;height:65px;margin:0}#ringMenu button{padding:2px 5px;min-width:23px}#ringMenu .ring-checks label{font-size:11px}#nameSection #printbarSuggestions{position:static;max-height:120px;overflow:auto}#nameSection summary{cursor:pointer;margin-bottom:8px}
 #slotFields label{display:flex;justify-content:space-between;gap:5px;margin:4px 0}#slotFields input{width:55px}
 </style></head>
-<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.11.0</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
+<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.11.1</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
 <div class="viewport" id="viewport"><canvas id="gl"></canvas><canvas id="backGhost" class="hidden" style="position:absolute;inset:0;pointer-events:none;width:100%;height:100%;z-index:3"></canvas><section id="backTools" class="piece-tools hidden" style="z-index:8;width:min(144px,37%)" aria-label="Texto do verso"><strong>Texto do verso</strong><label for="backScale">Tamanho <output id="backScaleValue">100%</output></label><input id="backScale" type="range" min="35" max="200" step="5" value="100"><button id="closeBackTools" type="button">Voltar à frente</button></section><section class="piece-tools hidden" id="pieceTools" aria-label="Ferramentas da peça">
 <strong id="pieceToolName"></strong>
 <button id="movePiece" type="button" aria-controls="movePanel" aria-expanded="false">✥ Mover</button>
@@ -8844,12 +8844,24 @@ function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)
 function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
 function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
+function bindFilamentNumber(input, part) {
+  Object.assign(input, {type:'number',min:1,max:99,step:1,placeholder:'Auto'});
+  input.value = S.slots?.[part] || '';
+  input.onchange = () => {
+    const n = input.valueAsNumber;
+    S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(99,Math.max(1,Math.round(n))) : undefined };
+    input.value = S.slots[part] || '';
+    renderFilaChips();
+    const paired = $(input.id === 'pickerFilamentNumber' ? 'slot-'+part : 'pickerFilamentNumber');
+    if (paired && (input.id === 'pickerFilamentNumber' || pickerPart === part)) paired.value = input.value;
+  };
+}
 function renderFilaChips() {
   const box = $('filaChips'); box.textContent = '';
   for (const [part, title, key] of PARTS) {
     if (part === 'outline' && !S.outline) continue;
     const f = S.filaments[part], b = document.createElement('button'); b.className = 'filachip' + (pickerPart === part ? ' on' : '');
-    b.innerHTML = `<i style="background:${S[key]}"></i><span>${title}<small>${f ? f.name : 'cor livre'}</small></span>`;
+    b.innerHTML = `<i style="background:${S[key]}"></i><span>${title} · ${S.slots?.[part] || 'Auto'}<small>${f ? f.name : 'cor livre'}</small></span>`;
     b.title = `${title}: ${filamentLabel(part)} ${S[key].toUpperCase()}`;
     b.onclick = () => { pickerPart = pickerPart === part ? null : part; renderFilaChips(); renderPicker() };
     box.appendChild(b);
@@ -8877,7 +8889,15 @@ function renderPicker() {
     }
   };
   sel.onchange = () => fill(sel.value); fill(sel.value);
-  box.append(sel, grid, name);
+  const numberRow = document.createElement('label');
+  numberRow.className = 'filaname';
+  numberRow.textContent = 'N.º do filamento no Bambu Studio ';
+  const number = document.createElement('input');
+  number.id = 'pickerFilamentNumber';
+  number.style.width = '5em';
+  bindFilamentNumber(number, part);
+  numberRow.append(number);
+  box.append(numberRow, sel, grid, name);
 }
 function updatePrintBar() { }
 function infoText() {
@@ -10202,11 +10222,8 @@ function bindPieceTools() {
     const row = document.createElement('label');
     row.textContent = label;
     const input = document.createElement('input');
-    Object.assign(input, { id:'slot-'+id,type:'number',min:1,max:99,step:1,placeholder:'Auto',title:'Número do filamento no slicer' });
-    input.onchange = () => {
-      S.slots = { ...S.slots, [id]:input.value ? Math.min(99,Math.max(1,Math.round(input.valueAsNumber))) : undefined };
-      input.value = S.slots[id] || '';
-    };
+    input.id = 'slot-'+id;
+    bindFilamentNumber(input, id);
     row.append(input);
     $('slotFields').append(row);
   }
