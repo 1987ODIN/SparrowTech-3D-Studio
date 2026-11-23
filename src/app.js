@@ -27,6 +27,33 @@ function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cu
 function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
 const spoolColors = [null, null, null, null];
+const COLOR_SETTINGS_KEY = 'st3d_filament_settings';
+function saveColorSettings() {
+  try {
+    localStorage.setItem(COLOR_SETTINGS_KEY, JSON.stringify({spoolColors, slots:S.slots, backColor:S.backColor, colors:PARTS.map(([id,,key]) => [S[key], S.filaments[id]])}));
+  } catch {}
+}
+function restoreColorSettings() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(COLOR_SETTINGS_KEY));
+    if (!saved) return;
+    if (Array.isArray(saved.spoolColors)) {
+      saved.spoolColors.slice(0,99).forEach((c,i) => { spoolColors[i] = typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : null; });
+    }
+    for (const [i,[id,,key]] of PARTS.entries()) {
+      const entry = saved.colors?.[i];
+      if (!entry || typeof entry[0] !== 'string' || !/^#[0-9a-f]{6}$/i.test(entry[0])) continue;
+      S[key] = entry[0];
+      S.filaments[id] = entry[1] || null;
+    }
+    S.slots = {};
+    for (const id of ['base','letters','outline','back']) {
+      const n = saved.slots?.[id];
+      if (Number.isInteger(n) && n >= 1 && n <= 99) S.slots[id] = n;
+    }
+    if (typeof saved.backColor === 'string' && /^#[0-9a-f]{6}$/i.test(saved.backColor)) S.backColor = saved.backColor;
+  } catch {}
+}
 function renderSpools() {
   const box = $('spools');
   box.replaceChildren();
@@ -60,6 +87,7 @@ function renderSpools() {
   $('addSpool').disabled = spoolColors.length >= 99;
 }
 function applySpoolColors() {
+  saveColorSettings();
   refreshMeshColors();
   renderFilaChips();
   requestRender();
@@ -104,11 +132,11 @@ function renderPicker() {
   const name = document.createElement('div'); name.className = 'filaname'; name.textContent = `${PARTS.find(p => p[0] === part)[1]}: ${filamentLabel(part)} · ${S[key].toUpperCase()}`;
   const fill = sname => {
     grid.textContent = '';
-    if (sname === '__free') { const inp = document.createElement('input'); inp.type = 'color'; inp.value = S[key]; inp.oninput = () => { S.filaments[part] = null; S[key] = inp.value; $(key).value = inp.value; refreshMeshColors(); requestRender(); renderFilaChips(); name.textContent = 'Cor livre ' + inp.value.toUpperCase() }; grid.appendChild(inp); return }
+    if (sname === '__free') { const inp = document.createElement('input'); inp.type = 'color'; inp.value = S[key]; inp.oninput = () => { S.filaments[part] = null; S[key] = inp.value; saveColorSettings(); $(key).value = inp.value; refreshMeshColors(); requestRender(); renderFilaChips(); name.textContent = 'Cor livre ' + inp.value.toUpperCase() }; grid.appendChild(inp); return }
     for (const f of FILAMENTS[br][sname]) {
       const sw = document.createElement('button'); sw.className = 'swatch' + (cur && cur.series === sname && cur.code === f.code && cur.hex === f.hex ? ' on' : ''); sw.style.background = f.hex;
       sw.title = `${br} ${sname} — ${f.name}${br === 'Bambu Lab' ? ' · código ' + f.code : ''} · ${f.hex}`;
-      sw.onclick = () => { setPartFilament(part, { brand: br, series: sname, ...f }); refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker() };
+      sw.onclick = () => { setPartFilament(part, { brand: br, series: sname, ...f }); saveColorSettings(); refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker() };
       grid.appendChild(sw);
     }
   };
@@ -247,9 +275,11 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  restoreColorSettings();
   $('addSpool').onclick = event => {
     event.preventDefault();
     if (spoolColors.length < 99) spoolColors.push(null);
+    saveColorSettings();
     renderSpools();
   };
   renderSpools();
@@ -283,7 +313,7 @@ function bindControls() {
   $('backText').oninput = () => { S.backText = $('backText').value; scheduleRebuild() };
   [['letterRound', 'letterRound'], ['roundAmount', 'roundAmount'], ['textWeight', 'textWeight'], ['letterSpacing', 'letterSpacing'], ['borderWidth', 'border'], ['bodyThickness', 'bodyThickness'], ['letterHeight', 'letterHeight'], ['outlineWidth', 'outlineWidth'], ['nameSize', 'nameSize'], ['ringOuter', 'ringOuter'], ['ringInner', 'ringInner'], ['smallHole', 'holeArea']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = +$(id).value; if (key === 'ringInner' && S.ringInner > S.ringOuter - 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } if (key === 'ringOuter' && S.ringOuter < S.ringInner + 2) { S.ringInner = S.ringOuter - 2; $('ringInner').value = S.ringInner } updateRangeLabels(); scheduleRebuild(); if (key === 'textWeight' || key === 'letterSpacing' || key === 'nameSize' || key === 'letterRound') scheduleScan() }));
   [['hasOutline', 'outline'], ['fillHoles', 'fillHoles'], ['fillLetterHoles', 'fillLetterHoles'], ['hasRing', 'hasRing'], ['ringReinforce', 'ringReinforce'], ['roundBase', 'roundBase'], ['roundBack', 'roundBack']].forEach(([id, key]) => $(id).addEventListener('change', () => { S[key] = $(id).checked; updateRangeLabels(); scheduleRebuild(); if (key === 'outline') { if (pickerPart === 'outline') pickerPart = null; renderFilaChips(); renderPicker(); updatePrintBar() } }));
-  [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
+  [['baseColor', 'baseColor'], ['letterColor', 'letterColor'], ['outlineColor', 'outlineColor']].forEach(([id, key]) => $(id).addEventListener('input', () => { S[key] = $(id).value; S.filaments[PARTS.find(p => p[2] === key)[0]] = null; saveColorSettings(); refreshMeshColors(); requestRender(); renderFilaChips(); renderPicker(); updatePrintBar() }));
   for (const key of ['letters', 'base', 'ring', 'print']) $('tab' + key[0].toUpperCase() + key.slice(1)).onclick = () => selectTab(key);
   bindCards();
   $('editBack').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back'); $('btnFlip').onclick = () => setView(Math.cos(camera.yaw) < 0 ? 'front' : 'back');
@@ -1457,7 +1487,7 @@ function bindPieceTools() {
     row.append(input);
     $('slotFields').append(row);
   }
-  $('backColor').oninput = () => { S.backColor = $('backColor').value; refreshMeshColors(); requestRender(); };
+  $('backColor').oninput = () => { S.backColor = $('backColor').value; saveColorSettings(); refreshMeshColors(); requestRender(); };
   $('pieceSize').onchange = () => {
     const input = $('pieceSize');
     S.nameSize = Math.min(800, Math.max(30, input.valueAsNumber || S.nameSize));
@@ -1638,7 +1668,7 @@ async function boot() {
   const data = window.SPARROW_FONTS || [];
   await Promise.all(data.map(f => registerFont(f.name, b64ToBuffer(f.data), f.group)));
   FONTS.sort((a, b) => data.findIndex(f => f.name === a) - data.findIndex(f => f.name === b));
-  matchFilamentsToBrand(); refreshMeshColors(); updateControls(); scheduleScan();
+  matchFilamentsToBrand(); restoreColorSettings(); refreshMeshColors(); updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); selectTab('letters'); fitCamera(); requestRender();
   $('addName').disabled = $('inputName').disabled = false;
 }
