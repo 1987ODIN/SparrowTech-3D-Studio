@@ -26,6 +26,48 @@ function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)
 function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
 function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
+const spoolColors = [null, null, null, null];
+function renderSpools() {
+  const box = $('spools');
+  box.replaceChildren();
+  spoolColors.forEach((color, index) => {
+    const row = document.createElement('div');
+    const label = document.createElement('label');
+    label.textContent = 'Bobine ' + (index + 1);
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = color || '#ffffff';
+    input.setAttribute('aria-label', label.textContent);
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.textContent = color ? 'Limpar' : 'Definir';
+    action.title = color ? 'Retirar a cor da bobine' : 'Ativar a cor desta bobine';
+    input.oninput = () => {
+      spoolColors[index] = input.value;
+      action.textContent = 'Limpar';
+      action.title = 'Retirar a cor da bobine';
+      applySpoolColors();
+    };
+    action.onclick = () => {
+      spoolColors[index] = spoolColors[index] ? null : input.value;
+      renderSpools();
+      applySpoolColors();
+    };
+    label.append(input);
+    row.append(label, action);
+    box.append(row);
+  });
+  $('addSpool').disabled = spoolColors.length >= 99;
+}
+function applySpoolColors() {
+  refreshMeshColors();
+  renderFilaChips();
+  requestRender();
+}
+function effectiveColor(part, state) {
+  const slot = state.slots?.[part];
+  return spoolColors[slot - 1];
+}
 function bindFilamentNumber(input, part) {
   Object.assign(input, {type:'number',min:1,max:99,step:1,placeholder:'Auto'});
   input.value = S.slots?.[part] || '';
@@ -33,7 +75,7 @@ function bindFilamentNumber(input, part) {
     const n = input.valueAsNumber;
     S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(99,Math.max(1,Math.round(n))) : undefined };
     input.value = S.slots[part] || '';
-    renderFilaChips();
+    applySpoolColors();
     const paired = $(input.id === 'pickerFilamentNumber' ? 'slot-'+part : 'pickerFilamentNumber');
     if (paired && (input.id === 'pickerFilamentNumber' || pickerPart === part)) paired.value = input.value;
   };
@@ -43,7 +85,7 @@ function renderFilaChips() {
   for (const [part, title, key] of PARTS) {
     if (part === 'outline' && !S.outline) continue;
     const f = S.filaments[part], b = document.createElement('button'); b.className = 'filachip' + (pickerPart === part ? ' on' : '');
-    b.innerHTML = `<i style="background:${S[key]}"></i><span>${title} · ${S.slots?.[part] || 'Auto'}<small>${f ? f.name : 'cor livre'}</small></span>`;
+    b.innerHTML = `<i style="background:${partColor(part)}"></i><span>${title} · ${S.slots?.[part] || 'Auto'}<small>${f ? f.name : 'cor livre'}</small></span>`;
     b.title = `${title}: ${filamentLabel(part)} ${S[key].toUpperCase()}`;
     b.onclick = () => { pickerPart = pickerPart === part ? null : part; renderFilaChips(); renderPicker() };
     box.appendChild(b);
@@ -205,6 +247,12 @@ let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
+  $('addSpool').onclick = event => {
+    event.preventDefault();
+    if (spoolColors.length < 99) spoolColors.push(null);
+    renderSpools();
+  };
+  renderSpools();
   $('nameSection').ontoggle = () => {
     if (!$('nameSection').open) $('printbarSuggestions').classList.add('hidden');
   };
@@ -524,7 +572,7 @@ function updateRingTag() {
   tag.textContent = ri.status === 'solta' ? '⚠ argola solta — arrasta-a para a peça' : ri.status === 'fraca' ? '⚠ argola frágil — arrasta-a para dentro' : '◉ arrasta a argola';
 }
 setInterval(() => { if (!ringDragged && Date.now() > ringTagUntil) updateRingTag() }, 1000);
-function partColor(id, state = S) { return { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.backColor || state.letterColor }[id] }
+function partColor(id, state = S) { return effectiveColor(id,state) || { base: state.baseColor, letters: state.letterColor, outline: state.outlineColor, back: state.backColor || state.letterColor }[id] }
 function refreshMeshColors() { for (const c of components) { c.color = partColor(c.id); if (gl) uploadOneMesh(c) } }
 
 // ---------------------------------------------------------------- WebGL
