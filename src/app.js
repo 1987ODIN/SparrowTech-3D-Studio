@@ -26,7 +26,8 @@ function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)
 function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
 function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
-const spoolColors = [null, null, null, null];
+const SLOT_COUNT = 8;
+const spoolColors = Array(SLOT_COUNT).fill(null);
 const COLOR_SETTINGS_KEY = 'st3d_filament_settings';
 function saveColorSettings() {
   try {
@@ -38,7 +39,7 @@ function restoreColorSettings() {
     const saved = JSON.parse(localStorage.getItem(COLOR_SETTINGS_KEY));
     if (!saved) return;
     if (Array.isArray(saved.spoolColors)) {
-      saved.spoolColors.slice(0,99).forEach((c,i) => { spoolColors[i] = typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : null; });
+      saved.spoolColors.slice(0,SLOT_COUNT).forEach((c,i) => { spoolColors[i] = typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : null; });
     }
     for (const [i,[id,,key]] of PARTS.entries()) {
       const entry = saved.colors?.[i];
@@ -49,7 +50,7 @@ function restoreColorSettings() {
     S.slots = {};
     for (const id of ['base','letters','outline','back']) {
       const n = saved.slots?.[id];
-      if (Number.isInteger(n) && n >= 1 && n <= 99) S.slots[id] = n;
+      if (Number.isInteger(n) && n >= 1 && n <= SLOT_COUNT) S.slots[id] = n;
     }
     if (typeof saved.backColor === 'string' && /^#[0-9a-f]{6}$/i.test(saved.backColor)) S.backColor = saved.backColor;
   } catch {}
@@ -63,6 +64,7 @@ function renderSpools(part) {
     button.type = 'button';
     button.textContent = slot;
     button.style.setProperty('--slot-color', color || 'transparent');
+    button.classList.toggle('empty', !color);
     button.setAttribute('aria-label', 'Filamento ' + slot + (color ? ' ' + color : ' sem cor'));
     button.setAttribute('aria-pressed', String(S.slots?.[part] === slot));
     button.onclick = () => {
@@ -71,13 +73,6 @@ function renderSpools(part) {
     };
     box.append(button);
   });
-  if (spoolColors.length < 99) {
-    const add = document.createElement('button');
-    add.textContent = '+';
-    add.setAttribute('aria-label', 'Adicionar posição de filamento');
-    add.onclick = () => { spoolColors.push(null); saveColorSettings(); renderPicker(); };
-    box.append(add);
-  }
   return box;
 }
 function applySpoolColors() {
@@ -91,11 +86,11 @@ function effectiveColor(part, state) {
   return spoolColors[slot - 1];
 }
 function bindFilamentNumber(input, part) {
-  Object.assign(input, {type:'number',min:1,max:99,step:1,placeholder:'Auto'});
+  Object.assign(input, {type:'number',min:1,max:SLOT_COUNT,step:1,placeholder:'Auto'});
   input.value = S.slots?.[part] || '';
   input.onchange = () => {
     const n = input.valueAsNumber;
-    S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(99,Math.max(1,Math.round(n))) : undefined };
+    S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(SLOT_COUNT,Math.max(1,Math.round(n))) : undefined };
     input.value = S.slots[part] || '';
     applySpoolColors();
     const paired = $(input.id === 'pickerFilamentNumber' ? 'slot-'+part : 'pickerFilamentNumber');
@@ -149,7 +144,17 @@ function renderPicker() {
   const clear = document.createElement('button');
   clear.textContent = 'Limpar posição';
   clear.disabled = !spoolColors[(S.slots?.[part] || 0)-1];
-  clear.onclick = () => { spoolColors[S.slots[part]-1] = null; applySpoolColors(); renderPicker(); };
+  clear.onclick = () => {
+    const slot = S.slots[part];
+    spoolColors[slot - 1] = null;
+    for (const piece of pieces) {
+      const state = pieceState(piece);
+      for (const key of Object.keys(state.slots || {})) {
+        if (state.slots[key] === slot) delete state.slots[key];
+      }
+    }
+    applySpoolColors(); updatePieceTools(); renderPicker();
+  };
   box.append(renderSpools(part), generic, clear, sel, grid, name);
 }
 function updatePrintBar() { }

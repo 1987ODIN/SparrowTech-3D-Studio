@@ -79,9 +79,9 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 #editTools summary{cursor:pointer;padding:10px 12px;background:var(--surface);border-radius:10px;margin-bottom:8px;font-weight:700}
 #ringMenu{width:min(185px,48vw);overflow:auto;touch-action:pan-y}#ringMenu .ring-controls,#ringMenu .ring-checks{display:flex;align-items:center;gap:5px;justify-content:center}#ringMenu .ring-control{display:flex;align-items:center;gap:2px}#ringMenu .ring-control label{font-size:10px;text-align:center}#ringMenu output{display:block;white-space:nowrap}#ringMenu .ring-control>div{display:grid;justify-items:center;gap:2px}#ringMenu .ring-control input{appearance:auto;writing-mode:vertical-lr;direction:rtl;width:16px;height:65px;margin:0}#ringMenu button{padding:2px 5px;min-width:23px}#ringMenu .ring-checks label{font-size:11px}#nameSection #printbarSuggestions{position:static;max-height:120px;overflow:auto}#nameSection summary{cursor:pointer;margin-bottom:8px}
 #slotFields label{display:flex;justify-content:space-between;gap:5px;margin:4px 0}#slotFields input{width:55px}
- .slot-swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-bottom:6px}.slot-swatches button{padding:4px}.slot-swatches button::before{content:"";display:block;width:25px;height:25px;margin:0 auto 3px;border-radius:50%;background:var(--slot-color);border:1px solid #8da0b5}.slot-swatches button[aria-pressed=true]{outline:2px solid #59bfff}
+ .slot-swatches{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;margin-bottom:6px}.slot-swatches button{padding:4px}.slot-swatches button::before{content:"";display:block;width:25px;height:25px;margin:0 auto 3px;border-radius:50%;background:var(--slot-color);border:1px solid #8da0b5}.slot-swatches button.empty::before{border-style:dashed}.slot-swatches button[aria-pressed=true]{outline:2px solid #59bfff}
 </style></head>
-<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.11.5</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
+<body><div class="app"><section class="work"><header><div class="brand"><div class="editor-brand"><h1>SparrowTech <span style="color:#56a9ff">3D</span></h1><span class="editor-version">v5.11.6</span></div></div><div class="topactions"><button id="btnFit" title="Centrar a peça">⌖</button><button id="btnPlate">⚙ Medidas</button><button id="resetCam" title="Vista 3D (isométrica)">3D</button><button id="btnFlip" title="Ver o verso">↻<span class="lbl"> Verso</span></button><button id="dlSTL" title="Descarregar STL (só a forma, sem cores)">⬇ STL</button><button id="dl3MF" class="primary" title="Descarregar 3MF (com cores, para o Bambu Studio)">⬇ 3MF</button></div></header>
 <div class="viewport" id="viewport"><canvas id="gl"></canvas><canvas id="backGhost" class="hidden" style="position:absolute;inset:0;pointer-events:none;width:100%;height:100%;z-index:3"></canvas><section id="backTools" class="piece-tools hidden" style="z-index:8;width:min(144px,37%)" aria-label="Texto do verso"><strong>Texto do verso</strong><label for="backScale">Tamanho <output id="backScaleValue">100%</output></label><input id="backScale" type="range" min="35" max="200" step="5" value="100"><button id="closeBackTools" type="button">Voltar à frente</button></section><section class="piece-tools hidden" id="pieceTools" aria-label="Ferramentas da peça">
 <strong id="pieceToolName"></strong>
 <button id="movePiece" type="button" aria-controls="movePanel" aria-expanded="false">✥ Mover</button>
@@ -8845,7 +8845,8 @@ function setPartFilament(part, fil) { const key = PARTS.find(p => p[0] === part)
 function matchFilamentsToBrand() { for (const [part, , key] of PARTS) { const cur = S.filaments[part]; if (cur && cur.brand === brand()) continue; const f = nearestFilament(S[key], brand(), cur && cur.brand === brand() ? cur.series : null); if (f) setPartFilament(part, f) } }
 function filamentLabel(part, state = S) { const f = state.filaments[part === 'back' ? 'letters' : part]; return f ? `${f.brand} ${f.series} ${f.name}${f.brand === 'Bambu Lab' ? ' (' + f.code + ')' : ''}` : 'cor livre' }
 let pickerPart = null;
-const spoolColors = [null, null, null, null];
+const SLOT_COUNT = 8;
+const spoolColors = Array(SLOT_COUNT).fill(null);
 const COLOR_SETTINGS_KEY = 'st3d_filament_settings';
 function saveColorSettings() {
   try {
@@ -8857,7 +8858,7 @@ function restoreColorSettings() {
     const saved = JSON.parse(localStorage.getItem(COLOR_SETTINGS_KEY));
     if (!saved) return;
     if (Array.isArray(saved.spoolColors)) {
-      saved.spoolColors.slice(0,99).forEach((c,i) => { spoolColors[i] = typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : null; });
+      saved.spoolColors.slice(0,SLOT_COUNT).forEach((c,i) => { spoolColors[i] = typeof c === 'string' && /^#[0-9a-f]{6}$/i.test(c) ? c : null; });
     }
     for (const [i,[id,,key]] of PARTS.entries()) {
       const entry = saved.colors?.[i];
@@ -8868,7 +8869,7 @@ function restoreColorSettings() {
     S.slots = {};
     for (const id of ['base','letters','outline','back']) {
       const n = saved.slots?.[id];
-      if (Number.isInteger(n) && n >= 1 && n <= 99) S.slots[id] = n;
+      if (Number.isInteger(n) && n >= 1 && n <= SLOT_COUNT) S.slots[id] = n;
     }
     if (typeof saved.backColor === 'string' && /^#[0-9a-f]{6}$/i.test(saved.backColor)) S.backColor = saved.backColor;
   } catch {}
@@ -8882,6 +8883,7 @@ function renderSpools(part) {
     button.type = 'button';
     button.textContent = slot;
     button.style.setProperty('--slot-color', color || 'transparent');
+    button.classList.toggle('empty', !color);
     button.setAttribute('aria-label', 'Filamento ' + slot + (color ? ' ' + color : ' sem cor'));
     button.setAttribute('aria-pressed', String(S.slots?.[part] === slot));
     button.onclick = () => {
@@ -8890,13 +8892,6 @@ function renderSpools(part) {
     };
     box.append(button);
   });
-  if (spoolColors.length < 99) {
-    const add = document.createElement('button');
-    add.textContent = '+';
-    add.setAttribute('aria-label', 'Adicionar posição de filamento');
-    add.onclick = () => { spoolColors.push(null); saveColorSettings(); renderPicker(); };
-    box.append(add);
-  }
   return box;
 }
 function applySpoolColors() {
@@ -8910,11 +8905,11 @@ function effectiveColor(part, state) {
   return spoolColors[slot - 1];
 }
 function bindFilamentNumber(input, part) {
-  Object.assign(input, {type:'number',min:1,max:99,step:1,placeholder:'Auto'});
+  Object.assign(input, {type:'number',min:1,max:SLOT_COUNT,step:1,placeholder:'Auto'});
   input.value = S.slots?.[part] || '';
   input.onchange = () => {
     const n = input.valueAsNumber;
-    S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(99,Math.max(1,Math.round(n))) : undefined };
+    S.slots = { ...S.slots, [part]:Number.isFinite(n) ? Math.min(SLOT_COUNT,Math.max(1,Math.round(n))) : undefined };
     input.value = S.slots[part] || '';
     applySpoolColors();
     const paired = $(input.id === 'pickerFilamentNumber' ? 'slot-'+part : 'pickerFilamentNumber');
@@ -8968,7 +8963,17 @@ function renderPicker() {
   const clear = document.createElement('button');
   clear.textContent = 'Limpar posição';
   clear.disabled = !spoolColors[(S.slots?.[part] || 0)-1];
-  clear.onclick = () => { spoolColors[S.slots[part]-1] = null; applySpoolColors(); renderPicker(); };
+  clear.onclick = () => {
+    const slot = S.slots[part];
+    spoolColors[slot - 1] = null;
+    for (const piece of pieces) {
+      const state = pieceState(piece);
+      for (const key of Object.keys(state.slots || {})) {
+        if (state.slots[key] === slot) delete state.slots[key];
+      }
+    }
+    applySpoolColors(); updatePieceTools(); renderPicker();
+  };
   box.append(renderSpools(part), generic, clear, sel, grid, name);
 }
 function updatePrintBar() { }
