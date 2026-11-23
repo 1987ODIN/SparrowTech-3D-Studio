@@ -170,6 +170,7 @@ function toggleFavorite(font) { const i = S.favorites.indexOf(font); if (i >= 0)
 // Troca de fonte: atualiza só o necessário e calcula primeiro uma pré-visualização rápida.
 let fontSettle = null;
 function chooseFont(font, quick) {
+  if (!quick) activePiece.chosenFont = font;
   S.font = font;
   for (const b of document.querySelectorAll('.fontcard')) b.classList.toggle('on', b.dataset.font === font);
   // Rola só a galeria (não a página: no telemóvel o modelo sairia do ecrã).
@@ -179,12 +180,11 @@ function chooseFont(font, quick) {
   else { interactiveBuild = false; scheduleRebuild(true) }
 }
 function stepFont(dir) { const i = FONTS.indexOf(S.font); chooseFont(FONTS[(i + dir + FONTS.length) % FONTS.length], true) }
-function updateFontSwitch() { const n = $('fontName'); if (!n) return; n.textContent = S.font; n.style.fontFamily = `'${S.font}'`; $('fontCount').textContent = `${FONTS.indexOf(S.font) + 1}/${FONTS.length}`; $('fontSwitch').classList.add('hidden') }
+function updateFontSwitch() { const n = $('fontName'); if (!n) return; n.textContent = S.font; n.style.fontFamily = `'${S.font}'`; $('fontCount').textContent = `${FONTS.indexOf(S.font) + 1}/${FONTS.length}`; $('fontRestore').disabled = !activePiece || S.font === (activePiece.chosenFont || 'Pacifico') }
 let fontMode = false;
 function setFontMode(on) { fontMode = on; updateFontSwitch(); $('selectionLabel').textContent = on ? '✎ Modo fonte: roda o rato para trocar · Esc ou clique fora para sair' : selectionText(S.selected) }
 function updateQualityBadge() { $('qualityBadge').textContent = 'Vetorial · ±' + fmtTol(QUALITY_TOL[S.quality]) + ' mm' }
 function bindControls() {
-  $('editTools').ontoggle = () => setFontMode(false);
   $('nameSection').ontoggle = () => {
     if (!$('nameSection').open) $('printbarSuggestions').classList.add('hidden');
   };
@@ -249,10 +249,9 @@ function bindControls() {
   updateRingMenu(); bindRingMenu(); bindPartMenu(); bindPlateControls(); bindPieceTools();
   $('importFont').onclick = () => $('fontFile').click();
   $('testPlate').onclick = () => exportTestPlate();
+  $('fontRestore').onclick = () => chooseFont(activePiece.chosenFont || 'Pacifico');
   $('fontPrev').onclick = () => stepFont(-1); $('fontNext').onclick = () => stepFont(1);
-  $('fontName').onclick = () => setFontMode(!fontMode);
-  let acc = 0;
-  $('fontSwitch').addEventListener('wheel', e => { e.preventDefault(); e.stopPropagation(); acc += e.deltaY; if (Math.abs(acc) >= 40) { stepFont(acc > 0 ? 1 : -1); acc = 0 } }, { passive: false });
+
   document.addEventListener('keydown', e => { if (!fontMode || /INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) return; if (e.key === 'Escape') setFontMode(false); if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { stepFont(1); e.preventDefault() } if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { stepFont(-1); e.preventDefault() } });
   $('fontFile').onchange = async () => { const f = $('fontFile').files[0]; $('fontFile').value = ''; if (f) await importFont(f) };
   bindViewCube();
@@ -418,6 +417,7 @@ function applyModel(r, quality, state) {
   const total = components.reduce((s, c) => s + c.mesh.triangleCount, 0), b = r.regions.bounds || { width: 0, height: 0 };
   $('triangleBadge').textContent = total.toLocaleString('pt-PT') + ' triângulos';
   $('sizeBadge').textContent = `${fmt(b.width)} × ${fmt(b.height)} × ${fmt(r.height)} mm`;
+  $('tagMeasures').textContent = 'Tag atual · ' + $('sizeBadge').textContent;
   let msg = `Geometria vetorial · desvio ≤ ${fmtTol(QUALITY_TOL[quality])} mm · ${components.length} partes fechadas · ${r.timing.regions + r.timing.meshes} ms`;
   if (quality !== S.quality) msg = interactiveBuild ? 'Pré-visualização rápida durante o arrasto…' : `Pré-visualização em «Fina»; a exportação usa «${QUALITY_LABEL[S.quality]}».`;
   if (S.front === 'raised' && S.back === 'raised') msg = '⚠ Relevo nas duas faces: a orientação pode exigir suportes ou impressão em partes.';
@@ -478,6 +478,13 @@ function bindRingMenu() {
   }
   for (const [id,key] of [['rmEnabled','hasRing'],['rmReinforce','ringReinforce']]) {
     $(id).onchange = () => { S[key] = $(id).checked; updateControls(); scheduleRebuild(); };
+  }
+  for (const [button,slider,delta] of [['rmMinus','rmSize',-1],['rmPlus','rmSize',1],['rmInnerMinus','rmInner',-1],['rmInnerPlus','rmInner',1]]) {
+    $(button).onclick = () => {
+      const input = $(slider);
+      if (delta > 0) input.stepUp(); else input.stepDown();
+      input.oninput();
+    };
   }
   $('rmReset').onclick = () => { S.ringManual = false; scheduleRebuild(true); };
   $('rmClose').onclick = () => { ringMenuClosed = true; updateRingMenu(); };
@@ -846,7 +853,6 @@ function bindViewerEvents() {
     }
     if (!S.plateView && !d.moved && !d.chord) { partMenuFor = d.clicked || null; setFontMode(false); updatePartMenu() }
     if (d.kind === 'ring' && d.moved) {
-      ringMenuClosed = true; updateRingMenu();
       const fix = releasePosition(d, e && e.timeStamp); if (fix) { S.ringX = fix.x; S.ringY = fix.y }
       endRingGhost(); interactiveBuild = false; ringDragging = false; scheduleRebuild(true);
     }
