@@ -39,7 +39,7 @@ with sync_playwright() as p:
     for tab in ['tabBase', 'tabRing', 'tabPrint', 'tabLetters']:
         page.click('#' + tab); verify(f'aba {tab}')
     # Botões de opção (forma, acabamento frente/verso, modo de impressão)
-    for group, tab in [('shapeButtons', 'tabBase'), ('finishFront', 'tabLetters'), ('finishBack', 'tabLetters'), ('printModeButtons', 'tabPrint')]:
+    for group, tab in [('shapeButtons', 'tabBase'), ('finishFront', 'tabLetters'), ('finishBack', 'tabLetters')]:
         page.click('#' + tab)
         n = page.locator(f'#{group} button').count()
         for i in range(n):
@@ -64,16 +64,22 @@ with sync_playwright() as p:
     # Cores
     for cid in ['baseColor', 'letterColor', 'outlineColor']:
         page.evaluate(f"(() => {{ const e = document.getElementById('{cid}'); e.value = '#ff8800'; e.dispatchEvent(new Event('input', {{bubbles: true}})); }})()"); verify(f'cor {cid}')
-    # Menus (impressora, qualidade, bico, camada)
+    # Formato do tabuleiro, detalhe da malha, cópias e organização
     page.click('#tabPrint')
-    for sid in ['printer', 'quality', 'nozzle', 'layer']:
+    for sid, trigger in [('printer', 'btnPlate'), ('quality', 'tabPrint')]:
+        page.click('#' + trigger)
         for v in page.evaluate(f"[...document.getElementById('{sid}').options].map(o => o.value)"):
             page.select_option('#' + sid, v); verify(f'menu {sid} = {v}')
-    page.select_option('#quality', 'fine'); page.select_option('#printer', 'A1'); page.select_option('#nozzle', '0.4')
-    # Cópias e organizar
-    page.evaluate("(() => { const e = document.getElementById('copyCount'); e.value = 4; e.dispatchEvent(new Event('input')); })()"); verify('4 cópias')
+    page.select_option('#quality', 'fine')
+    page.click('#btnPlate')
+    page.fill('#plateWidth', '237'); page.locator('#plateWidth').press('Tab')
+    page.fill('#plateDepth', '198'); page.locator('#plateDepth').press('Tab')
+    assert page.evaluate('[plateW(), plateH()]') == [237, 198]
+    page.select_option('#printer', '256')
+    page.fill('#copyTop', '4'); verify('4 cópias')
+    page.click('#btnPlate')
     page.click('#autoArrange'); verify('organizar automaticamente')
-    page.evaluate("(() => { const e = document.getElementById('copyCount'); e.value = 1; e.dispatchEvent(new Event('input')); })()")
+    page.fill('#copyTop', '1')
     # Vistas e botões do topo
     for bid in ['btnFit', 'btnFlip', 'btnFlip', 'resetCam']:
         page.click('#' + bid); verify(f'botão {bid}')
@@ -97,31 +103,32 @@ with sync_playwright() as p:
     # Importar fonte (usa uma das fontes do projeto)
     page.click('#tabLetters')
     page.set_input_files('#fontFile', os.path.join(ROOT, 'fonts', 'Cookie.ttf')); page.wait_for_timeout(600); verify('importar fonte TTF')
-    # Filamentos: chips → paleta oficial → escolher cor; marca segue a impressora
-    page.select_option('#printer', 'A1'); page.wait_for_timeout(100)
-    page.locator('.filachip').first.click(); page.wait_for_timeout(100)
+    # Filamentos: abrir a paleta oficial depois de usar cor livre
+    page.locator('.filachip').first.click()
+    page.select_option('#filaSeries', 'PLA Basic')
     sw = page.locator('#filaPicker .swatch'); n = sw.count()
     sw.nth(min(5, n - 1)).click(); page.wait_for_timeout(100); verify(f'paleta Bambu ({n} cores) → base escolhida')
     fb = page.evaluate("S.filaments.base"); ok = fb and fb['brand'] == 'Bambu Lab' and page.evaluate("S.baseColor") == fb['hex'].lower()
     print(('  ✓ ' if ok else '  ✗ ') + f"base = {fb and fb['series']} {fb and fb['name']} ({fb and fb['code']})"); fails.extend([] if ok else ['filamento base'])
     page.select_option('#filaSeries', 'PLA Matte'); page.locator('#filaPicker .swatch').nth(2).click(); verify('série PLA Matte')
-    # Só impressoras Bambu Lab; tabuleiro retangular (H2D 325 × 320) e botão ⬇ do topo
+    # Tabuleiro exclusivamente por dimensões
     opts = page.evaluate("[...document.querySelectorAll('#printer option')].map(o => o.textContent)")
-    ok = 'K1C' not in ' '.join(opts) and len(opts) >= 10; print(('  ✓ ' if ok else '  ✗ ') + f'só Bambu Lab ({len(opts)} impressoras)'); fails.extend([] if ok else ['lista impressoras'])
-    page.select_option('#printer', 'H2D'); page.wait_for_timeout(200); verify('impressora H2D (tabuleiro retangular)')
+    assert all('mm' in option or option == 'Personalizado' for option in opts)
+    page.click('#btnPlate')
+    page.select_option('#printer', '325x320'); verify('tabuleiro retangular')
     page.click('#dl3MF'); info = page.inner_text('#infoBody')
-    ok = 'bico de 0,2' in info and '0,4' in info and 'cores' in info; print(('  ✓ ' if ok else '  ✗ ') + 'cartão do 3MF explica cores, bico e camada'); fails.extend([] if ok else ['cartão 3mf'])
+    assert '0,16 mm' in info and 'cores' in info
     with page.expect_download(timeout=90000) as dl: page.click('#infoGo')
-    pth = os.path.join(OUT, 'ui_h2d.3mf'); dl.value.save_as(pth)
+    pth = os.path.join(OUT, 'ui_325x320.3mf'); dl.value.save_as(pth)
     import zipfile, re
     z = zipfile.ZipFile(pth); main = z.read('3D/3dmodel.model').decode(); cfg = z.read('Metadata/model_settings.config').decode()
     t = [float(v) for v in re.search(r'<item [^>]*transform="([^"]+)"', main).group(1).split()]
-    pos = page.evaluate('[S.positionX, S.positionY]')
-    ok = abs(t[9] - (pos[0] + 162.5)) < 1e-3 and abs(t[10] - (pos[1] + 160)) < 1e-3 and 'Creality' not in cfg and 'Bambu Lab H2D' in main
-    print(('  ✓ ' if ok else '  ✗ ') + f'botão ⬇ do topo → 3MF H2D centrado no tabuleiro 325×320 ({t[9]:.1f}, {t[10]:.1f})'); fails.extend([] if ok else ['3mf h2d'])
+    pos = page.evaluate('currentPlan().plates[0].map(({x,y}) => [x,y])[0]')
+    ok = abs(t[9] - (pos[0] + 162.5)) < 1e-3 and abs(t[10] - (pos[1] + 160)) < 1e-3 and 'Bambu Lab H2D' not in main and 'nozzle_diameter' not in cfg and 'key="layer_height" value="0.16"' in cfg
+    print(('  ✓ ' if ok else '  ✗ ') + f'botão ⬇ do topo → 3MF centrado no tabuleiro 325×320 ({t[9]:.1f}, {t[10]:.1f})'); fails.extend([] if ok else ['3mf 325x320'])
     badges = page.evaluate("getComputedStyle(document.getElementById('sizeBadge').parentElement).display")
     ok = badges == 'none'; print(('  ✓ ' if ok else '  ✗ ') + 'medidas em mm escondidas na barra de baixo'); fails.extend([] if ok else ['badges'])
-    page.select_option('#printer', 'A1'); page.wait_for_timeout(150)
+    page.select_option('#printer', '256'); page.wait_for_timeout(150)
     with page.expect_download(timeout=90000) as dl: (page.click('#dl3MF'), page.click('#infoGo'))
     pth = os.path.join(OUT, 'ui_a1.3mf'); dl.value.save_as(pth); cfg = zipfile.ZipFile(pth).read('Metadata/model_settings.config').decode()
     ok = 'Bambu Lab PLA' in cfg and 'Creality' not in cfg
@@ -134,13 +141,13 @@ with sync_playwright() as p:
     print(('  ✓ ' if ok else '  ✗ ') + 'só 3MF e STL no topo; sem botões de exportação repetidos em baixo'); fails.extend([] if ok else ['formatos'])
     # Cópias a mais → mais tabuleiros (3MF) / um STL por tabuleiro
     page.fill('#copyTop', '40'); page.wait_for_timeout(300)
-    npl = page.evaluate("layoutPlan().plates.length"); cap = page.evaluate("layoutPlan().capacity")
+    npl = page.evaluate("currentPlan().plates.filter(plate => plate.length).length")
     with page.expect_download(timeout=120000) as dl: (page.click('#dl3MF'), page.click('#infoGo'))
     pth = os.path.join(OUT, 'ui_40copias.3mf'); dl.value.save_as(pth)
     import zipfile as _z
     zz = _z.ZipFile(pth); c40 = zz.read('Metadata/model_settings.config').decode(); m40 = zz.read('3D/3dmodel.model').decode()
     ok = npl > 1 and c40.count('<plate>') == npl and m40.count('<item ') == 40
-    print(('  ✓ ' if ok else '  ✗ ') + f'40 cópias → {npl} tabuleiros ({cap} por tabuleiro), {m40.count("<item ")} peças no 3MF'); fails.extend([] if ok else ['tabuleiros'])
+    print(('  ✓ ' if ok else '  ✗ ') + f'40 cópias → {npl} tabuleiros {m40.count("<item ")} peças no 3MF'); fails.extend([] if ok else ['tabuleiros'])
     got = []
     h = lambda d: got.append(d.suggested_filename)
     page.on('download', h); page.click('#dlSTL'); page.wait_for_timeout(6000); page.remove_listener('download', h)
@@ -157,6 +164,32 @@ with sync_playwright() as p:
     page.click('#tabLetters'); page.evaluate("S.favorites = ['Pacifico', 'Lilita One']; renderGallery()")
     with page.expect_download(timeout=90000) as dl: page.click('#testPlate')
     print('  ✓ placa de teste → ' + dl.value.suggested_filename)
+    # Seleção da peça, movimento, sugestões de nomes, cor e remoção reversível
+    page.click('#addName')
+    page.fill('#inputName', 'Andre')
+    page.get_by_role('button', name='André', exact=True).click()
+    page.locator('#inputName').press('Enter')
+    page.wait_for_function("() => S.plateView && S.name === 'André' && !building && !$('addName').disabled")
+    page.click('#movePiece')
+    page.select_option('#plateCorner', 'right,bottom')
+    assert page.evaluate("() => Math.abs(selectedPlacement().right - 123) < 0.001 && Math.abs(selectedPlacement().bottom + 123) < 0.001")
+    page.locator('#pieceColor').evaluate("e => { e.value = '#ff0088'; e.dispatchEvent(new Event('input')) }")
+    assert page.evaluate("S.plateView && S.letterColor === '#ff0088'")
+    page.fill('#copyTop', '2'); page.locator('#copyTop').press('Tab')
+    page.click('#movePiece')
+    page.keyboard.press('Delete')
+    assert page.evaluate('pieces.length === 2 && S.copies === 1')
+    page.click('#undoRemoval')
+    assert page.evaluate('pieces.length === 2 && S.copies === 2')
+    page.click('#gl', position={'x': 12, 'y': 12})
+    assert not page.locator('#pieceTools').is_visible()
+    with page.expect_download(timeout=120000) as dl: (page.click('#dl3MF'), page.click('#infoGo'))
+    with zipfile.ZipFile(dl.value.path()) as z:
+        main = z.read('3D/3dmodel.model').decode()
+        cfg = z.read('Metadata/model_settings.config').decode()
+    assert 'value="André"' in cfg and '#FF0088' in cfg
+    assert main.count('<item ') == 3 and cfg.count('key="layer_height" value="0.16"') == 2
+    print('  ✓ sugestões, cópias, cantos, cor e remoção reversível')
     if errors: fails.append('erros finais: ' + '; '.join(errors[:3]))
     page.screenshot(path=os.path.join(OUT, 'ui_final.png'))
     b.close()

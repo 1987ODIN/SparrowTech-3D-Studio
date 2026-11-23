@@ -63,6 +63,7 @@
     let status = 'ok';
     if (overlap < 0.3) status = 'solta';
     else if (frac < 0.2 || wall < 1.2) status = 'fraca';
+    if (S.fillLetterHoles) joined = G.fillSmallHoles(joined, Infinity);
     return { base: G.difference(joined, inner), info: { frac, overlap, web, wall, holeCuts, cover, status } };
   }
 
@@ -121,13 +122,15 @@
     else {
       const pad = S.border + 1, x0 = tb.minX - pad, x1 = tb.maxX + pad, y0 = tb.minY - pad, y1 = tb.maxY + pad;
       const bw = x1 - x0, bh = y1 - y0, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-      if (S.shape === 'rounded') shape = G.roundRect(x0, y0, x1, y1, Math.min(12, bh * 0.3), tol, ang);
+      if (S.shape === 'softRectangle') shape = G.roundRect(x0, y0, x1, y1, Math.min(S.cornerRadius || 5, bw / 2, bh / 2), tol, ang);
+      else if (S.shape === 'rounded') shape = G.roundRect(x0, y0, x1, y1, Math.min(12, bh * 0.3), tol, ang);
       else if (S.shape === 'square') shape = G.rect(x0, y0, x1, y1);
       else if (S.shape === 'oval') shape = growToContain(k => G.ellipse(cx, cy, bw / 2 * k, bh / 2 * k, tol, ang), text);
       else if (S.shape === 'cloud') shape = growToContain(k => G.cloud(cx, cy, bw / 2 * k, bh / 2 * k, tol, ang), text);
       else shape = G.offset(text, S.border, tol, ang);
     }
-    if (S.fillHoles) shape = G.fillSmallHoles(shape, S.holeArea);
+    if (S.fillLetterHoles) shape = G.fillSmallHoles(shape, Infinity);
+    else if (S.fillHoles) shape = G.fillSmallHoles(shape, S.holeArea);
     // Argola
     let ring = null, base = shape, ringOverlap = 0;
     if (S.hasRing) {
@@ -142,16 +145,16 @@
     let outline = [], outlineFoot = [];
     if (S.outline) { outlineFoot = G.offset(text, S.outlineWidth, tol, ang); outline = G.depinch(G.intersection(G.difference(outlineFoot, text), base)); }
     // Verso (espelhado em X para ler corretamente depois de virar a peça)
-    let back = [];
+    let back = [], backX = 0, backY = 0;
     if (S.back !== 'smooth' && S.back !== 'through') {
       const backName = (S.backText || '').trim() || name;
       const fontFor = fonts.back || fonts.front;
       const wordWidth = Math.min(218, Math.max(65, tb.width + 25));
-      let backEm = Math.min(em, (wordWidth - 5) * 1.8 / Math.max(1, backName.length));
+      let backEm = Math.min(em, (wordWidth - 5) * 1.8 / Math.max(1, backName.length)) * (S.backScale || 100) / 100;
       const bb = G.bounds(shape) || tb, cx = (bb.minX + bb.maxX) / 2, cy = (bb.minY + bb.maxY) / 2;
       const inset = G.offset(base, -0.8, tol, ang), margin = G.offset(base, -0.5, tol, ang);
       let K = [];
-      for (let i = 0; i < 14; i++) {
+      for (let i = 0; i < 28; i++) {
         let Kt = G.textRegion(fontFor, backName, backEm, tol, ang, { letterSpacing: spacing }).paths;
         if (Math.abs(weight) > 1e-3 && Kt.length) Kt = G.offset(Kt, weight * backEm / em, tol, ang);
         K = G.translate(G.mirrorX(Kt), cx, cy);
@@ -159,9 +162,23 @@
         if (Math.abs(G.regionArea(G.difference(K, inset))) <= area * 0.002) break;
         backEm *= 0.92;
       }
-      back = G.depinch(G.intersection(K, margin));   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
+      const centered = G.depinch(G.intersection(K, margin));
+      const dx = S.backX || 0, dy = S.backY || 0;
+      back = centered;
+      if (dx || dy) {
+        let low = 0, high = 1;
+        for (let i = 0; i < 13; i++) {
+          const t = i === 0 ? 1 : (low + high) / 2;
+          const shifted = G.translate(centered, dx * t, dy * t);
+          if (!G.difference(shifted, margin).length) {
+            low = t; back = shifted;
+            if (t === 1) break;
+          } else high = t;
+        }
+        backX = dx * low; backY = dy * low;
+      }   // o verso fica sempre ≥ 0,5 mm afastado do rebordo
     }
-    return { name, text, letters, shape, base, outline, outlineFoot, back, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
+    return { name, text, letters, shape, base, outline, outlineFoot, back, backX, backY, ring, ringOverlap, print, quality: q, bounds: G.bounds(base), textBounds: tb };
   }
 
   /**

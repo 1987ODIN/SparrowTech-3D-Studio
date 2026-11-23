@@ -53,7 +53,23 @@
   function buildObjects(objects, meta) {
     objects = objects.map(o => Object.assign({}, o, { parts: o.parts.filter(p => p.mesh && p.mesh.indices && p.mesh.indices.length) })).filter(o => o.parts.length && o.placements.length);
     if (!objects.length) throw new Error('Sem malhas para exportar.');
-    const { map, colors } = extruderMap([].concat(...objects.map(o => o.parts)));
+    const parts = objects.flatMap(o => o.parts);
+    const colors = [], map = {}, assigned = new Map();
+    const reserved = new Set(parts.map(p => p.slot).filter(n => Number.isInteger(n) && n >= 1 && n <= 99));
+    const automatic = new Map();
+    for (const part of parts) {
+      const color = String(part.color).toLowerCase();
+      let slot = reserved.has(part.slot) ? part.slot : automatic.get(color);
+      if (!slot) {
+        slot = 1;
+        while (reserved.has(slot) || colors[slot - 1]) slot++;
+        automatic.set(color, slot);
+      }
+      colors[slot - 1] ||= color;
+      assigned.set(part, slot);
+      map[part.id] = slot;
+    }
+    const extruder = part => assigned.get(part);
     const date = meta.date || new Date().toISOString().slice(0, 10);
     const halfW = (meta.plateW || meta.plateSize || 256) / 2, halfH = (meta.plateH || meta.plateSize || 256) / 2;
     const title = meta.name || 'SparrowTech';
@@ -66,7 +82,7 @@
     let itemN = 0, identify = 100;
     objects.forEach((o, oi) => {
       const objectId = totalSub + 1 + oi, comps = [];
-      cfg.push(`  <object id="${objectId}">`, `    <metadata key="name" value="${esc(o.name || title)}"/>`, `    <metadata key="extruder" value="${map[o.parts[0].id]}"/>`);
+      cfg.push(`  <object id="${objectId}">`, `    <metadata key="name" value="${esc(o.name || title)}"/>`, `    <metadata key="extruder" value="${extruder(o.parts[0])}"/>`);
       // Altura de camada como definição DO OBJETO (o Bambu Studio aplica-a ao abrir; o bico é da impressora e não vai no ficheiro).
       if (meta.layerHeight) cfg.push(`    <metadata key="layer_height" value="${num(meta.layerHeight)}"/>`);
       for (const p of o.parts) {
@@ -74,7 +90,7 @@
         sub.push(`<object id="${id}" p:UUID="${hex8(id)}-81cb-4c03-9d28-80fed5dfa1dc" type="model">${meshXML(p.mesh)}</object>`);
         comps.push(`<component p:path="/3D/Objects/object_1.model" objectid="${id}" p:UUID="${hex8(id << 16)}-b206-40ff-9872-83e8017abed1" transform="1 0 0 0 1 0 0 0 1 0 0 0"/>`);
         cfg.push(`    <part id="${id}" subtype="normal_part">`, `      <metadata key="name" value="${esc(p.label)}"/>`, '      <metadata key="matrix" value="1 0 0 0 0 1 0 0 0 0 1 0 0 0 0 1"/>',
-          `      <metadata key="extruder" value="${map[p.id]}"/>`, `      <mesh_stat face_count="${p.mesh.indices.length / 3}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>`, '    </part>');
+          `      <metadata key="extruder" value="${extruder(p)}"/>`, `      <mesh_stat face_count="${p.mesh.indices.length / 3}" edges_fixed="0" degenerate_facets="0" facets_removed="0" facets_reversed="0" backwards_edges="0"/>`, '    </part>');
       }
       cfg.push('  </object>');
       resources.push(`<object id="${objectId}" p:UUID="${hex8(objectId)}-61cb-4c03-9d28-80fed5dfa1dc" type="model"><components>${comps.join('')}</components></object>`);
@@ -91,7 +107,7 @@
       '<metadata name="BambuStudio:3mfVersion">1</metadata>' +
       `<metadata name="Title">${esc(title)}</metadata>` +
       '<metadata name="Designer">SparrowTech 3D Studio v5</metadata>' +
-      `<metadata name="Description">${esc((meta.printerName || '') + (meta.nozzle ? ' · bico recomendado ' + meta.nozzle + ' mm' : '') + (meta.layerHeight ? ' · camada ' + meta.layerHeight + ' mm' : '') + ' · ' + itemN + ' peça(s) · filamentos: ' + [...new Set(allParts.map(p => p.label.replace(/ \(#.*/, '') + '=' + map[p.id]))].join(', '))}</metadata>` +
+      `<metadata name="Description">${esc((meta.printerName || '') + (meta.nozzle ? ' · bico recomendado ' + meta.nozzle + ' mm' : '') + (meta.layerHeight ? ' · camada ' + meta.layerHeight + ' mm' : '') + ' · ' + itemN + ' peça(s) · filamentos: ' + [...new Set(allParts.map(p => p.label.replace(/ \(#.*/, '') + '=' + extruder(p)))].join(', '))}</metadata>` +
       `<metadata name="CreationDate">${date}</metadata><metadata name="ModificationDate">${date}</metadata>` +
       `<resources>${resources.join('')}</resources>` +
       `<build p:UUID="2c7c17d8-22b5-4d84-8835-1976022ea369">${items.join('')}</build></model>`;
