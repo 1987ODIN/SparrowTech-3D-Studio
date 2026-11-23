@@ -60,18 +60,20 @@ function renderSpools() {
   spoolColors.forEach((color, index) => {
     const row = document.createElement('div');
     const label = document.createElement('label');
-    label.textContent = 'Bobine ' + (index + 1);
+    label.textContent = index + 1;
     const input = document.createElement('input');
     input.type = 'color';
     input.value = color || '#ffffff';
-    input.setAttribute('aria-label', label.textContent);
+    input.setAttribute('aria-label', 'Cor ' + (index + 1));
     const action = document.createElement('button');
     action.type = 'button';
-    action.textContent = color ? 'Limpar' : 'Definir';
+    action.textContent = color ? '×' : '✓';
+    row.classList.toggle('empty', !color);
     action.title = color ? 'Retirar a cor da bobine' : 'Ativar a cor desta bobine';
     input.oninput = () => {
       spoolColors[index] = input.value;
-      action.textContent = 'Limpar';
+      action.textContent = '×';
+      row.classList.remove('empty');
       action.title = 'Retirar a cor da bobine';
       applySpoolColors();
     };
@@ -80,7 +82,7 @@ function renderSpools() {
       renderSpools();
       applySpoolColors();
     };
-    label.append(input);
+    label.prepend(input);
     row.append(label, action);
     box.append(row);
   });
