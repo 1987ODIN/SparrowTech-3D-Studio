@@ -21,10 +21,15 @@ const metadata = [
   '<link rel="canonical" href="https://crowmakes.com/tags/">',
 ].join('\n');
 if (!/<title>[^<]+<\/title>/.test(editor)) throw new Error('Título do editor em falta');
-const portal = await readFile(file('portal/index.html'), 'utf8');
-const loader = portal.match(/<script async src="https:\/\/pagead2\.googlesyndication\.com[^"]+"[^>]*><\/script>/)?.[0];
-const ad = portal.match(/<aside id="publicidade"[\s\S]*?<\/aside>/)?.[0];
-if (!loader || !ad) throw new Error('Configuração AdSense em falta no portal');
+const loader = `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4327764352811582" crossorigin="anonymous"></script>`;
+const ad = `<aside id="publicidade" aria-label="Publicidade">
+<ins class="adsbygoogle" style="display:block"
+     data-ad-client="ca-pub-4327764352811582"
+     data-ad-slot="6683290316"
+     data-ad-format="auto"
+     data-full-width-responsive="true"></ins>
+<script>(window.adsbygoogle = window.adsbygoogle || []).push({});</script>
+</aside>`;
 const adFooter = '<footer id="editorAd" style="box-sizing:border-box;padding:4px 12px;border-top:1px solid #334357"><small>Publicidade</small>' + ad + '</footer>';
 const adLayout = '<style>body:has(#editorAd){height:100dvh;display:grid;grid-template-rows:minmax(0,1fr) 78px}body:has(#editorAd) .app{height:100%;min-height:0;overflow:auto}#editorAd #publicidade{margin:0}#editorAd{overflow:hidden}#editorAd ins{height:50px}#editorAd ins[data-ad-status="unfilled"]{visibility:hidden}</style>';
 const page = editor.replace('</head>', loader + adLayout + '</head>')
