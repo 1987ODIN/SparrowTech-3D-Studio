@@ -58,6 +58,15 @@ for (const fname of ['Pacifico', 'Lobster', 'Great Vibes']) {
   }
 }
 
+// A pausa para trocar de filamento deve cair entre duas partes, sem altura partilhada.
+{
+  const regions = M.regionsFor(BASE_STATE, { front: fonts.Lobster }, G.QUALITY.fine);
+  const { base, outline, letters } = M.solidsFor(BASE_STATE, regions);
+  check(base[0].z1 === outline[0].z0, 'contorno começa depois da base');
+  check(outline[0].z1 === letters[0].z0, 'letras começam depois do contorno');
+  check(!G.difference(letters[0].paths, outline[0].paths).length, 'contorno preenche a área sob as letras');
+}
+
 console.log('2) Todas as combinações de acabamento × fontes × formas (qualidade fina)');
 const FRONT = ['raised', 'flush', 'engraved', 'cutout'], BACK = ['smooth', 'inlay', 'raised', 'engraved', 'through'], SHAPES = ['contour', 'cloud', 'rounded', 'square', 'oval', 'none'];
 let worst = 0, totalBuilds = 0;
