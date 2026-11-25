@@ -91,7 +91,7 @@ header{padding-top:10px!important;padding-bottom:10px!important}header h1{font-s
 .name-board li .muted{white-space:nowrap}
 @media(max-width:830px){.name-board{border-right:0;border-bottom:1px solid var(--line)}.name-board ul{max-height:110px;overflow:auto}.name-board .nameActions{flex-direction:row;flex-wrap:wrap}.name-board #nameEntry input{width:auto;flex:1 1 115px}}
 </style></head>
-<body><div class="app"><aside class="name-board" aria-labelledby="nameBoardTitle"><h2 id="nameBoardTitle">Nomes no tabuleiro</h2><ul id="pieceNames"></ul><button id="duplicateName" class="tiny" type="button" disabled>Duplicar peça</button><label class="label" for="inputName" id="nameLabel">Nome</label>
+<body><div class="app"><aside class="name-board" aria-labelledby="nameBoardTitle"><h2 id="nameBoardTitle">Nomes no tabuleiro</h2><ul id="pieceNames"></ul><button id="duplicateName" class="tiny" type="button" title="Duplicar peça (Ctrl+V)" aria-keyshortcuts="Control+V Meta+V" disabled>Duplicar peça</button><label class="label" for="inputName" id="nameLabel">Nome</label>
 <form id="nameEntry">
 <div class="nameActions">
 <input type="text" id="inputName" disabled placeholder="Escreve um nome" maxlength="28" autocomplete="off">
@@ -10414,7 +10414,15 @@ function bindPieceTools() {
   $('deletePiece').onclick = deleteSelectedPiece;
   $('undoRemoval').onclick = undoPieceRemoval;
   document.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.defaultPrevented || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.ctrlKey || event.metaKey) {
+      const piece = selectedPiece() || (event.target.closest?.('#pieceNames') && activePiece);
+      if (event.key.toLowerCase() === 'v' && !event.shiftKey && piece && !dragAction) {
+        event.preventDefault();
+        if (!event.repeat) $('duplicateName').click();
+      }
+      return;
+    }
     if (event.key === 'Delete' && selectedPiece()) { event.preventDefault(); deleteSelectedPiece() }
     if (event.key === 'Escape' && S.plateView && plateSelection) setPlateSelection(null);
   });

@@ -1580,7 +1580,15 @@ function bindPieceTools() {
   $('deletePiece').onclick = deleteSelectedPiece;
   $('undoRemoval').onclick = undoPieceRemoval;
   document.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.defaultPrevented || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.ctrlKey || event.metaKey) {
+      const piece = selectedPiece() || (event.target.closest?.('#pieceNames') && activePiece);
+      if (event.key.toLowerCase() === 'v' && !event.shiftKey && piece && !dragAction) {
+        event.preventDefault();
+        if (!event.repeat) $('duplicateName').click();
+      }
+      return;
+    }
     if (event.key === 'Delete' && selectedPiece()) { event.preventDefault(); deleteSelectedPiece() }
     if (event.key === 'Escape' && S.plateView && plateSelection) setPlateSelection(null);
   });
