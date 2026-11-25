@@ -253,8 +253,13 @@
     const style = S.letterStyle && S.letterStyle !== 'flat' ? S.letterStyle : (S.roundTop ? 'soft' : 'flat');
     const raisedSolids = (paths, z0, z1, up) => style !== 'flat' ? domed(paths, z0, z1, up, q.tol, q.angle, style === 'puffy', S._jitter) : [{ paths, z0, z1 }];
     if (S.front === 'raised') {
-      for (const sl of raisedSolids(Tp, b, b + fh, true)) { push(L, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); }
-      push(O, R.outline, b, b + oh); push(extra, F.length ? G.intersection(F, R.base) : [], b, b + oh);
+      const footprint = F.length ? G.intersection(F, R.base) : [];
+      // O contorno suporta toda a letra para que a troca de cor ocorra entre camadas.
+      const stacked = !through && footprint.length > 0;
+      const letterBottom = stacked ? b + oh : b;
+      for (const sl of raisedSolids(Tp, letterBottom, letterBottom + fh, true)) { push(L, sl.paths, sl.z0, sl.z1); push(extra, sl.paths, sl.z0, sl.z1); }
+      push(O, stacked ? footprint : R.outline, b, b + oh);
+      push(extra, footprint, b, b + oh);
     } else if (S.front === 'flush') {
       push(L, Tp, b - d, b); push(O, R.outline, b - d, b); push(pockets, F.length ? F : T, b - d, b);
     } else if (S.front === 'engraved') {
