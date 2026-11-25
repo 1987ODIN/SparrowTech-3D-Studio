@@ -500,7 +500,7 @@ async function rebuildModel() {
   $('overlayStatus').textContent = 'A calcular geometria vetorial…';
   try {
     const r = await geometryCall({ type: 'build', S: state, quality });
-    if (buildAgain || piece !== activePiece) return;
+    if (buildAgain || piece !== activePiece || ringGhost) return;
     applyModel(r, quality, state);
   } catch (err) { console.error(err); $('qualityNotice').textContent = 'Erro na geração: ' + err.message.split('\n')[0]; $('qualityNotice').classList.add('warn') }
   finally { building = false; if (buildAgain) { buildAgain = false; scheduleRebuild(true) } }
@@ -673,17 +673,8 @@ function render3D() {
   gl.uniform1f(uniform.distance, PERSPECTIVE); gl.uniform2f(uniform.viewport, c.width, c.height); gl.uniform2f(uniform.pan, camera.panX * ratio, camera.panY * ratio); gl.uniform3f(uniform.center, camera.cx, camera.cy, camera.cz);
   gl.uniform3f(uniform.mat, .05, 16, 0); gl.uniform4f(uniform.tint, 0, 0, 0, 0);
   if (Math.cos(camera.yaw) > -.18) { bindBufferAndDraw(plateBuffer && plateBuffer.buf, plateBuffer && plateBuffer.n, gl.TRIANGLES, [0, 0]); bindBufferAndDraw(gridBuffer && gridBuffer.buf, gridBuffer && gridBuffer.n, gl.LINES, [0, 0]) }
-  for (const pos of objectPositions()) for (const m of (pos.piece === activePiece ? components : pos.piece.components)) if (m.glBuffer) { const mt = materialFor(m.id, pieceState(pos.piece)); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
-  // Argola «fantasma» durante o arrasto: desenhada direto na GPU, segue o cursor sem recalcular a peça.
-  if (S.plateView && plateSelection) {
-    const selected = objectPositions().find(p => p.piece === plateSelection.piece && p.index === plateSelection.index);
-    if (selected) {
-      gl.uniform4f(uniform.tint, .15, .62, 1, .3);
-      for (const mesh of selected.piece.components) bindBufferAndDraw(mesh.glBuffer, mesh.vertexCount, gl.TRIANGLES, [selected.x, selected.y]);
-      gl.uniform4f(uniform.tint, 0, 0, 0, 0);
-    }
-  }
-  if (ringGhost && ringGhostBuf) { const pos = activePosition(), st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
+  for (const pos of objectPositions()) for (const m of (pos.piece === activePiece ? (ringPreview || components) : pos.piece.components)) if (m.glBuffer) { const mt = materialFor(m.id, pieceState(pos.piece)); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(m.glBuffer, m.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
+  if (ringGhost && ringGhostBuf) { const pos = activePosition(), st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.uniform4f(uniform.tint, 0, 0, 0, 0) }
   // Câmara da argola: desenha-se num canto, copia-se para o quadro fixo no topo e volta a desenhar-se a cena por cima.
   if (ringGhost && loupeOn) { if (!loupePass) { renderLoupe(c, ratio); loupePass = true; try { render3D() } finally { loupePass = false } return } } else $('loupe').classList.add('hidden');
   $('viewport').classList.toggle('loupeActive', !!(ringGhost && loupeOn));
@@ -702,22 +693,22 @@ function renderLoupe(c, ratio) {
   gl.uniform1f(uniform.yaw, 0); gl.uniform1f(uniform.pitch, 0); gl.uniform1f(uniform.scale, zoom * ratio); gl.uniform2f(uniform.viewport, ds, ds); gl.uniform2f(uniform.pan, 0, 0);
   gl.uniform3f(uniform.center, pos.x + ringGhost.x, pos.y + ringGhost.y, 0);
   gl.uniform4f(uniform.tint, 0, 0, 0, 0);
-  for (const mm of components) if (mm.glBuffer) { const mt = materialFor(mm.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(mm.glBuffer, mm.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
+  for (const mm of (ringPreview || components)) if (mm.glBuffer) { const mt = materialFor(mm.id); gl.uniform3f(uniform.mat, mt[0], mt[1], mt[2]); bindBufferAndDraw(mm.glBuffer, mm.vertexCount, gl.TRIANGLES, [pos.x, pos.y]) }
   const st = ringGhost.status; gl.uniform3f(uniform.mat, .2, 30, .3); gl.uniform4f(uniform.tint, st === 'ok' ? .25 : 1, st === 'ok' ? .9 : st === 'solta' ? .3 : .75, st === 'ok' ? .45 : .15, .55);
-  gl.disable(gl.DEPTH_TEST); bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]); gl.enable(gl.DEPTH_TEST);
+  bindBufferAndDraw(ringGhostBuf.buf, ringGhostBuf.n, gl.TRIANGLES, [pos.x + ringGhost.x, pos.y + ringGhost.y]);
   gl.uniform4f(uniform.tint, 0, 0, 0, 0); gl.disable(gl.SCISSOR_TEST); gl.viewport(0, 0, c.width, c.height); gl.clearColor(.052, .08, .123, 1);
   cv.getContext('2d').drawImage(c, 0, c.height - ds, ds, ds, 0, 0, ds, ds);
 }
 
 // Malha simples da argola (anel extrudido) para o arrasto em tempo real.
-let ringGhost = null, ringGhostBuf = null, ringDragBase = null, ringDragText = null;
+let ringPreview = null, ringGhost = null, ringGhostBuf = null, ringDragBase = null, ringDragText = null;
 function buildRingGhost() {
   if (!gl) return; if (ringGhostBuf) gl.deleteBuffer(ringGhostBuf.buf);
   const ro = S.ringOuter / 2, ri = S.ringInner / 2, z0 = (model && model.zShift) || 0, z1 = z0 + S.bodyThickness, n = 64, v = [], c = rgb(S.baseColor);
   const push = (x, y, z, nx, ny, nz) => v.push(x, y, z, nx, ny, nz, c[0], c[1], c[2]);
   for (let i = 0; i < n; i++) {
     const a0 = i / n * 2 * Math.PI, a1 = (i + 1) / n * 2 * Math.PI, c0 = Math.cos(a0), s0 = Math.sin(a0), c1 = Math.cos(a1), s1 = Math.sin(a1);
-    /* só a face de cima: é desenhada por cima de tudo, sem teste de profundidade */ for (const [z, nz] of [[z1 + .05, 1]]) { push(ro * c0, ro * s0, z, 0, 0, nz); push(ro * c1, ro * s1, z, 0, 0, nz); push(ri * c1, ri * s1, z, 0, 0, nz); push(ro * c0, ro * s0, z, 0, 0, nz); push(ri * c1, ri * s1, z, 0, 0, nz); push(ri * c0, ri * s0, z, 0, 0, nz) }
+    /* Só a face de cima, à altura da base. */ for (const [z, nz] of [[z1 + .05, 1]]) { push(ro * c0, ro * s0, z, 0, 0, nz); push(ro * c1, ro * s1, z, 0, 0, nz); push(ri * c1, ri * s1, z, 0, 0, nz); push(ro * c0, ro * s0, z, 0, 0, nz); push(ri * c1, ri * s1, z, 0, 0, nz); push(ri * c0, ri * s0, z, 0, 0, nz) }
   }
   ringGhostBuf = makeBuffer(new Float32Array(v));
 }
@@ -787,18 +778,24 @@ function releasePosition(d, upTime) {
   return null;
 }
 // Início do arrasto: a peça é recalculada (rascunho) SEM a argola e a argola passa a ser o fantasma na GPU.
-function startRingGhost(d) {
-  ringGhost = { x: S.ringX, y: S.ringY, status: 'ok', frac: 1 }; buildRingGhost();
+function startRingGhost() {
+  const ghost = { x: S.ringX, y: S.ringY, status: 'ok', frac: 1 };
+  ringGhost = ghost; buildRingGhost();
   ringDragging = true; interactiveBuild = true;
   const st = geometryState(); st.hasRing = false;
   geometryCall({ type: 'build', S: st, quality: 'draft' }).then(r => {
-    if (!ringGhost) return;
+    if (ringGhost !== ghost) return;
     ringDragBase = SparrowGeo.simplify(r.regions.base, .1); ringDragText = SparrowGeo.simplify(r.regions.text, .1);
-    releaseMeshBuffers(); components = r.parts.map(p => ({ ...p, color: partColor(p.id) })); uploadMeshBuffers();
+    ringPreview = r.parts.map(p => ({ ...p, color: partColor(p.id) }));
+    ringPreview.forEach(uploadOneMesh);
     ringGhost.status = ghostStatus(ringGhost.x, ringGhost.y); requestRender();
   }).catch(e => console.warn(e));
 }
-function endRingGhost() { loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true }
+function endRingGhost() {
+  if (ringPreview) releaseMeshBuffers(ringPreview);
+  ringPreview = null; loupeOn = false; ringGhost = null; ringDragBase = null; ringDragText = null; ringDragged = true;
+  requestRender();
+}
 function screenLocal(evt, z) { const rect = $('gl').getBoundingClientRect(), p = unproject(evt.clientX - rect.left, evt.clientY - rect.top, z); return p ? { x: p.x - activePosition().x, y: p.y - activePosition().y } : null }
 function inRegion(paths, p) { return paths && paths.length && SparrowGeo.contains(paths, p.x, p.y) }
 function hitsBackText(point) {
@@ -862,7 +859,7 @@ function bindViewerEvents() {
       const ring = hit?.piece.model?.regions.ring;
       const atRing = ring && Math.hypot(point.x-hit.x-ring.x, point.y-hit.y-ring.y) <= pieceState(hit.piece).ringOuter/2 + 2;
       setPlateSelection(hit);
-      kind = atRing || (hit && selectAt(e) === 'ring') ? 'ring' : hit ? 'move' : 'rotate';
+      kind = atRing ? 'ring' : hit ? 'move' : 'rotate';
     } else if (clicked === 'ring') kind = 'ring';
     ringMenuClosed = kind !== 'ring';
     updateRingMenu();
@@ -897,7 +894,7 @@ function bindViewerEvents() {
     else if (d.kind === 'ring') {
       let p = screenLocal(e, (model && model.zShift || 0) + S.bodyThickness);
       if (p) {
-        if (!ringGhost) { startRingGhost(d); loupeOn = e.pointerType === 'touch' || window.SPARROW_LOUPE === true }
+        if (!ringGhost) { startRingGhost(); loupeOn = e.pointerType === 'touch' || window.SPARROW_LOUPE === true }
         // Dedo: amortece o tremor (média móvel exponencial curta, ~30 ms de atraso).
         if (e.pointerType === 'touch' && d.smooth) p = { x: d.smooth.x + (p.x - d.smooth.x) * 0.55, y: d.smooth.y + (p.y - d.smooth.y) * 0.55 };
         d.smooth = p;
@@ -1051,7 +1048,6 @@ function activatePiece(piece, tab = 'letters') {
     updateControls();
     scheduleRebuild(true);
     scheduleScan();
-    autoFitAfterRebuild = tab !== 'plate';
   }
   selectTab(tab);
 }
@@ -1153,6 +1149,7 @@ function updatePlatePanel() {
   $('undoRemoval').classList.toggle('hidden', !removedPiece);
   updatePieceTools();
   syncNameEntry();
+  updatePieceNames();
 }
 function plateChanged() {
   cachedPlan = null;
@@ -1206,11 +1203,46 @@ function restorePlatePosition(drag) {
   for (const [p, placements] of drag.savedPlacements) p.placements = placements;
   plateChanged();
 }
-async function addName(name) {
-  const state = { ...editableState(), name, ringManual: false, copies: 1 }, quality = S.quality;
+const pieceNameRows = new Map();
+function updatePieceNames() {
+  const list = $('pieceNames');
+  for (const [piece, row] of pieceNameRows) {
+    if (pieces.includes(piece)) continue;
+    row.item.remove();
+    pieceNameRows.delete(piece);
+  }
+  for (const [index, piece] of pieces.entries()) {
+    let row = pieceNameRows.get(piece);
+    if (!row) {
+      const item = document.createElement('li'), button = document.createElement('button');
+      const name = document.createElement('span'), size = document.createElement('span');
+      button.type = 'button';
+      size.className = 'muted';
+      button.append(name, size);
+      button.onclick = () => {
+        if (dragAction || $('addName').disabled) return;
+        $('cancelName').click();
+        activatePiece(piece, 'letters');
+        selectPieceOnBoard(piece);
+      };
+      item.append(button);
+      list.insertBefore(item, list.children[index] || null);
+      row = { item, button, name, size };
+      pieceNameRows.set(piece, row);
+    }
+    const state = pieceState(piece);
+    row.name.textContent = state.name || 'Nome';
+    row.size.textContent = state.nameSize + '%' + (state.copies > 1 ? ' · ×' + state.copies : '');
+    row.button.classList.toggle('on', piece === activePiece);
+    row.button.setAttribute('aria-pressed', String(piece === activePiece));
+  }
+  $('duplicateName').disabled = !activePiece || $('addName').disabled;
+}
+async function addName(name, duplicate = false) {
+  const state = { ...editableState(), name, ringManual: duplicate && S.ringManual, copies: 1 }, quality = S.quality;
   const submit = $('addName');
   if (submit.disabled) return false;
-  submit.disabled = $('cancelName').disabled = true;
+  submit.disabled = $('cancelName').disabled = $('duplicateName').disabled = true;
   try {
     const result = await geometryCall({ type: 'build', S: state, quality });
     const piece = makePiece(state);
@@ -1229,6 +1261,7 @@ async function addName(name) {
     return false;
   } finally {
     submit.disabled = $('cancelName').disabled = false;
+    updatePieceNames();
   }
 }
 let pendingNamePiece = null;
@@ -1307,6 +1340,11 @@ function bindPlateControls() {
     requestRender();
   };
   $('cancelName').onclick = cancelNewName;
+  $('duplicateName').onclick = () => {
+    if (dragAction || !activePiece) return;
+    cancelNewName();
+    addName(S.name, true);
+  };
   input.onfocus = updateSuggestions;
   input.oninput = () => { renameFromInput(input); updateSuggestions() };
   input.onkeydown = event => {
@@ -1542,7 +1580,15 @@ function bindPieceTools() {
   $('deletePiece').onclick = deleteSelectedPiece;
   $('undoRemoval').onclick = undoPieceRemoval;
   document.addEventListener('keydown', event => {
-    if (event.defaultPrevented || event.ctrlKey || event.metaKey || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.defaultPrevented || event.altKey || event.target.closest?.('input,select,textarea,[contenteditable]')) return;
+    if (event.ctrlKey || event.metaKey) {
+      const piece = selectedPiece() || (event.target.closest?.('#pieceNames') && activePiece);
+      if (event.key.toLowerCase() === 'v' && !event.shiftKey && piece && !dragAction) {
+        event.preventDefault();
+        if (!event.repeat) $('duplicateName').click();
+      }
+      return;
+    }
     if (event.key === 'Delete' && selectedPiece()) { event.preventDefault(); deleteSelectedPiece() }
     if (event.key === 'Escape' && S.plateView && plateSelection) setPlateSelection(null);
   });
@@ -1671,5 +1717,6 @@ async function boot() {
   matchFilamentsToBrand(); restoreColorSettings(); refreshMeshColors(); updateControls(); scheduleScan();
   autoFitAfterRebuild = true; await rebuildModel(); selectTab('letters'); fitCamera(); requestRender();
   $('addName').disabled = $('inputName').disabled = false;
+  updatePieceNames();
 }
 boot();
